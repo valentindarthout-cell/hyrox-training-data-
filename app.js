@@ -21,7 +21,10 @@ function applyEmptyFieldVisibility() {
     var val = document.getElementById(c[1]);
     if (!block || !val) return;
     var txt = val.textContent.replace(/\s+/g,'');
-    var empty = txt === '' || txt === '—' || txt === '0' || txt === 'min/km' || txt === 'bpm' || txt === 'kcal' || txt === 'km' || txt === 'min';
+   var empty = txt === '' || txt === '—';
+['min/km','bpm','kcal','km','min','0'].forEach(function(u) { if(txt === u) empty = true; });
+var valEl = document.getElementById(c[1]);
+if (valEl && valEl.innerHTML.trim() === '') empty = true;
     block.style.display = empty ? 'none' : 'flex';
   });
 }
