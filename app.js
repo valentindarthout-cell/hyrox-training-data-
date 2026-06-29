@@ -183,10 +183,8 @@ async function processScreenshot(file, sessionNum) {
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ image: base64, mediaType: mediaType })
 });
-var data = await response.json();
-      var data = await response.json();
-      var text = data.content && data.content[0] && data.content[0].text;
-      var parsed = JSON.parse(text);
+var parsed = await response.json();
+if (parsed.error) throw new Error(parsed.error);
 
       if (sessionNum === 1) {
         if (parsed.name) { document.getElementById('e-s1-name').value = parsed.name; syncBoth('c1-name','c2-s1-name', parsed.name); }
