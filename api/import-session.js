@@ -30,14 +30,18 @@ export default async function handler(req, res) {
       })
     });
 
-    const data = await response.json();
-    if (data.error) { res.status(500).json({ error: data.error.message }); return; }
-    const text = data.content && data.content[0] && data.content[0].text;
-    if (!text) { res.status(500).json({ error: 'No response from AI' }); return; }
-    const parsed = JSON.parse(text);
-    res.status(200).json(parsed);
+    const raw = await response.text();
+    console.log('Anthropic raw response:', raw);
 
-  } catch(e) {
-    res.status(500).json({ error: e.message });
-  }
-}
+    let data;
+    try { data = JSON.parse(raw); } 
+    catch(e) { res.status(500).json({ error: 'Bad JSON from Anthropic', raw }); return; }
+
+    if (data.error) { res.status(500).json({ error: data.error.message || JSON.stringify(data.error) }); return; }
+
+    const text = data.content && data.content[0] && data.content[0].text;
+    if (!text) { res.status(500).json({ error: 'No text in response', data }); return; }
+
+    let parsed;
+    try { parsed = JSON.parse(text); }
+    catch(e) { res.status(500).json({ error: 'AI did not return valid JSON', text });
