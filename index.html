@@ -15,17 +15,20 @@
     <button class="tab active" id="tab-preview" onclick="showTab('preview')">Preview</button>
     <button class="tab" id="tab-edit" onclick="showTab('edit')">Edit</button>
   </div>
+
   <div id="view-preview" class="view">
     <div class="card-wrap">
       <div class="card" id="card">
         <div class="card-toprow">
           <div class="card-date" id="c-date">Monday 29 Jun</div>
-          <div class="card-brand">Hyrox Training Data</div>
+          <div class="card-logo-wrap">
+            <img id="c-logo" src="" alt="" style="display:none;height:22px;max-width:80px;object-fit:contain;filter:brightness(0) invert(1);">
+          </div>
         </div>
         <div class="card-race">
           <div>
             <div class="card-race-name" id="c-race-name">Berlin</div>
-            <div class="card-race-days" id="c-race-days">Set race date</div>
+            <div class="card-race-days" id="c-race-days" style="display:none"></div>
           </div>
           <div class="card-race-div" id="c-race-div">Solo Pro</div>
         </div>
@@ -106,27 +109,41 @@
             <div class="total-lbl">Active kcal</div>
           </div>
         </div>
-        <div class="card-bottom">
-          <div class="hrv-block">
-            <div class="hrv-lbl">HRV</div>
-            <div class="hrv-val">
-              <span class="hrv-dot" id="c-hrv-dot"></span>
-              <span id="c-hrv-text">Optimal</span>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
     <button class="save-btn" onclick="saveCard()"><span id="save-label">Copy card to clipboard</span></button>
     <p class="save-hint">Then paste directly into Instagram Stories</p>
   </div>
+
   <div id="view-edit" class="view" style="display:none">
     <div class="editor">
+
+      <div class="e-section">
+        <div class="e-sec-label">Training program logo</div>
+        <div class="logo-upload-wrap">
+          <img id="logo-preview" src="" alt="" style="display:none;height:36px;max-width:120px;object-fit:contain;margin-bottom:10px;">
+          <label class="logo-upload-btn" for="logo-input">Upload logo</label>
+          <input type="file" id="logo-input" accept="image/*" style="display:none" onchange="handleLogo(this)">
+          <button class="logo-clear-btn" id="logo-clear" onclick="clearLogo()" style="display:none">Remove</button>
+        </div>
+      </div>
+
       <div class="e-section">
         <div class="e-sec-label">Race</div>
-        <div class="e-field"><label class="e-lbl">Race name</label><input type="text" id="e-race-name" value="Berlin" oninput="setRace();save()"></div>
-        <div class="e-field"><label class="e-lbl">Race date</label><input type="date" id="e-race-date" oninput="setRace();save()"></div>
+        <div class="e-field">
+          <label class="e-lbl">Training phase / race</label>
+          <select id="e-race-type" onchange="handleRaceType()" class="e-select">
+            <option value="race">Race</option>
+            <option value="offseason">Off season training</option>
+            <option value="generalprep">General prep</option>
+          </select>
+        </div>
+        <div id="race-fields">
+          <div class="e-field"><label class="e-lbl">Race name</label><input type="text" id="e-race-name" value="Berlin" oninput="setRace();save()"></div>
+          <div class="e-field"><label class="e-lbl">Race date</label><input type="date" id="e-race-date" oninput="setRace();save()"></div>
+        </div>
       </div>
+
       <div class="e-section">
         <div class="e-sec-label">Division</div>
         <div class="pill-group" id="div-pills">
@@ -137,6 +154,7 @@
           <button class="pill" data-div="Mixed Doubles" onclick="setDiv(this)">Mixed Doubles</button>
         </div>
       </div>
+
       <div class="e-section">
         <div class="e-sec-label">Sessions</div>
         <div class="sess-toggle">
@@ -145,7 +163,7 @@
         </div>
         <div class="e-field"><label class="e-lbl">Session 1 name</label><input type="text" id="e-s1-name" value="Morning run" oninput="syncBoth('c1-name','c2-s1-name',this.value)"></div>
         <div class="e-row">
-          <div class="e-field"><label class="e-lbl">Duration</label><input type="text" id="e-s1-dur" value="60 min" oninput="syncBoth('c1-dur','c2-s1-dur',this.value)"></div>
+          <div class="e-field"><label class="e-lbl">Duration (min)</label><input type="number" id="e-s1-dur-min" value="60" min="0" oninput="updateDurations()"></div>
           <div class="e-field"><label class="e-lbl">Avg HR (bpm)</label><input type="text" id="e-s1-hr" value="155" oninput="setHR(1,this.value)"></div>
         </div>
         <div class="e-row">
@@ -154,10 +172,11 @@
         </div>
         <div class="e-check"><input type="checkbox" id="s1-norun" onchange="toggleRun(1,this.checked)"><label for="s1-norun">No running in session 1</label></div>
         <div class="e-field"><label class="e-lbl">Session 1 RPE — <span id="rpe1-disp">7</span>/10</label><input type="range" min="1" max="10" step="1" value="7" oninput="setRPE(1,this.value)"></div>
+
         <div id="e-sess2" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid #e5e5e5">
           <div class="e-field"><label class="e-lbl">Session 2 name</label><input type="text" id="e-s2-name" value="Strength" oninput="sync('c2-s2-name',this.value)"></div>
           <div class="e-row">
-            <div class="e-field"><label class="e-lbl">Duration</label><input type="text" id="e-s2-dur" value="45 min" oninput="sync('c2-s2-dur',this.value)"></div>
+            <div class="e-field"><label class="e-lbl">Duration (min)</label><input type="number" id="e-s2-dur-min" value="45" min="0" oninput="updateDurations()"></div>
             <div class="e-field"><label class="e-lbl">Avg HR (bpm)</label><input type="text" id="e-s2-hr" value="142" oninput="setHR(2,this.value)"></div>
           </div>
           <div class="e-row">
@@ -168,22 +187,16 @@
           <div class="e-field"><label class="e-lbl">Session 2 RPE — <span id="rpe2-disp">6</span>/10</label><input type="range" min="1" max="10" step="1" value="6" oninput="setRPE(2,this.value)"></div>
         </div>
       </div>
+
       <div class="e-section">
         <div class="e-sec-label">Day totals</div>
+        <div class="e-field"><label class="e-lbl">Total time (auto-calculated)</label><input type="text" id="e-tot-time-display" readonly style="background:#f0f0f0;color:#999"></div>
         <div class="e-row">
-          <div class="e-field"><label class="e-lbl">Total time</label><input type="text" id="e-tot-time" value="1h 00m" oninput="sync('c-tot-time',this.value)"></div>
           <div class="e-field"><label class="e-lbl">Run vol. (km)</label><input type="text" id="e-tot-run" value="10" oninput="setTotRun(this.value)"></div>
-        </div>
-        <div class="e-field"><label class="e-lbl">Total active kcal</label><input type="text" id="e-tot-cal" value="520" oninput="setTotCal(this.value)"></div>
-      </div>
-      <div class="e-section">
-        <div class="e-sec-label">HRV Status</div>
-        <div class="hrv-btns">
-          <button class="hrv-btn active-opt" id="hb-opt" onclick="setHRV('opt')">Optimal</button>
-          <button class="hrv-btn" id="hb-elv" onclick="setHRV('elv')">Elevated</button>
-          <button class="hrv-btn" id="hb-low" onclick="setHRV('low')">Low</button>
+          <div class="e-field"><label class="e-lbl">Total active kcal</label><input type="text" id="e-tot-cal" value="520" oninput="setTotCal(this.value)"></div>
         </div>
       </div>
+
     </div>
   </div>
 </div>
