@@ -1,9 +1,4 @@
 {
-  "functions": {
-    "api/import-session.js": {
-      "runtime": "nodejs18.x"
-    }
-  },
   "headers": [
     {
       "source": "/api/(.*)",
