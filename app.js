@@ -1,4 +1,3 @@
-var API_KEY = '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';
 
 function showTab(t) {
   document.getElementById('view-preview').style.display = t === 'preview' ? 'block' : 'none';
