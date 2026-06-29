@@ -1,4 +1,4 @@
-var API_KEY = 'YOUR_API_KEY_HERE';
+var API_KEY = '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';
 
 function showTab(t) {
   document.getElementById('view-preview').style.display = t === 'preview' ? 'block' : 'none';
