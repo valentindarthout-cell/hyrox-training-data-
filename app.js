@@ -179,21 +179,12 @@ async function processScreenshot(file, sessionNum) {
     var base64 = e.target.result.split(',')[1];
     var mediaType = file.type || 'image/jpeg';
     try {
-      var response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 1000,
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-             { type: 'text', text: 'This is a fitness app screenshot (Garmin, Strava, Fitr, TrainHyrox or similar). Extract the session data and respond ONLY with a JSON object, no other text, no markdown:\n{"name":"workout name or type","duration_min":number or null,"distance_km":number or null,"avg_hr":number or null,"calories":number or null,"workout_description":"full workout description as shown, can be multiple lines, max 300 characters or null"}' }
-            ]
-          }]
-        })
-      });
+      var response = await fetch('/api/import-session', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ image: base64, mediaType: mediaType })
+});
+var data = await response.json();
       var data = await response.json();
       var text = data.content && data.content[0] && data.content[0].text;
       var parsed = JSON.parse(text);
