@@ -157,7 +157,7 @@ function setTotCal(val) { document.getElementById('c-tot-cal').textContent = val
 
 function setWorkout(val) {
   var el = document.getElementById('c1-workout');
-  if (el) el.textContent = val || '';
+  if (el) el.innerHTML = val ? val.replace(/\n/g, '<br>') : '';
   var block = document.getElementById('c1-workout-block');
   if (block) block.style.display = val ? 'block' : 'none';
 }
