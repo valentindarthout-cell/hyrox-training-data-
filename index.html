@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <title>Hyrox Training Data</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -21,22 +20,25 @@
       <div class="card" id="card">
         <div class="card-toprow">
           <div class="card-date" id="c-date">Monday 29 Jun</div>
-          <div class="card-logo-wrap">
-            <img id="c-logo" src="" alt="" style="display:none;height:22px;max-width:80px;object-fit:contain;filter:brightness(0) invert(1);">
-          </div>
+          <img id="c-logo" src="" alt="" style="display:none;height:20px;max-width:72px;object-fit:contain;filter:brightness(0) invert(1);">
         </div>
         <div class="card-race">
-          <div>
-            <div class="card-race-name" id="c-race-name">Berlin</div>
+          <div class="card-race-name" id="c-race-name">Berlin</div>
+          <div style="display:flex;align-items:center;gap:10px;">
             <div class="card-race-days" id="c-race-days" style="display:none"></div>
+            <div class="card-race-div" id="c-race-div">Solo Pro</div>
           </div>
-          <div class="card-race-div" id="c-race-div">Solo Pro</div>
         </div>
         <div class="card-rule"></div>
+
+        <!-- 1 session -->
         <div id="card-1sess">
           <div class="sess-header">
             <div class="sess-name" id="c1-name">Morning run</div>
             <div class="sess-dur" id="c1-dur">60 min</div>
+          </div>
+          <div id="c1-workout-block" style="display:none;margin-bottom:10px;">
+            <div class="workout-desc" id="c1-workout"></div>
           </div>
           <div class="metrics" id="c1-metrics">
             <div class="metric" id="c1-run-block">
@@ -54,6 +56,8 @@
           </div>
           <div class="sess-rpe">RPE <span id="c1-rpe">7</span><span class="rpe-scale">/10</span></div>
         </div>
+
+        <!-- 2 sessions -->
         <div id="card-2sess" style="display:none">
           <div class="two-sess">
             <div class="sess-col">
@@ -95,6 +99,7 @@
             </div>
           </div>
         </div>
+
         <div class="card-totals">
           <div class="total">
             <div class="total-val" id="c-tot-time">1h 00m</div>
@@ -131,7 +136,7 @@
       <div class="e-section">
         <div class="e-sec-label">Race</div>
         <div class="e-field">
-          <label class="e-lbl">Training phase / race</label>
+          <label class="e-lbl">Training phase</label>
           <select id="e-race-type" onchange="handleRaceType()" class="e-select">
             <option value="race">Race</option>
             <option value="offseason">Off season training</option>
@@ -161,7 +166,15 @@
           <button class="stog active" id="stog1" onclick="setSess(1)">1 session</button>
           <button class="stog" id="stog2" onclick="setSess(2)">2 sessions</button>
         </div>
+
+        <div class="import-btn-wrap">
+          <button class="import-btn" onclick="importSession(1)">Import session 1 screenshot</button>
+          <input type="file" id="screenshot-s1" accept="image/*" style="display:none" onchange="processScreenshot(this.files[0],1)">
+          <span class="import-status" id="import-status-s1"></span>
+        </div>
+
         <div class="e-field"><label class="e-lbl">Session 1 name</label><input type="text" id="e-s1-name" value="Morning run" oninput="syncBoth('c1-name','c2-s1-name',this.value)"></div>
+        <div class="e-field"><label class="e-lbl">Workout description (optional)</label><input type="text" id="e-workout" placeholder="e.g. 8x400m intervals" oninput="setWorkout(this.value)"></div>
         <div class="e-row">
           <div class="e-field"><label class="e-lbl">Duration (min)</label><input type="number" id="e-s1-dur-min" value="60" min="0" oninput="updateDurations()"></div>
           <div class="e-field"><label class="e-lbl">Avg HR (bpm)</label><input type="text" id="e-s1-hr" value="155" oninput="setHR(1,this.value)"></div>
@@ -174,6 +187,11 @@
         <div class="e-field"><label class="e-lbl">Session 1 RPE — <span id="rpe1-disp">7</span>/10</label><input type="range" min="1" max="10" step="1" value="7" oninput="setRPE(1,this.value)"></div>
 
         <div id="e-sess2" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid #e5e5e5">
+          <div class="import-btn-wrap">
+            <button class="import-btn" onclick="importSession(2)">Import session 2 screenshot</button>
+            <input type="file" id="screenshot-s2" accept="image/*" style="display:none" onchange="processScreenshot(this.files[0],2)">
+            <span class="import-status" id="import-status-s2"></span>
+          </div>
           <div class="e-field"><label class="e-lbl">Session 2 name</label><input type="text" id="e-s2-name" value="Strength" oninput="sync('c2-s2-name',this.value)"></div>
           <div class="e-row">
             <div class="e-field"><label class="e-lbl">Duration (min)</label><input type="number" id="e-s2-dur-min" value="45" min="0" oninput="updateDurations()"></div>
@@ -190,11 +208,9 @@
 
       <div class="e-section">
         <div class="e-sec-label">Day totals</div>
-        <div class="e-field"><label class="e-lbl">Total time (auto-calculated)</label><input type="text" id="e-tot-time-display" readonly style="background:#f0f0f0;color:#999"></div>
-        <div class="e-row">
-          <div class="e-field"><label class="e-lbl">Run vol. (km)</label><input type="text" id="e-tot-run" value="10" oninput="setTotRun(this.value)"></div>
-          <div class="e-field"><label class="e-lbl">Total active kcal</label><input type="text" id="e-tot-cal" value="520" oninput="setTotCal(this.value)"></div>
-        </div>
+        <div class="e-field"><label class="e-lbl">Total time (auto)</label><input type="text" id="e-tot-time-display" readonly style="background:#f0f0f0;color:#999"></div>
+        <div class="e-field"><label class="e-lbl">Total run vol. (auto)</label><input type="text" id="e-tot-run-display" readonly style="background:#f0f0f0;color:#999"></div>
+        <div class="e-field"><label class="e-lbl">Total active kcal</label><input type="text" id="e-tot-cal" value="520" oninput="setTotCal(this.value)"></div>
       </div>
 
     </div>
