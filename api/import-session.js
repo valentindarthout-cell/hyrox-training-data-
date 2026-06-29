@@ -12,6 +12,7 @@ module.exports = async (req, res) => {
   const raw = await r.text();
   console.log('RAW:',raw);
   const data = JSON.parse(raw);
-  const parsed = JSON.parse(data.content[0].text);
+  const clean = data.content[0].text.replace(/```json|```/g, '').trim();
+const parsed = JSON.parse(clean);
   res.status(200).json(parsed);
 };
