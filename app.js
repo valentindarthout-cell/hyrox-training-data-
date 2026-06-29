@@ -3,8 +3,54 @@ function showTab(t) {
   document.getElementById('view-edit').style.display = t === 'edit' ? 'block' : 'none';
   document.getElementById('tab-preview').classList.toggle('active', t === 'preview');
   document.getElementById('tab-edit').classList.toggle('active', t === 'edit');
-  if (t === 'preview') updateDate();
+  if (t === 'preview') { updateDate(); applyEmptyFieldVisibility(); }
+  if (t === 'edit') { restoreAllFields(); }
 }
+
+function isEmpty(id) {
+  var el = document.getElementById(id);
+  if (!el) return true;
+  return el.textContent.trim() === '' || el.textContent.trim() === '—';
+}
+
+function setBlockVisible(id, visible) {
+  var el = document.getElementById(id);
+  if (el) el.style.display = visible ? 'flex' : 'none';
+}
+
+function applyEmptyFieldVisibility() {
+  var fields1 = [
+    { block: 'c1-dur-block', val: 'c1-dur-val' },
+    { block: 'c1-run-block', val: 'c1-run' },
+    { block: 'c1-pace-block', val: 'c1-pace' },
+    { block: 'c1-hr-block', val: 'c1-hr' },
+    { block: 'c1-cal-block', val: 'c1-cal' }
+  ];
+  fields1.forEach(function(f) { setBlockVisible(f.block, !isEmpty(f.val)); });
+
+  var fields2a = [
+    { block: 'c2-s1-dur-block', val: 'c2-s1-dur' },
+    { block: 'c2-s1-run-block', val: 'c2-s1-run' },
+    { block: 'c2-s1-pace-block', val: 'c2-s1-pace' },
+    { block: 'c2-s1-hr-block', val: 'c2-s1-hr' },
+    { block: 'c2-s1-cal-block', val: 'c2-s1-cal' }
+  ];
+  fields2a.forEach(function(f) { setBlockVisible(f.block, !isEmpty(f.val)); });
+
+  var fields2b = [
+    { block: 'c2-s2-dur-block', val: 'c2-s2-dur' },
+    { block: 'c2-s2-run-block', val: 'c2-s2-run' },
+    { block: 'c2-s2-pace-block', val: 'c2-s2-pace' },
+    { block: 'c2-s2-hr-block', val: 'c2-s2-hr' },
+    { block: 'c2-s2-cal-block', val: 'c2-s2-cal' }
+  ];
+  fields2b.forEach(function(f) { setBlockVisible(f.block, !isEmpty(f.val)); });
+}
+
+function restoreAllFields() {
+  var allBlocks = [
+    'c1-dur-block','c1-run-block','c1-pace-block','c1-hr-block','c1-cal-block',
+    'c2-s1-dur-block','c2-s1-run-block
 
 function sync(id, val) {
   var el = document.getElementById(id);
