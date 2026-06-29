@@ -22,30 +22,37 @@
           <div class="card-date" id="c-date">Monday 29 Jun</div>
           <img id="c-logo" src="" alt="" style="display:none;height:20px;max-width:72px;object-fit:contain;filter:brightness(0) invert(1);">
         </div>
-<div class="card-race">
-  <div>
-    <div style="display:flex;align-items:baseline;gap:8px;">
-      <div class="card-race-name" id="c-race-name">Berlin</div>
-      <div class="card-race-div" id="c-race-div">Solo Pro</div>
-    </div>
-    <div class="card-race-days" id="c-race-days" style="display:none"></div>
-  </div>
-</div>
+        <div class="card-race">
+          <div>
+            <div style="display:flex;align-items:baseline;gap:8px;">
+              <div class="card-race-name" id="c-race-name">Berlin</div>
+              <div class="card-race-div" id="c-race-div">Solo Pro</div>
+            </div>
+            <div class="card-race-days" id="c-race-days" style="display:none"></div>
+          </div>
+        </div>
         <div class="card-rule"></div>
 
         <!-- 1 session -->
         <div id="card-1sess">
           <div class="sess-header">
             <div class="sess-name" id="c1-name">Morning run</div>
-            <div class="sess-dur" id="c1-dur">60 min</div>
           </div>
           <div id="c1-workout-block" style="display:none;margin-bottom:10px;">
-            <div class="workout-desc" id="c1-workout" style="white-space:pre-line;"></div>
+            <div class="workout-desc" id="c1-workout"></div>
           </div>
           <div class="metrics" id="c1-metrics">
+            <div class="metric">
+              <div class="metric-val" id="c1-dur-val">60 <span class="metric-unit">min</span></div>
+              <div class="metric-lbl">Duration</div>
+            </div>
             <div class="metric" id="c1-run-block">
               <div class="metric-val" id="c1-run">10 <span class="metric-unit">km</span></div>
               <div class="metric-lbl">Run vol.</div>
+            </div>
+            <div class="metric" id="c1-pace-block">
+              <div class="metric-val" id="c1-pace">6:00 <span class="metric-unit">min/km</span></div>
+              <div class="metric-lbl">Avg pace</div>
             </div>
             <div class="metric">
               <div class="metric-val" id="c1-hr">155 <span class="metric-unit">bpm</span></div>
@@ -65,10 +72,17 @@
             <div class="sess-col">
               <div class="sess-col-num">Session 1</div>
               <div class="sess-col-name" id="c2-s1-name">Morning run</div>
-              <div class="sess-col-dur" id="c2-s1-dur">60 min</div>
+              <div class="metric-sm">
+                <div class="metric-sm-val" id="c2-s1-dur">60 <span class="metric-sm-unit">min</span></div>
+                <div class="metric-sm-lbl">Duration</div>
+              </div>
               <div class="metric-sm" id="c2-s1-run-block">
                 <div class="metric-sm-val" id="c2-s1-run">10 <span class="metric-sm-unit">km</span></div>
                 <div class="metric-sm-lbl">Run vol.</div>
+              </div>
+              <div class="metric-sm" id="c2-s1-pace-block">
+                <div class="metric-sm-val" id="c2-s1-pace">6:00 <span class="metric-sm-unit">min/km</span></div>
+                <div class="metric-sm-lbl">Avg pace</div>
               </div>
               <div class="metric-sm">
                 <div class="metric-sm-val" id="c2-s1-hr">155 <span class="metric-sm-unit">bpm</span></div>
@@ -84,10 +98,17 @@
             <div class="sess-col">
               <div class="sess-col-num">Session 2</div>
               <div class="sess-col-name" id="c2-s2-name">Strength</div>
-              <div class="sess-col-dur" id="c2-s2-dur">45 min</div>
+              <div class="metric-sm">
+                <div class="metric-sm-val" id="c2-s2-dur">45 <span class="metric-sm-unit">min</span></div>
+                <div class="metric-sm-lbl">Duration</div>
+              </div>
               <div class="metric-sm" id="c2-s2-run-block" style="display:none">
                 <div class="metric-sm-val" id="c2-s2-run">—</div>
                 <div class="metric-sm-lbl">Run vol.</div>
+              </div>
+              <div class="metric-sm" id="c2-s2-pace-block" style="display:none">
+                <div class="metric-sm-val" id="c2-s2-pace">—</div>
+                <div class="metric-sm-lbl">Avg pace</div>
               </div>
               <div class="metric-sm">
                 <div class="metric-sm-val" id="c2-s2-hr">142 <span class="metric-sm-unit">bpm</span></div>
@@ -100,22 +121,22 @@
               <div class="sess-rpe-sm">RPE <span id="c2-s2-rpe">6</span><span class="rpe-scale">/10</span></div>
             </div>
           </div>
+          <div class="card-totals" id="card-totals">
+            <div class="total">
+              <div class="total-val" id="c-tot-time">1h 45m</div>
+              <div class="total-lbl">Total time</div>
+            </div>
+            <div class="total">
+              <div class="total-val" id="c-tot-run">10 km</div>
+              <div class="total-lbl">Run vol.</div>
+            </div>
+            <div class="total">
+              <div class="total-val" id="c-tot-cal">520 kcal</div>
+              <div class="total-lbl">Active kcal</div>
+            </div>
+          </div>
         </div>
 
-        <div class="card-totals">
-          <div class="total">
-            <div class="total-val" id="c-tot-time">1h 00m</div>
-            <div class="total-lbl">Total time</div>
-          </div>
-          <div class="total">
-            <div class="total-val" id="c-tot-run">10 km</div>
-            <div class="total-lbl">Run vol.</div>
-          </div>
-          <div class="total">
-            <div class="total-val" id="c-tot-cal">520 kcal</div>
-            <div class="total-lbl">Active kcal</div>
-          </div>
-        </div>
       </div>
     </div>
     <button class="save-btn" onclick="saveCard()"><span id="save-label">Copy card to clipboard</span></button>
@@ -165,50 +186,52 @@
       <div class="e-section">
         <div class="e-sec-label">Sessions</div>
         <div class="sess-toggle">
-          <button class="stog active" id="stog1" onclick="setSess(1)">1 session</button>
+          <button class="stog" id="stog1" onclick="setSess(1)">1 session</button>
           <button class="stog" id="stog2" onclick="setSess(2)">2 sessions</button>
         </div>
 
         <div class="import-btn-wrap">
-          <button class="import-btn" onclick="importSession(1)">Import session 1 screenshot</button>
+          <button class="import-btn" onclick="document.getElementById('screenshot-s1').click()">Import session 1 screenshot</button>
           <input type="file" id="screenshot-s1" accept="image/*" style="display:none" onchange="processScreenshot(this.files[0],1)">
           <span class="import-status" id="import-status-s1"></span>
         </div>
 
         <div class="e-field"><label class="e-lbl">Session 1 name</label><input type="text" id="e-s1-name" value="Morning run" oninput="syncBoth('c1-name','c2-s1-name',this.value)"></div>
-       <div class="e-field"><label class="e-lbl">Workout description (optional)</label><textarea id="e-workout" placeholder="e.g. 8x400m&#10;4x200m&#10;Cool down 2km" rows="4" oninput="setWorkout(this.value)" style="width:100%;padding:10px 12px;font-size:14px;font-family:inherit;background:#f7f7f7;border:1px solid #eee;border-radius:10px;color:#111;outline:none;resize:vertical;line-height:1.5;"></textarea></div>
+        <div class="e-field"><label class="e-lbl">Workout description (optional)</label><textarea id="e-workout" rows="4" placeholder="e.g. 8x400m @ 3:45/km&#10;90sec rest&#10;Cool down 2km" oninput="setWorkout(this.value)" style="width:100%;padding:10px 12px;font-size:14px;font-family:inherit;background:#f7f7f7;border:1px solid #eee;border-radius:10px;color:#111;outline:none;resize:vertical;line-height:1.5;"></textarea></div>
         <div class="e-row">
-          <div class="e-field"><label class="e-lbl">Duration (min)</label><input type="number" id="e-s1-dur-min" value="60" min="0" oninput="updateDurations()"></div>
+          <div class="e-field"><label class="e-lbl">Duration (min)</label><input type="number" id="e-s1-dur-min" value="60" min="0" oninput="updateDurations();autoCalcPace(1)"></div>
+          <div class="e-field"><label class="e-lbl">Run vol. (km)</label><input type="text" id="e-s1-run" value="10" oninput="setRun(1,this.value);autoCalcPace(1)"></div>
+        </div>
+        <div class="e-row">
+          <div class="e-field"><label class="e-lbl">Avg pace (min/km)</label><input type="text" id="e-s1-pace" value="" placeholder="auto" oninput="setPace(1,this.value)"></div>
           <div class="e-field"><label class="e-lbl">Avg HR (bpm)</label><input type="text" id="e-s1-hr" value="155" oninput="setHR(1,this.value)"></div>
         </div>
-        <div class="e-row">
-          <div class="e-field"><label class="e-lbl">Active kcal</label><input type="text" id="e-s1-cal" value="520" oninput="setCal(1,this.value)"></div>
-          <div class="e-field"><label class="e-lbl">Run vol. (km)</label><input type="text" id="e-s1-run" value="10" oninput="setRun(1,this.value)"></div>
-        </div>
+        <div class="e-field"><label class="e-lbl">Active kcal</label><input type="text" id="e-s1-cal" value="520" oninput="setCal(1,this.value)"></div>
         <div class="e-check"><input type="checkbox" id="s1-norun" onchange="toggleRun(1,this.checked)"><label for="s1-norun">No running in session 1</label></div>
         <div class="e-field"><label class="e-lbl">Session 1 RPE — <span id="rpe1-disp">7</span>/10</label><input type="range" min="1" max="10" step="1" value="7" oninput="setRPE(1,this.value)"></div>
 
         <div id="e-sess2" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid #e5e5e5">
           <div class="import-btn-wrap">
-            <button class="import-btn" onclick="importSession(2)">Import session 2 screenshot</button>
+            <button class="import-btn" onclick="document.getElementById('screenshot-s2').click()">Import session 2 screenshot</button>
             <input type="file" id="screenshot-s2" accept="image/*" style="display:none" onchange="processScreenshot(this.files[0],2)">
             <span class="import-status" id="import-status-s2"></span>
           </div>
           <div class="e-field"><label class="e-lbl">Session 2 name</label><input type="text" id="e-s2-name" value="Strength" oninput="sync('c2-s2-name',this.value)"></div>
           <div class="e-row">
-            <div class="e-field"><label class="e-lbl">Duration (min)</label><input type="number" id="e-s2-dur-min" value="45" min="0" oninput="updateDurations()"></div>
-            <div class="e-field"><label class="e-lbl">Avg HR (bpm)</label><input type="text" id="e-s2-hr" value="142" oninput="setHR(2,this.value)"></div>
+            <div class="e-field"><label class="e-lbl">Duration (min)</label><input type="number" id="e-s2-dur-min" value="45" min="0" oninput="updateDurations();autoCalcPace(2)"></div>
+            <div class="e-field"><label class="e-lbl">Run vol. (km)</label><input type="text" id="e-s2-run" value="" placeholder="0" oninput="setRun(2,this.value);autoCalcPace(2)"></div>
           </div>
           <div class="e-row">
-            <div class="e-field"><label class="e-lbl">Active kcal</label><input type="text" id="e-s2-cal" value="380" oninput="setCal(2,this.value)"></div>
-            <div class="e-field"><label class="e-lbl">Run vol. (km)</label><input type="text" id="e-s2-run" value="" placeholder="0" oninput="setRun(2,this.value)"></div>
+            <div class="e-field"><label class="e-lbl">Avg pace (min/km)</label><input type="text" id="e-s2-pace" value="" placeholder="auto" oninput="setPace(2,this.value)"></div>
+            <div class="e-field"><label class="e-lbl">Avg HR (bpm)</label><input type="text" id="e-s2-hr" value="142" oninput="setHR(2,this.value)"></div>
           </div>
+          <div class="e-field"><label class="e-lbl">Active kcal</label><input type="text" id="e-s2-cal" value="380" oninput="setCal(2,this.value)"></div>
           <div class="e-check"><input type="checkbox" id="s2-norun" checked onchange="toggleRun(2,this.checked)"><label for="s2-norun">No running in session 2</label></div>
           <div class="e-field"><label class="e-lbl">Session 2 RPE — <span id="rpe2-disp">6</span>/10</label><input type="range" min="1" max="10" step="1" value="6" oninput="setRPE(2,this.value)"></div>
         </div>
       </div>
 
-      <div class="e-section">
+      <div class="e-section" id="e-totals-section" style="display:none">
         <div class="e-sec-label">Day totals</div>
         <div class="e-field"><label class="e-lbl">Total time (auto)</label><input type="text" id="e-tot-time-display" readonly style="background:#f0f0f0;color:#999"></div>
         <div class="e-field"><label class="e-lbl">Total run vol. (auto)</label><input type="text" id="e-tot-run-display" readonly style="background:#f0f0f0;color:#999"></div>
