@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/import-session.js": {
+      "runtime": "node@18"
+    }
+  }
+}
