@@ -103,3 +103,22 @@ input[type=range] { width: 100%; accent-color: #111; margin-top: 6px; }
 .logo-upload-wrap { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .logo-upload-btn { display: inline-block; padding: 9px 16px; background: #111; color: #fff; font-size: 12px; font-weight: 700; border-radius: 10px; cursor: pointer; letter-spacing: 0.06em; }
 .logo-clear-btn { padding: 9px 14px; background: none; border: 1px solid #ddd; border-radius: 10px; font-size: 12px; color: #999; cursor: pointer; }
+.card-race { display:flex; justify-content:space-between; align-items:center; padding:6px 0; margin-bottom:10px; }
+.card-race-name { font-size:11px; font-weight:700; color:#bbb; letter-spacing:0.06em; }
+.card-race-days { font-size:9px; color:#777; letter-spacing:0.06em; }
+.card-race-div { font-size:8px; color:#333; letter-spacing:0.16em; text-transform:uppercase; }
+.metric-unit { font-size:9px; color:rgba(255,255,255,0.2); font-weight:400; }
+.metric-lbl { font-size:8px; color:rgba(255,255,255,0.18); letter-spacing:0.14em; text-transform:uppercase; }
+.metric-sm-unit { font-size:7px; color:rgba(255,255,255,0.2); }
+.metric-sm-lbl { font-size:7px; color:rgba(255,255,255,0.18); letter-spacing:0.14em; text-transform:uppercase; }
+.sess-col-num { font-size:8px; letter-spacing:0.2em; text-transform:uppercase; color:rgba(255,255,255,0.18); font-weight:700; margin-bottom:6px; }
+.sess-rpe { font-size:9px; color:rgba(255,255,255,0.18); letter-spacing:0.14em; text-transform:uppercase; font-weight:600; margin-bottom:14px; }
+.sess-rpe span { font-size:13px; color:rgba(255,255,255,0.6); font-weight:700; }
+.rpe-scale { font-size:9px; color:rgba(255,255,255,0.18); font-weight:400; }
+.sess-rpe-sm { font-size:8px; color:rgba(255,255,255,0.18); letter-spacing:0.14em; text-transform:uppercase; font-weight:700; margin-top:6px; padding-top:8px; border-top:0.5px solid rgba(255,255,255,0.06); }
+.sess-rpe-sm span { font-size:12px; color:rgba(255,255,255,0.5); font-weight:700; }
+.total-lbl { font-size:8px; color:rgba(255,255,255,0.18); letter-spacing:0.14em; text-transform:uppercase; }
+.workout-desc { font-size:11px; color:rgba(255,255,255,0.45); font-style:italic; letter-spacing:0.02em; }
+.import-btn-wrap { display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+.import-btn { padding:10px 16px; background:#111; color:#fff; font-size:12px; font-weight:700; border:none; border-radius:10px; cursor:pointer; letter-spacing:0.04em; }
+.import-status { font-size:12px; color:#1a7a4a; font-weight:600; }
