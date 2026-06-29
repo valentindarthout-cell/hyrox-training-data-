@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>Hyrox Training Data</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+<div class="app">
+  <div class="tabs">
+    <button class="tab active" id="tab-preview" onclick="showTab('preview')">Preview</button>
+    <button class="tab" id="tab-edit" onclick="showTab('edit')">Edit</button>
+  </div>
+  <div id="view-preview" class="view">
+    <div class="card-wrap">
+      <div class="card" id="card">
+        <div class="card-toprow">
+          <div class="card-date" id="c-date">Monday 29 Jun</div>
+          <div class="card-brand">Hyrox Training Data</div>
+        </div>
+        <div class="card-race">
+          <div>
+            <div class="card-race-name" id="c-race-name">Berlin</div>
+            <div class="card-race-days" id="c-race-days">Set race date</div>
+          </div>
+          <div class="card-race-div" id="c-race-div">Solo Pro</div>
+        </div>
+        <div class="card-rule"></div>
+        <div id="card-1sess">
+          <div class="sess-header">
+            <div class="sess-name" id="c1-name">Morning run</div>
+            <div class="sess-dur" id="c1-dur">60 min</div>
+          </div>
+          <div class="metrics" id="c1-metrics">
+            <div class="metric" id="c1-run-block">
+              <div class="metric-val" id="c1-run">10 <span class="metric-unit">km</span></div>
+              <div class="metric-lbl">Run vol.</div>
+            </div>
+            <div class="metric">
+              <div class="metric-val" id="c1-hr">155 <span class="metric-unit">bpm</span></div>
+              <div class="metric-lbl">Avg HR</div>
+            </div>
+            <div class="metric">
+              <div class="metric-val" id="c1-cal">520 <span class="metric-unit">kcal</span></div>
+              <div class="metric-lbl">Active kcal</div>
+            </div>
+          </div>
+          <div class="sess-rpe">RPE <span id="c1-rpe">7</span><span class="rpe-scale">/10</span></div>
+        </div>
+        <div id="card-2sess" style="display:none">
+          <div class="two-sess">
+            <div class="sess-col">
+              <div class="sess-col-num">Session 1</div>
+              <div class="sess-col-name" id="c2-s1-name">Morning run</div>
+              <div class="sess-col-dur" id="c2-s1-dur">60 min</div>
+              <div class="metric-sm" id="c2-s1-run-block">
+                <div class="metric-sm-val" id="c2-s1-run">10 <span class="metric-sm-unit">km</span></div>
+                <div class="metric-sm-lbl">Run vol.</div>
+              </div>
+              <div class="metric-sm">
+                <div class="metric-sm-val" id="c2-s1-hr">155 <span class="metric-sm-unit">bpm</span></div>
+                <div class="metric-sm-lbl">Avg HR</div>
+              </div>
+              <div class="metric-sm">
+                <div class="metric-sm-val" id="c2-s1-cal">520 <span class="metric-sm-unit">kcal</span></div>
+                <div class="metric-sm-lbl">Active kcal</div>
+              </div>
+              <div class="sess-rpe-sm">RPE <span id="c2-s1-rpe">7</span><span class="rpe-scale">/10</span></div>
+            </div>
+            <div class="sess-vsep"></div>
+            <div class="sess-col">
+              <div class="sess-col-num">Session 2</div>
+              <div class="sess-col-name" id="c2-s2-name">Strength</div>
+              <div class="sess-col-dur" id="c2-s2-dur">45 min</div>
+              <div class="metric-sm" id="c2-s2-run-block" style="display:none">
+                <div class="metric-sm-val" id="c2-s2-run">—</div>
+                <div class="metric-sm-lbl">Run vol.</div>
+              </div>
+              <div class="metric-sm">
+                <div class="metric-sm-val" id="c2-s2-hr">142 <span class="metric-sm-unit">bpm</span></div>
+                <div class="metric-sm-lbl">Avg HR</div>
+              </div>
+              <div class="metric-sm">
+                <div class="metric-sm-val" id="c2-s2-cal">380 <span class="metric-sm-unit">kcal</span></div>
+                <div class="metric-sm-lbl">Active kcal</div>
+              </div>
+              <div class="sess-rpe-sm">RPE <span id="c2-s2-rpe">6</span><span class="rpe-scale">/10</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="card-totals">
+          <div class="total">
+            <div class="total-val" id="c-tot-time">1h 00m</div>
+            <div class="total-lbl">Total time</div>
+          </div>
+          <div class="total">
+            <div class="total-val" id="c-tot-run">10 km</div>
+            <div class="total-lbl">Run vol.</div>
+          </div>
+          <div class="total">
+            <div class="total-val" id="c-tot-cal">520 kcal</div>
+            <div class="total-lbl">Active kcal</div>
+          </div>
+        </div>
+        <div class="card-bottom">
+          <div class="hrv-block">
+            <div class="hrv-lbl">HRV</div>
+            <div class="hrv-val">
+              <span class="hrv-dot" id="c-hrv-dot"></span>
+              <span id="c-hrv-text">Optimal</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="save-btn" onclick="saveCard()"><span id="save-label">Copy card to clipboard</span></button>
+    <p class="save-hint">Then paste directly into Instagram Stories</p>
+  </div>
+  <div id="view-edit" class="view" style="display:none">
+    <div class="editor">
+      <div class="e-section">
+        <div class="e-sec-label">Race</div>
+        <div class="e-field"><label class="e-lbl">Race name</label><input type="text" id="e-race-name" value="Berlin" oninput="setRace();save()"></div>
+        <div class="e-field"><label class="e-lbl">Race date</label><input type="date" id="e-race-date" oninput="setRace();save()"></div>
+      </div>
+      <div class="e-section">
+        <div class="e-sec-label">Division</div>
+        <div class="pill-group" id="div-pills">
+          <button class="pill active" data-div="Solo Pro" onclick="setDiv(this)">Solo Pro</button>
+          <button class="pill" data-div="Solo Open" onclick="setDiv(this)">Solo Open</button>
+          <button class="pill" data-div="Pro Doubles" onclick="setDiv(this)">Pro Doubles</button>
+          <button class="pill" data-div="Open Doubles" onclick="setDiv(this)">Open Doubles</button>
+          <button class="pill" data-div="Mixed Doubles" onclick="setDiv(this)">Mixed Doubles</button>
+        </div>
+      </div>
+      <div class="e-section">
+        <div class="e-sec-label">Sessions</div>
+        <div class="sess-toggle">
+          <button class="stog active" id="stog1" onclick="setSess(1)">1 session</button>
+          <button class="stog" id="stog2" onclick="setSess(2)">2 sessions</button>
+        </div>
+        <div class="e-field"><label class="e-lbl">Session 1 name</label><input type="text" id="e-s1-name" value="Morning run" oninput="syncBoth('c1-name','c2-s1-name',this.value)"></div>
+        <div class="e-row">
+          <div class="e-field"><label class="e-lbl">Duration</label><input type="text" id="e-s1-dur" value="60 min" oninput="syncBoth('c1-dur','c2-s1-dur',this.value)"></div>
+          <div class="e-field"><label class="e-lbl">Avg HR (bpm)</label><input type="text" id="e-s1-hr" value="155" oninput="setHR(1,this.value)"></div>
+        </div>
+        <div class="e-row">
+          <div class="e-field"><label class="e-lbl">Active kcal</label><input type="text" id="e-s1-cal" value="520" oninput="setCal(1,this.value)"></div>
+          <div class="e-field"><label class="e-lbl">Run vol. (km)</label><input type="text" id="e-s1-run" value="10" oninput="setRun(1,this.value)"></div>
+        </div>
+        <div class="e-check"><input type="checkbox" id="s1-norun" onchange="toggleRun(1,this.checked)"><label for="s1-norun">No running in session 1</label></div>
+        <div class="e-field"><label class="e-lbl">Session 1 RPE — <span id="rpe1-disp">7</span>/10</label><input type="range" min="1" max="10" step="1" value="7" oninput="setRPE(1,this.value)"></div>
+        <div id="e-sess2" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid #e5e5e5">
+          <div class="e-field"><label class="e-lbl">Session 2 name</label><input type="text" id="e-s2-name" value="Strength" oninput="sync('c2-s2-name',this.value)"></div>
+          <div class="e-row">
+            <div class="e-field"><label class="e-lbl">Duration</label><input type="text" id="e-s2-dur" value="45 min" oninput="sync('c2-s2-dur',this.value)"></div>
+            <div class="e-field"><label class="e-lbl">Avg HR (bpm)</label><input type="text" id="e-s2-hr" value="142" oninput="setHR(2,this.value)"></div>
+          </div>
+          <div class="e-row">
+            <div class="e-field"><label class="e-lbl">Active kcal</label><input type="text" id="e-s2-cal" value="380" oninput="setCal(2,this.value)"></div>
+            <div class="e-field"><label class="e-lbl">Run vol. (km)</label><input type="text" id="e-s2-run" value="" placeholder="0" oninput="setRun(2,this.value)"></div>
+          </div>
+          <div class="e-check"><input type="checkbox" id="s2-norun" checked onchange="toggleRun(2,this.checked)"><label for="s2-norun">No running in session 2</label></div>
+          <div class="e-field"><label class="e-lbl">Session 2 RPE — <span id="rpe2-disp">6</span>/10</label><input type="range" min="1" max="10" step="1" value="6" oninput="setRPE(2,this.value)"></div>
+        </div>
+      </div>
+      <div class="e-section">
+        <div class="e-sec-label">Day totals</div>
+        <div class="e-row">
+          <div class="e-field"><label class="e-lbl">Total time</label><input type="text" id="e-tot-time" value="1h 00m" oninput="sync('c-tot-time',this.value)"></div>
+          <div class="e-field"><label class="e-lbl">Run vol. (km)</label><input type="text" id="e-tot-run" value="10" oninput="setTotRun(this.value)"></div>
+        </div>
+        <div class="e-field"><label class="e-lbl">Total active kcal</label><input type="text" id="e-tot-cal" value="520" oninput="setTotCal(this.value)"></div>
+      </div>
+      <div class="e-section">
+        <div class="e-sec-label">HRV Status</div>
+        <div class="hrv-btns">
+          <button class="hrv-btn active-opt" id="hb-opt" onclick="setHRV('opt')">Optimal</button>
+          <button class="hrv-btn" id="hb-elv" onclick="setHRV('elv')">Elevated</button>
+          <button class="hrv-btn" id="hb-low" onclick="setHRV('low')">Low</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
