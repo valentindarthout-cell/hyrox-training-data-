@@ -65,6 +65,7 @@ function setSess(n) {
   document.getElementById('card-1sess').style.display = n === 1 ? 'block' : 'none';
   document.getElementById('card-2sess').style.display = n === 2 ? 'block' : 'none';
   document.getElementById('e-sess2').style.display = n === 2 ? 'block' : 'none';
+  document.getElementById('card-totals').style.display = n === 2 ? 'grid' : 'none';
   document.getElementById('stog1').classList.toggle('active', n === 1);
   document.getElementById('stog2').classList.toggle('active', n === 2);
   updateDurations();
