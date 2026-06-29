@@ -1,3 +1,5 @@
+var API_KEY = 'YOUR_API_KEY_HERE';
+
 function showTab(t) {
   document.getElementById('view-preview').style.display = t === 'preview' ? 'block' : 'none';
   document.getElementById('view-edit').style.display = t === 'edit' ? 'block' : 'none';
@@ -67,10 +69,15 @@ function setSess(n) {
   document.getElementById('stog1').classList.toggle('active', n === 1);
   document.getElementById('stog2').classList.toggle('active', n === 2);
   updateDurations();
+  updateTotRun();
 }
 
 function parseMins(id) {
   return parseInt(document.getElementById(id).value) || 0;
+}
+
+function parseKm(id) {
+  return parseFloat(document.getElementById(id).value) || 0;
 }
 
 function formatDuration(mins) {
@@ -85,14 +92,24 @@ function updateDurations() {
   var s1 = parseMins('e-s1-dur-min');
   var isTwoSess = document.getElementById('stog2').classList.contains('active');
   var s2 = isTwoSess ? parseMins('e-s2-dur-min') : 0;
-  var s1fmt = formatDuration(s1);
-  var s2fmt = formatDuration(s2);
-  var totalFmt = formatDuration(s1 + s2);
-  syncBoth('c1-dur', 'c2-s1-dur', s1fmt);
-  sync('c2-s2-dur', s2fmt);
-  sync('c-tot-time', totalFmt);
-  var displayEl = document.getElementById('e-tot-time-display');
-  if (displayEl) displayEl.value = totalFmt;
+  syncBoth('c1-dur', 'c2-s1-dur', formatDuration(s1));
+  sync('c2-s2-dur', formatDuration(s2));
+  sync('c-tot-time', formatDuration(s1 + s2));
+  var d = document.getElementById('e-tot-time-display');
+  if (d) d.value = formatDuration(s1 + s2);
+}
+
+function updateTotRun() {
+  var isTwoSess = document.getElementById('stog2').classList.contains('active');
+  var s1 = parseKm('e-s1-run');
+  var s2 = isTwoSess ? parseKm('e-s2-run') : 0;
+  var s1norun = document.getElementById('s1-norun').checked;
+  var s2norun = isTwoSess && document.getElementById('s2-norun').checked;
+  var total = (s1norun ? 0 : s1) + (s2norun ? 0 : s2);
+  var display = total > 0 ? total.toFixed(1).replace(/\.0$/, '') + ' km' : '—';
+  sync('c-tot-run', display);
+  var el = document.getElementById('e-tot-run-display');
+  if (el) el.value = display;
 }
 
 function setHR(s, val) {
@@ -114,6 +131,7 @@ function setRun(s, val) {
   var us = ' <span class="metric-sm-unit">km</span>';
   if (s === 1) { document.getElementById('c1-run').innerHTML = val + u; document.getElementById('c2-s1-run').innerHTML = val + us; }
   else { var el = document.getElementById('c2-s2-run'); if (el) el.innerHTML = val + us; }
+  updateTotRun();
 }
 
 function toggleRun(s, hidden) {
@@ -127,6 +145,7 @@ function toggleRun(s, hidden) {
     var b = document.getElementById('c2-s2-run-block');
     if (b) b.style.display = hidden ? 'none' : 'flex';
   }
+  updateTotRun();
 }
 
 function setRPE(s, val) {
@@ -135,8 +154,81 @@ function setRPE(s, val) {
   else { sync('c2-s2-rpe', v); sync('rpe2-disp', v); }
 }
 
-function setTotRun(val) { document.getElementById('c-tot-run').textContent = val + ' km'; }
 function setTotCal(val) { document.getElementById('c-tot-cal').textContent = val + ' kcal'; }
+
+function setWorkout(val) {
+  var el = document.getElementById('c1-workout');
+  if (el) el.textContent = val || '';
+  var block = document.getElementById('c1-workout-block');
+  if (block) block.style.display = val ? 'block' : 'none';
+}
+
+async function importSession(sessionNum) {
+  var inputId = sessionNum === 1 ? 'screenshot-s1' : 'screenshot-s2';
+  var input = document.getElementById(inputId);
+  input.click();
+}
+
+async function processScreenshot(file, sessionNum) {
+  var statusId = sessionNum === 1 ? 'import-status-s1' : 'import-status-s2';
+  var statusEl = document.getElementById(statusId);
+  statusEl.textContent = 'Reading session...';
+
+  var reader = new FileReader();
+  reader.onload = async function(e) {
+    var base64 = e.target.result.split(',')[1];
+    var mediaType = file.type || 'image/jpeg';
+    try {
+      var response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': API_KEY, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1000,
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+              { type: 'text', text: 'This is a fitness app screenshot (Garmin, Strava, Fitr, TrainHyrox or similar). Extract the session data and respond ONLY with a JSON object, no other text, no markdown:\n{"name":"workout name or type","duration_min":number or null,"distance_km":number or null,"avg_hr":number or null,"calories":number or null,"workout_description":"brief workout description in 6 words max or null"}' }
+            ]
+          }]
+        })
+      });
+      var data = await response.json();
+      var text = data.content && data.content[0] && data.content[0].text;
+      var parsed = JSON.parse(text);
+
+      if (sessionNum === 1) {
+        if (parsed.name) { document.getElementById('e-s1-name').value = parsed.name; syncBoth('c1-name','c2-s1-name', parsed.name); }
+        if (parsed.duration_min) { document.getElementById('e-s1-dur-min').value = parsed.duration_min; updateDurations(); }
+        if (parsed.distance_km !== null && parsed.distance_km !== undefined) {
+          var norun = document.getElementById('s1-norun');
+          if (parsed.distance_km > 0) { norun.checked = false; toggleRun(1, false); document.getElementById('e-s1-run').value = parsed.distance_km; setRun(1, parsed.distance_km); }
+          else { norun.checked = true; toggleRun(1, true); }
+        }
+        if (parsed.avg_hr) { document.getElementById('e-s1-hr').value = parsed.avg_hr; setHR(1, parsed.avg_hr); }
+        if (parsed.calories) { document.getElementById('e-s1-cal').value = parsed.calories; setCal(1, parsed.calories); }
+        if (parsed.workout_description) { document.getElementById('e-workout').value = parsed.workout_description; setWorkout(parsed.workout_description); }
+        statusEl.textContent = 'Imported ✓';
+      } else {
+        if (parsed.name) { document.getElementById('e-s2-name').value = parsed.name; sync('c2-s2-name', parsed.name); }
+        if (parsed.duration_min) { document.getElementById('e-s2-dur-min').value = parsed.duration_min; updateDurations(); }
+        if (parsed.distance_km !== null && parsed.distance_km !== undefined) {
+          var norun2 = document.getElementById('s2-norun');
+          if (parsed.distance_km > 0) { norun2.checked = false; toggleRun(2, false); document.getElementById('e-s2-run').value = parsed.distance_km; setRun(2, parsed.distance_km); }
+          else { norun2.checked = true; toggleRun(2, true); }
+        }
+        if (parsed.avg_hr) { document.getElementById('e-s2-hr').value = parsed.avg_hr; setHR(2, parsed.avg_hr); }
+        if (parsed.calories) { document.getElementById('e-s2-cal').value = parsed.calories; setCal(2, parsed.calories); }
+        statusEl.textContent = 'Imported ✓';
+      }
+      updateTotRun();
+    } catch(err) {
+      statusEl.textContent = 'Could not read — fill manually';
+    }
+  };
+  reader.readAsDataURL(file);
+}
 
 function handleLogo(input) {
   var file = input.files[0];
@@ -146,10 +238,8 @@ function handleLogo(input) {
     var dataUrl = e.target.result;
     var cardLogo = document.getElementById('c-logo');
     var preview = document.getElementById('logo-preview');
-    cardLogo.src = dataUrl;
-    cardLogo.style.display = 'block';
-    preview.src = dataUrl;
-    preview.style.display = 'block';
+    cardLogo.src = dataUrl; cardLogo.style.display = 'block';
+    preview.src = dataUrl; preview.style.display = 'block';
     document.getElementById('logo-clear').style.display = 'inline-block';
     localStorage.setItem('htd-logo', dataUrl);
   };
@@ -178,19 +268,12 @@ function load() {
   try {
     var logo = localStorage.getItem('htd-logo');
     if (logo) {
-      var cardLogo = document.getElementById('c-logo');
-      var preview = document.getElementById('logo-preview');
-      cardLogo.src = logo;
-      cardLogo.style.display = 'block';
-      preview.src = logo;
-      preview.style.display = 'block';
+      document.getElementById('c-logo').src = logo; document.getElementById('c-logo').style.display = 'block';
+      document.getElementById('logo-preview').src = logo; document.getElementById('logo-preview').style.display = 'block';
       document.getElementById('logo-clear').style.display = 'inline-block';
     }
     var data = JSON.parse(localStorage.getItem('htd') || '{}');
-    if (data.raceType) {
-      document.getElementById('e-race-type').value = data.raceType;
-      handleRaceType();
-    }
+    if (data.raceType) { document.getElementById('e-race-type').value = data.raceType; handleRaceType(); }
     if (data.race) document.getElementById('e-race-name').value = data.race;
     if (data.raceDate) document.getElementById('e-race-date').value = data.raceDate;
     if (data.div) {
@@ -213,8 +296,7 @@ async function saveCard() {
         btn.textContent = 'Copied! Paste into Stories ✓';
       } catch(e) {
         var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = url; a.download = 'hyrox-training.png'; a.click();
+        var a = document.createElement('a'); a.href = url; a.download = 'hyrox-training.png'; a.click();
         btn.textContent = 'Saved to files ✓';
       }
       setTimeout(() => btn.textContent = 'Copy card to clipboard', 3000);
@@ -226,3 +308,4 @@ updateDate();
 load();
 toggleRun(2, true);
 updateDurations();
+updateTotRun();
