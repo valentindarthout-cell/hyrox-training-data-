@@ -379,3 +379,4 @@ setSess(1);
 toggleRun(2, true);
 updateDurations();
 updateTotRun();
+showTab('preview');
