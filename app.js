@@ -1,4 +1,4 @@
-var API_KEY = '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';
+var API_KEY = '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';
 
 function showTab(t) {
   document.getElementById('view-preview').style.display = t === 'preview' ? 'block' : 'none';
@@ -189,7 +189,7 @@ async function processScreenshot(file, sessionNum) {
             role: 'user',
             content: [
               { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-              { type: 'text', text: 'This is a fitness app screenshot (Garmin, Strava, Fitr, TrainHyrox or similar). Extract the session data and respond ONLY with a JSON object, no other text, no markdown:\n{"name":"workout name or type","duration_min":number or null,"distance_km":number or null,"avg_hr":number or null,"calories":number or null,"workout_description":"brief workout description in 6 words max or null"}' }
+             { type: 'text', text: 'This is a fitness app screenshot (Garmin, Strava, Fitr, TrainHyrox or similar). Extract the session data and respond ONLY with a JSON object, no other text, no markdown:\n{"name":"workout name or type","duration_min":number or null,"distance_km":number or null,"avg_hr":number or null,"calories":number or null,"workout_description":"full workout description as shown, can be multiple lines, max 300 characters or null"}' }
             ]
           }]
         })
