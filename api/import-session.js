@@ -7,7 +7,7 @@ module.exports = async (req, res) => {
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {'Content-Type':'application/json','x-api-key':process.env.ANTHROPIC_API_KEY,'anthropic-version':'2023-06-01'},
-    body: JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:mediaType,data:image}},{type:'text',text:'Fitness screenshot. JSON only no markdown: {"name":"string","duration_min":null,"distance_km":null,"avg_hr":null,"calories":null,"workout_description":"string or null"}'}]}]})
+    body: JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,messages:[{role:'user',content:[{type:'image',source:{type:'base64',media_type:mediaType,data:image}},{type:'text',text:'Fitness screenshot. JSON only, no markdown. For workout_description, put each exercise or interval block on a new line using \\n. Example: "8x400m @ 3:45/km\\n90sec rest\\nCool down 2km". Respond only with: {"name":"string","duration_min":null,"distance_km":null,"avg_hr":null,"calories":null,"workout_description":"string with \\n between exercises or null"}'}]}]})
   });
   const raw = await r.text();
   console.log('RAW:',raw);
