@@ -176,7 +176,7 @@
         </div>
 
         <div class="e-field"><label class="e-lbl">Session 1 name</label><input type="text" id="e-s1-name" value="Morning run" oninput="syncBoth('c1-name','c2-s1-name',this.value)"></div>
-        <div class="e-field"><label class="e-lbl">Workout description (optional)</label><input type="text" id="e-workout" placeholder="e.g. 8x400m intervals" oninput="setWorkout(this.value)"></div>
+       <div class="e-field"><label class="e-lbl">Workout description (optional)</label><textarea id="e-workout" placeholder="e.g. 8x400m&#10;4x200m&#10;Cool down 2km" rows="4" oninput="setWorkout(this.value)" style="width:100%;padding:10px 12px;font-size:14px;font-family:inherit;background:#f7f7f7;border:1px solid #eee;border-radius:10px;color:#111;outline:none;resize:vertical;line-height:1.5;"></textarea></div>
         <div class="e-row">
           <div class="e-field"><label class="e-lbl">Duration (min)</label><input type="number" id="e-s1-dur-min" value="60" min="0" oninput="updateDurations()"></div>
           <div class="e-field"><label class="e-lbl">Avg HR (bpm)</label><input type="text" id="e-s1-hr" value="155" oninput="setHR(1,this.value)"></div>
