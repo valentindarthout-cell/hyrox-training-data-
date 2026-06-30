@@ -1,10 +1,66 @@
+var currentSess = 1;
+var authToken = localStorage.getItem('htd-token') || null;
+
+// ---- AUTH ----
+function showAuthTab(t) {
+  document.getElementById('atab-login').classList.toggle('active', t === 'login');
+  document.getElementById('atab-signup').classList.toggle('active', t === 'signup');
+  document.getElementById('auth-btn-label').textContent = t === 'login' ? 'Login' : 'Sign up';
+}
+
+async function handleAuth() {
+  var email = document.getElementById('auth-email').value.trim();
+  var password = document.getElementById('auth-password').value;
+  var isLogin = document.getElementById('auth-btn-label').textContent === 'Login';
+  var errEl = document.getElementById('auth-error');
+  errEl.textContent = '';
+  if (!email || !password) { errEl.textContent = 'Please fill in email and password.'; return; }
+  var endpoint = isLogin ? '/api/auth-login' : '/api/auth-signup';
+  try {
+    var r = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    var data = await r.json();
+    if (data.error) { errEl.textContent = data.error; return; }
+    authToken = data.token;
+    localStorage.setItem('htd-token', authToken);
+    enterApp();
+  } catch(e) {
+    errEl.textContent = 'Something went wrong. Try again.';
+  }
+}
+
+function enterApp() {
+  document.getElementById('view-auth').style.display = 'none';
+  document.getElementById('view-app').style.display = 'block';
+  updateDate();
+  load();
+  setSess(1);
+  toggleRun(2, true);
+  updateDurations();
+  updateTotRun();
+  showTab('preview');
+}
+
+function logout() {
+  authToken = null;
+  localStorage.removeItem('htd-token');
+  document.getElementById('view-auth').style.display = 'block';
+  document.getElementById('view-app').style.display = 'none';
+}
+
+// ---- TABS ----
 function showTab(t) {
-  document.getElementById('view-preview').style.display = t === 'preview' ? 'block' : 'none';
-  document.getElementById('view-edit').style.display = t === 'edit' ? 'block' : 'none';
-  document.getElementById('tab-preview').classList.toggle('active', t === 'preview');
-  document.getElementById('tab-edit').classList.toggle('active', t === 'edit');
+  ['preview','edit','stats'].forEach(function(v) {
+    document.getElementById('view-' + v).style.display = v === t ? 'block' : 'none';
+    var tab = document.getElementById('tab-' + v);
+    if (tab) tab.classList.toggle('active', v === t);
+  });
   if (t === 'preview') { updateDate(); applyEmptyFieldVisibility(); }
   if (t === 'edit') { restoreAllFields(); }
+  if (t === 'stats') { loadStats('week'); }
 }
 
 function applyEmptyFieldVisibility() {
@@ -20,22 +76,15 @@ function applyEmptyFieldVisibility() {
     var block = document.getElementById(c[0]);
     var val = document.getElementById(c[1]);
     if (!block || !val) return;
-    var txt = val.textContent.replace(/\s+/g,'');
-   var empty = txt === '' || txt === '—';
-['min/km','bpm','kcal','km','min','0'].forEach(function(u) { if(txt === u) empty = true; });
-var valEl = document.getElementById(c[1]);
-if (valEl && valEl.innerHTML.trim() === '') empty = true;
-    block.style.display = empty ? 'none' : 'flex';
+    block.style.display = val.innerHTML.trim() === '' ? 'none' : 'flex';
   });
 }
 
 function restoreAllFields() {
-  var ids = [
-    'c1-dur-block','c1-run-block','c1-pace-block','c1-hr-block','c1-cal-block',
-    'c2-s1-dur-block','c2-s1-run-block','c2-s1-pace-block','c2-s1-hr-block','c2-s1-cal-block',
-    'c2-s2-dur-block','c2-s2-run-block','c2-s2-pace-block','c2-s2-hr-block','c2-s2-cal-block'
-  ];
-  ids.forEach(function(id) {
+  ['c1-dur-block','c1-run-block','c1-pace-block','c1-hr-block','c1-cal-block',
+   'c2-s1-dur-block','c2-s1-run-block','c2-s1-pace-block','c2-s1-hr-block','c2-s1-cal-block',
+   'c2-s2-dur-block','c2-s2-run-block','c2-s2-pace-block','c2-s2-hr-block','c2-s2-cal-block'
+  ].forEach(function(id) {
     var el = document.getElementById(id);
     if (el) el.style.display = 'flex';
   });
@@ -43,11 +92,8 @@ function restoreAllFields() {
   toggleRun(2, document.getElementById('s2-norun').checked);
 }
 
-function sync(id, val) {
-  var el = document.getElementById(id);
-  if (el) el.textContent = val;
-}
-
+// ---- CARD ----
+function sync(id, val) { var el = document.getElementById(id); if (el) el.textContent = val; }
 function syncBoth(id1, id2, val) { sync(id1, val); sync(id2, val); }
 
 function updateDate() {
@@ -75,16 +121,14 @@ function setRace() {
   var name = document.getElementById('e-race-name').value;
   var dv = document.getElementById('e-race-date').value;
   var raceDays = document.getElementById('c-race-days');
-  sync('c-race-name', name || '—');
+  sync('c-race-name', name || '');
   if (dv) {
     var race = new Date(dv);
     var today = new Date(); today.setHours(0,0,0,0);
     var diff = Math.round((race - today) / 86400000);
     raceDays.textContent = diff > 0 ? diff + ' days out' : diff === 0 ? 'Race day!' : Math.abs(diff) + ' days ago';
     raceDays.style.display = 'block';
-  } else {
-    raceDays.style.display = 'none';
-  }
+  } else { raceDays.style.display = 'none'; }
 }
 
 function setDiv(btn) {
@@ -93,8 +137,6 @@ function setDiv(btn) {
   sync('c-race-div', btn.dataset.div);
   save();
 }
-
-var currentSess = 1;
 
 function setSess(n) {
   currentSess = n;
@@ -115,15 +157,12 @@ function formatDuration(mins) {
   if (mins <= 0) return '';
   var h = Math.floor(mins / 60);
   var m = mins % 60;
-  if (h > 0) return h + 'h ' + (m > 0 ? m + 'm' : '');
-  return m + ' min';
+  return h > 0 ? h + 'h ' + (m > 0 ? m + 'm' : '') : m + ' min';
 }
 
 function updateDurations() {
   var s1 = parseMins('e-s1-dur-min');
   var s2 = currentSess === 2 ? parseMins('e-s2-dur-min') : 0;
-  var s1fmt = formatDuration(s1);
-  var s2fmt = formatDuration(s2);
   document.getElementById('c1-dur-val').innerHTML = s1 ? s1 + ' <span class="metric-unit">min</span>' : '';
   document.getElementById('c2-s1-dur').innerHTML = s1 ? s1 + ' <span class="metric-sm-unit">min</span>' : '';
   document.getElementById('c2-s2-dur').innerHTML = s2 ? s2 + ' <span class="metric-sm-unit">min</span>' : '';
@@ -173,52 +212,33 @@ function updateTotRun() {
 function setHR(s, val) {
   var u = ' <span class="metric-unit">bpm</span>';
   var us = ' <span class="metric-sm-unit">bpm</span>';
-  if (s === 1) {
-    document.getElementById('c1-hr').innerHTML = val ? val + u : '';
-    document.getElementById('c2-s1-hr').innerHTML = val ? val + us : '';
-  } else {
-    document.getElementById('c2-s2-hr').innerHTML = val ? val + us : '';
-  }
+  if (s === 1) { document.getElementById('c1-hr').innerHTML = val ? val + u : ''; document.getElementById('c2-s1-hr').innerHTML = val ? val + us : ''; }
+  else { document.getElementById('c2-s2-hr').innerHTML = val ? val + us : ''; }
 }
 
 function setCal(s, val) {
   var u = ' <span class="metric-unit">kcal</span>';
   var us = ' <span class="metric-sm-unit">kcal</span>';
-  if (s === 1) {
-    document.getElementById('c1-cal').innerHTML = val ? val + u : '';
-    document.getElementById('c2-s1-cal').innerHTML = val ? val + us : '';
-  } else {
-    document.getElementById('c2-s2-cal').innerHTML = val ? val + us : '';
-  }
+  if (s === 1) { document.getElementById('c1-cal').innerHTML = val ? val + u : ''; document.getElementById('c2-s1-cal').innerHTML = val ? val + us : ''; }
+  else { document.getElementById('c2-s2-cal').innerHTML = val ? val + us : ''; }
 }
 
 function setRun(s, val) {
   var u = ' <span class="metric-unit">km</span>';
   var us = ' <span class="metric-sm-unit">km</span>';
-  if (s === 1) {
-    document.getElementById('c1-run').innerHTML = val ? val + u : '';
-    document.getElementById('c2-s1-run').innerHTML = val ? val + us : '';
-  } else {
-    var el = document.getElementById('c2-s2-run');
-    if (el) el.innerHTML = val ? val + us : '';
-  }
+  if (s === 1) { document.getElementById('c1-run').innerHTML = val ? val + u : ''; document.getElementById('c2-s1-run').innerHTML = val ? val + us : ''; }
+  else { var el = document.getElementById('c2-s2-run'); if (el) el.innerHTML = val ? val + us : ''; }
   updateTotRun();
 }
 
 function toggleRun(s, hidden) {
   if (s === 1) {
-    ['c1-run-block','c2-s1-run-block'].forEach(function(id) {
-      var el = document.getElementById(id);
-      if (el) el.style.display = hidden ? 'none' : 'flex';
-    });
-    ['c1-pace-block','c2-s1-pace-block'].forEach(function(id) {
-      var el = document.getElementById(id);
-      if (el) el.style.display = hidden ? 'none' : 'flex';
+    ['c1-run-block','c2-s1-run-block','c1-pace-block','c2-s1-pace-block'].forEach(function(id) {
+      var el = document.getElementById(id); if (el) el.style.display = hidden ? 'none' : 'flex';
     });
   } else {
     ['c2-s2-run-block','c2-s2-pace-block'].forEach(function(id) {
-      var el = document.getElementById(id);
-      if (el) el.style.display = hidden ? 'none' : 'flex';
+      var el = document.getElementById(id); if (el) el.style.display = hidden ? 'none' : 'flex';
     });
   }
   updateTotRun();
@@ -239,6 +259,119 @@ function setWorkout(val) {
   if (block) block.style.display = val ? 'block' : 'none';
 }
 
+// ---- SAVE SESSION TO DB ----
+async function saveSession() {
+  var btn = document.getElementById('session-label');
+  if (!authToken) { btn.textContent = 'Please log in first'; return; }
+  btn.textContent = 'Saving...';
+  var today = new Date();
+  var dateStr = today.toISOString().split('T')[0];
+  var s1norun = document.getElementById('s1-norun').checked;
+  var s2norun = document.getElementById('s2-norun').checked;
+  var s1mins = parseMins('e-s1-dur-min');
+  var s2mins = currentSess === 2 ? parseMins('e-s2-dur-min') : 0;
+  var payload = {
+    session_date: dateStr,
+    num_sessions: currentSess,
+    s1_name: document.getElementById('e-s1-name').value,
+    s1_duration_min: s1mins || null,
+    s1_run_km: s1norun ? null : (parseKm('e-s1-run') || null),
+    s1_pace: document.getElementById('e-s1-pace').value || null,
+    s1_hr: parseInt(document.getElementById('e-s1-hr').value) || null,
+    s1_kcal: parseInt(document.getElementById('e-s1-cal').value) || null,
+    s1_rpe: parseInt(document.getElementById('rpe1-disp').textContent) || null,
+    s1_workout: document.getElementById('e-workout').value || null,
+    s2_name: currentSess === 2 ? document.getElementById('e-s2-name').value : null,
+    s2_duration_min: s2mins || null,
+    s2_run_km: s2norun ? null : (parseKm('e-s2-run') || null),
+    s2_pace: currentSess === 2 ? (document.getElementById('e-s2-pace').value || null) : null,
+    s2_hr: currentSess === 2 ? (parseInt(document.getElementById('e-s2-hr').value) || null) : null,
+    s2_kcal: currentSess === 2 ? (parseInt(document.getElementById('e-s2-cal').value) || null) : null,
+    s2_rpe: currentSess === 2 ? (parseInt(document.getElementById('rpe2-disp').textContent) || null) : null,
+    tot_time_min: (s1mins + s2mins) || null,
+    tot_run_km: ((!s1norun ? parseKm('e-s1-run') : 0) + (!s2norun && currentSess === 2 ? parseKm('e-s2-run') : 0)) || null,
+    tot_kcal: (parseInt(document.getElementById('e-tot-cal').value) || null)
+  };
+  try {
+    var r = await fetch('/api/save-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+      body: JSON.stringify(payload)
+    });
+    var data = await r.json();
+    if (data.error) throw new Error(data.error);
+    btn.textContent = 'Saved ✓';
+    setTimeout(function() { btn.textContent = 'Save session to history'; }, 3000);
+  } catch(e) {
+    btn.textContent = 'Error — try again';
+    setTimeout(function() { btn.textContent = 'Save session to history'; }, 3000);
+  }
+}
+
+// ---- STATS ----
+var currentPeriod = 'week';
+
+function setPeriod(p) {
+  currentPeriod = p;
+  ['week','month','year'].forEach(function(x) {
+    document.getElementById('pb-' + x).classList.toggle('active', x === p);
+  });
+  loadStats(p);
+}
+
+async function loadStats(period) {
+  var content = document.getElementById('stats-content');
+  content.innerHTML = '<div class="stats-loading">Loading...</div>';
+  if (!authToken) { content.innerHTML = '<div class="stats-loading">Please log in.</div>'; return; }
+  try {
+    var r = await fetch('/api/get-stats?period=' + period, {
+      headers: { 'Authorization': 'Bearer ' + authToken }
+    });
+    var data = await r.json();
+    if (data.error) throw new Error(data.error);
+    renderStats(data, period);
+  } catch(e) {
+    content.innerHTML = '<div class="stats-loading">Could not load stats.</div>';
+  }
+}
+
+function renderStats(data, period) {
+  var content = document.getElementById('stats-content');
+  if (!data.sessions || data.sessions.length === 0) {
+    content.innerHTML = '<div class="stats-loading">No sessions yet for this period.<br>Save your first session!</div>';
+    return;
+  }
+  var totalRun = 0, totalTime = 0, totalSess = 0, avgRpe = 0, rpeCount = 0;
+  data.sessions.forEach(function(s) {
+    totalRun += s.tot_run_km || s.s1_run_km || 0;
+    totalTime += s.tot_time_min || s.s1_duration_min || 0;
+    totalSess += s.num_sessions || 1;
+    if (s.s1_rpe) { avgRpe += s.s1_rpe; rpeCount++; }
+  });
+  var html = '<div class="stats-grid">';
+  html += statCard('Sessions', totalSess, '');
+  html += statCard('Run volume', totalRun.toFixed(1), 'km');
+  html += statCard('Training time', Math.round(totalTime / 60 * 10) / 10, 'h');
+  html += statCard('Avg RPE', rpeCount > 0 ? (avgRpe / rpeCount).toFixed(1) : '—', '');
+  html += '</div>';
+  html += '<div class="stats-sessions-title">Sessions</div>';
+  data.sessions.slice().reverse().forEach(function(s) {
+    html += '<div class="stats-session-row">';
+    html += '<div class="stats-session-date">' + s.session_date + '</div>';
+    html += '<div class="stats-session-name">' + (s.s1_name || '—') + (s.num_sessions === 2 ? ' + ' + (s.s2_name || '') : '') + '</div>';
+    html += '<div class="stats-session-meta">';
+    if (s.tot_run_km || s.s1_run_km) html += (s.tot_run_km || s.s1_run_km) + ' km · ';
+    if (s.tot_time_min || s.s1_duration_min) html += Math.round(s.tot_time_min || s.s1_duration_min) + ' min';
+    html += '</div></div>';
+  });
+  content.innerHTML = html;
+}
+
+function statCard(label, val, unit) {
+  return '<div class="stat-card"><div class="stat-val">' + val + ' <span class="stat-unit">' + unit + '</span></div><div class="stat-lbl">' + label + '</div></div>';
+}
+
+// ---- SCREENSHOT IMPORT ----
 async function processScreenshot(file, sessionNum) {
   var statusEl = document.getElementById(sessionNum === 1 ? 'import-status-s1' : 'import-status-s2');
   statusEl.textContent = 'Reading session...';
@@ -281,9 +414,9 @@ async function processScreenshot(file, sessionNum) {
   reader.readAsDataURL(file);
 }
 
+// ---- LOGO ----
 function handleLogo(input) {
-  var file = input.files[0];
-  if (!file) return;
+  var file = input.files[0]; if (!file) return;
   var reader = new FileReader();
   reader.onload = function(e) {
     var dataUrl = e.target.result;
@@ -296,13 +429,13 @@ function handleLogo(input) {
 }
 
 function clearLogo() {
-  document.getElementById('c-logo').style.display = 'none';
-  document.getElementById('c-logo').src = '';
+  document.getElementById('c-logo').style.display = 'none'; document.getElementById('c-logo').src = '';
   document.getElementById('logo-preview').style.display = 'none';
   document.getElementById('logo-clear').style.display = 'none';
   localStorage.removeItem('htd-logo');
 }
 
+// ---- PERSIST SETTINGS ----
 function save() {
   var data = {
     race: document.getElementById('e-race-name').value,
@@ -333,36 +466,9 @@ function load() {
   } catch(e) {}
 }
 
+// ---- COPY CARD ----
 async function saveCard() {
   var btn = document.getElementById('save-label');
   btn.textContent = 'Generating...';
   try {
-    var card = document.getElementById('card');
-    var canvas = await html2canvas(card, { backgroundColor: null, scale: 3, useCORS: true, logging: false });
-    canvas.toBlob(async function(blob) {
-      try {
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-        btn.textContent = 'Copied! Paste into Stories ✓';
-      } catch(e) {
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a'); a.href = url; a.download = 'hyrox-training.png'; a.click();
-        btn.textContent = 'Saved to files ✓';
-      }
-      setTimeout(function() { btn.textContent = 'Copy card to clipboard'; }, 3000);
-    }, 'image/png');
-  } catch(e) { btn.textContent = 'Try again'; }
-}
-
-updateDate();
-load();
-setSess(1);
-toggleRun(2, true);
-updateDurations();
-updateTotRun();
-setHR(1, ''); setHR(2, '');
-setCal(1, ''); setCal(2, '');
-setRun(1, ''); setRun(2, '');
-setPace(1, ''); setPace(2, '');
-sync('c1-name', ''); sync('c2-s1-name', ''); sync('c2-s2-name', '');
-sync('c1-rpe', '7'); sync('c2-s1-rpe', '7'); sync('c2-s2-rpe', '6');
-showTab('preview');
+    var card =
