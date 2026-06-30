@@ -474,5 +474,26 @@ async function saveCard() {
   var btn = document.getElementById('save-label');
   btn.textContent = 'Generating...';
   try {
-    var card =
+    var card = document.getElementById('card');
+    var canvas = await html2canvas(card, { backgroundColor: null, scale: 3, useCORS: true, logging: false });
+    canvas.toBlob(async function(blob) {
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        btn.textContent = 'Copied! Paste into Stories ✓';
+      } catch(e) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a'); a.href = url; a.download = 'hyrox-training.png'; a.click();
+        btn.textContent = 'Saved to files ✓';
+      }
+      setTimeout(function() { btn.textContent = 'Copy card to clipboard'; }, 3000);
+    }, 'image/png');
+  } catch(e) { btn.textContent = 'Try again'; }
+}
+
+// ---- INIT ----
+if (authToken) {
+  enterApp();
+} else {
+  document.getElementById('view-auth').style.display = 'block';
+  document.getElementById('view-app').style.display = 'none';
 }
