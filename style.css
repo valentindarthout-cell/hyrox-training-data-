@@ -134,3 +134,27 @@ input[type=range] { width: 100%; accent-color: #111; margin-top: 6px; }
 .sess-rpe-sm span { font-size:12px; color:rgba(255,255,255,0.7) !important; font-weight:700; }
 .total-lbl { font-size:8px; color:rgba(255,255,255,0.35) !important; letter-spacing:0.14em; text-transform:uppercase; }
 .metrics { display:grid; grid-template-columns:repeat(auto-fit, minmax(60px,1fr)); gap:10px; margin-bottom:10px; }
+.auth-wrap { padding: 32px 16px; max-width: 400px; margin: 0 auto; }
+.auth-logo { font-size: 18px; font-weight: 700; letter-spacing: 0.06em; text-align: center; margin-bottom: 28px; color: var(--color-text-primary); }
+.auth-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+.auth-tab { flex: 1; padding: 10px; font-size: 13px; font-weight: 700; border: 1px solid #ddd; border-radius: 10px; background: #fff; color: #888; cursor: pointer; }
+.auth-tab.active { background: #111; color: #fff; border-color: #111; }
+.auth-error { color: #e33; font-size: 13px; margin-top: 8px; text-align: center; }
+.tab-logout { background: transparent; color: #999; border-color: transparent; font-size: 16px; }
+.save-btn-secondary { background: #fff; color: #111; border: 1.5px solid #111; }
+.stats-wrap { padding: 4px 0 32px; }
+.stats-header { font-size: 14px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-secondary); margin-bottom: 16px; }
+.stats-period { display: flex; gap: 8px; margin-bottom: 20px; }
+.period-btn { flex: 1; padding: 9px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; border: 1px solid #ddd; border-radius: 10px; background: #fff; color: #888; cursor: pointer; }
+.period-btn.active { background: #111; color: #fff; border-color: #111; }
+.stats-loading { text-align: center; color: #999; padding: 40px 0; font-size: 14px; line-height: 1.6; }
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 24px; }
+.stat-card { background: #fff; border-radius: 14px; padding: 16px; }
+.stat-val { font-size: 22px; font-weight: 700; color: #111; letter-spacing: -0.02em; }
+.stat-unit { font-size: 12px; color: #999; font-weight: 400; }
+.stat-lbl { font-size: 10px; color: #999; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 4px; }
+.stats-sessions-title { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #999; margin-bottom: 10px; }
+.stats-session-row { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 8px; }
+.stats-session-date { font-size: 10px; color: #999; letter-spacing: 0.08em; margin-bottom: 4px; }
+.stats-session-name { font-size: 14px; font-weight: 600; color: #111; margin-bottom: 4px; }
+.stats-session-meta { font-size: 12px; color: #999; }
