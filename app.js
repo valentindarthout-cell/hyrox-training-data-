@@ -475,3 +475,4 @@ async function saveCard() {
   btn.textContent = 'Generating...';
   try {
     var card =
+}
