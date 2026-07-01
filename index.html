@@ -266,4 +266,230 @@
                   <button class="pill sm-pill" data-sub="Station work" onclick="toggleSub(1,'hyrox',this)">Station work</button>
                   <button class="pill sm-pill" data-sub="Compromised running" onclick="toggleSub(1,'hyrox',this)">Compromised run</button>
                   <button class="pill sm-pill" data-sub="Sled work" onclick="toggleSub(1,'hyrox',this)">Sled work</button>
-                  <button class="pill sm-pill"
+                  <button class="pill sm-pill" data-sub="Technique" onclick="toggleSub(1,'hyrox',this)">Technique</button>
+                  <button class="pill sm-pill" data-sub="Strength endurance" onclick="toggleSub(1,'hyrox',this)">Strength endurance</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Strength subtypes -->
+            <div id="s1-strength-subtypes" style="display:none">
+              <div class="e-field">
+                <label class="e-lbl">Focus (multi-select)</label>
+                <div class="pill-group">
+                  <button class="pill sm-pill" data-sub="Full body" onclick="toggleSub(1,'strength',this)">Full body</button>
+                  <button class="pill sm-pill" data-sub="Lower body" onclick="toggleSub(1,'strength',this)">Lower body</button>
+                  <button class="pill sm-pill" data-sub="Upper body" onclick="toggleSub(1,'strength',this)">Upper body</button>
+                  <button class="pill sm-pill" data-sub="Strength endurance" onclick="toggleSub(1,'strength',this)">Strength endurance</button>
+                  <button class="pill sm-pill" data-sub="Wall balls" onclick="toggleSub(1,'strength',this)">Wall balls</button>
+                  <button class="pill sm-pill" data-sub="Sled push" onclick="toggleSub(1,'strength',this)">Sled push</button>
+                  <button class="pill sm-pill" data-sub="Sled pull" onclick="toggleSub(1,'strength',this)">Sled pull</button>
+                  <button class="pill sm-pill" data-sub="Grip work" onclick="toggleSub(1,'strength',this)">Grip work</button>
+                  <button class="pill sm-pill" data-sub="Farmers carry" onclick="toggleSub(1,'strength',this)">Farmers carry</button>
+                  <button class="pill sm-pill" data-sub="Core" onclick="toggleSub(1,'strength',this)">Core</button>
+                  <button class="pill sm-pill" data-sub="Burpees" onclick="toggleSub(1,'strength',this)">Burpees</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Workout body -->
+            <div class="e-field">
+              <label class="e-lbl">Workout details (optional)</label>
+              <textarea id="e-s1-workout" rows="3" placeholder="e.g. 8x400m @ 3:45/km&#10;90sec rest" oninput="setWorkout(1,this.value)" style="width:100%;padding:10px 12px;font-size:14px;font-family:inherit;background:#f8f8f8;border:1px solid #eee;border-radius:10px;color:#111;outline:none;resize:vertical;line-height:1.5;"></textarea>
+            </div>
+
+            <!-- Duration -->
+            <div class="e-row">
+              <div class="e-field"><label class="e-lbl">Duration (min)</label><input type="number" id="e-s1-dur-min" value="" placeholder="0" min="0" oninput="updateDurations();autoCalcPace(1)"></div>
+              <div class="e-field" id="e-s1-vol-wrap"><label class="e-lbl" id="e-s1-vol-lbl">Volume (km)</label><input type="text" id="e-s1-vol" value="" placeholder="0" oninput="setVol(1,this.value);autoCalcPace(1)"></div>
+            </div>
+
+            <!-- Pace / Watts -->
+            <div class="e-row">
+              <div class="e-field" id="e-s1-pace-wrap"><label class="e-lbl" id="e-s1-pace-lbl">Avg pace (auto)</label><input type="text" id="e-s1-pace" value="" placeholder="min/km" oninput="setPace(1,this.value)"></div>
+              <div class="e-field"><label class="e-lbl">Avg HR (bpm)</label><input type="text" id="e-s1-hr" value="" placeholder="0" oninput="setHR(1,this.value)"></div>
+            </div>
+            <div class="e-field"><label class="e-lbl">Active kcal</label><input type="text" id="e-s1-cal" value="" placeholder="0" oninput="setCal(1,this.value)"></div>
+
+            <!-- HR Zones -->
+            <div class="e-field">
+              <label class="e-lbl">HR Zones (optional — must total 100%)</label>
+              <div class="zone-sliders" id="s1-zone-sliders">
+                <div class="zone-row"><span class="zone-lbl z1-lbl">Z1</span><input type="range" min="0" max="100" value="0" class="zone-slider" oninput="updateZone(1,1,this.value)"><span class="zone-pct" id="s1-z1-pct">0%</span></div>
+                <div class="zone-row"><span class="zone-lbl z2-lbl">Z2</span><input type="range" min="0" max="100" value="0" class="zone-slider" oninput="updateZone(1,2,this.value)"><span class="zone-pct" id="s1-z2-pct">0%</span></div>
+                <div class="zone-row"><span class="zone-lbl z3-lbl">Z3</span><input type="range" min="0" max="100" value="0" class="zone-slider" oninput="updateZone(1,3,this.value)"><span class="zone-pct" id="s1-z3-pct">0%</span></div>
+                <div class="zone-row"><span class="zone-lbl z4-lbl">Z4</span><input type="range" min="0" max="100" value="0" class="zone-slider" oninput="updateZone(1,4,this.value)"><span class="zone-pct" id="s1-z4-pct">0%</span></div>
+                <div class="zone-row"><span class="zone-lbl z5-lbl">Z5</span><input type="range" min="0" max="100" value="0" class="zone-slider" oninput="updateZone(1,5,this.value)"><span class="zone-pct" id="s1-z5-pct">0%</span></div>
+                <div class="zone-total" id="s1-zone-total">Total: 0%</div>
+              </div>
+            </div>
+
+            <!-- Hyrox specific metrics -->
+            <div id="s1-hyrox-metrics" style="display:none">
+              <div class="e-sec-label" style="margin:12px 0 8px;">Hyrox metrics (AI pre-filled)</div>
+              <div class="e-row">
+                <div class="e-field"><label class="e-lbl">Compromised run (km)</label><input type="text" id="e-s1-comp-run" value="" placeholder="0" oninput="updateTotRun()"></div>
+                <div class="e-field"><label class="e-lbl">Sled push (m)</label><input type="text" id="e-s1-sled-push" value="" placeholder="0"></div>
+              </div>
+              <div class="e-row">
+                <div class="e-field"><label class="e-lbl">Sled pull (m)</label><input type="text" id="e-s1-sled-pull" value="" placeholder="0"></div>
+                <div class="e-field"><label class="e-lbl">Wall balls (reps)</label><input type="text" id="e-s1-wallballs" value="" placeholder="0"></div>
+              </div>
+              <div class="e-row">
+                <div class="e-field"><label class="e-lbl">Burpees (reps)</label><input type="text" id="e-s1-burpees" value="" placeholder="0"></div>
+                <div class="e-field"><label class="e-lbl">Lunges (reps)</label><input type="text" id="e-s1-lunges" value="" placeholder="0"></div>
+              </div>
+            </div>
+
+            <div class="e-field"><label class="e-lbl">Session 1 RPE — <span id="rpe1-disp">7</span>/10</label><input type="range" min="1" max="10" step="1" value="7" oninput="setRPE(1,this.value)"></div>
+          </div>
+
+          <!-- SESSION 2 -->
+          <div id="e-sess2" style="display:none;margin-top:20px;padding-top:20px;border-top:1px solid #eee;">
+            <div class="e-sec-label" style="margin-bottom:12px;">Session 2</div>
+
+            <div class="import-btn-wrap">
+              <button class="import-btn" onclick="document.getElementById('screenshot-s2').click()">Import screenshot</button>
+              <input type="file" id="screenshot-s2" accept="image/*" style="display:none" onchange="processScreenshot(this.files[0],2)">
+              <span class="import-status" id="import-status-s2"></span>
+            </div>
+
+            <div class="e-field"><label class="e-lbl">Session name</label><input type="text" id="e-s2-name" value="" oninput="sync('c2-s2-name',this.value)"></div>
+
+            <div class="e-field">
+              <label class="e-lbl">Workout type</label>
+              <div class="pill-group" id="s2-type-pills">
+                <button class="pill" data-type="endurance" onclick="setWorkoutType(2,'endurance',this)">Endurance</button>
+                <button class="pill" data-type="hyrox" onclick="setWorkoutType(2,'hyrox',this)">Hyrox</button>
+                <button class="pill" data-type="strength" onclick="setWorkoutType(2,'strength',this)">Strength</button>
+              </div>
+            </div>
+
+            <div id="s2-endurance-subtypes" style="display:none">
+              <div class="e-field">
+                <label class="e-lbl">Modality (multi-select)</label>
+                <div class="pill-group">
+                  <button class="pill sm-pill" data-sub="Run" onclick="toggleSub(2,'endurance',this)">Run</button>
+                  <button class="pill sm-pill" data-sub="Echo bike" onclick="toggleSub(2,'endurance',this)">Echo bike</button>
+                  <button class="pill sm-pill" data-sub="Bike outdoor" onclick="toggleSub(2,'endurance',this)">Bike outdoor</button>
+                  <button class="pill sm-pill" data-sub="Bike indoor" onclick="toggleSub(2,'endurance',this)">Bike indoor</button>
+                  <button class="pill sm-pill" data-sub="Ski erg" onclick="toggleSub(2,'endurance',this)">Ski erg</button>
+                  <button class="pill sm-pill" data-sub="Row erg" onclick="toggleSub(2,'endurance',this)">Row erg</button>
+                  <button class="pill sm-pill" data-sub="Mix" onclick="toggleSub(2,'endurance',this)">Mix</button>
+                  <button class="pill sm-pill" data-sub="Stair Stepper" onclick="toggleSub(2,'endurance',this)">Stair Stepper</button>
+                  <button class="pill sm-pill" data-sub="Treadmill" onclick="toggleSub(2,'endurance',this)">Treadmill</button>
+                  <button class="pill sm-pill" data-sub="Elliptical" onclick="toggleSub(2,'endurance',this)">Elliptical</button>
+                </div>
+              </div>
+            </div>
+
+            <div id="s2-hyrox-subtypes" style="display:none">
+              <div class="e-field">
+                <label class="e-lbl">Focus (multi-select)</label>
+                <div class="pill-group">
+                  <button class="pill sm-pill" data-sub="Hyrox simulation" onclick="toggleSub(2,'hyrox',this)">Simulation</button>
+                  <button class="pill sm-pill" data-sub="Station work" onclick="toggleSub(2,'hyrox',this)">Station work</button>
+                  <button class="pill sm-pill" data-sub="Compromised running" onclick="toggleSub(2,'hyrox',this)">Compromised run</button>
+                  <button class="pill sm-pill" data-sub="Sled work" onclick="toggleSub(2,'hyrox',this)">Sled work</button>
+                  <button class="pill sm-pill" data-sub="Technique" onclick="toggleSub(2,'hyrox',this)">Technique</button>
+                  <button class="pill sm-pill" data-sub="Strength endurance" onclick="toggleSub(2,'hyrox',this)">Strength endurance</button>
+                </div>
+              </div>
+            </div>
+
+            <div id="s2-strength-subtypes" style="display:none">
+              <div class="e-field">
+                <label class="e-lbl">Focus (multi-select)</label>
+                <div class="pill-group">
+                  <button class="pill sm-pill" data-sub="Full body" onclick="toggleSub(2,'strength',this)">Full body</button>
+                  <button class="pill sm-pill" data-sub="Lower body" onclick="toggleSub(2,'strength',this)">Lower body</button>
+                  <button class="pill sm-pill" data-sub="Upper body" onclick="toggleSub(2,'strength',this)">Upper body</button>
+                  <button class="pill sm-pill" data-sub="Strength endurance" onclick="toggleSub(2,'strength',this)">Strength endurance</button>
+                  <button class="pill sm-pill" data-sub="Wall balls" onclick="toggleSub(2,'strength',this)">Wall balls</button>
+                  <button class="pill sm-pill" data-sub="Sled push" onclick="toggleSub(2,'strength',this)">Sled push</button>
+                  <button class="pill sm-pill" data-sub="Sled pull" onclick="toggleSub(2,'strength',this)">Sled pull</button>
+                  <button class="pill sm-pill" data-sub="Grip work" onclick="toggleSub(2,'strength',this)">Grip work</button>
+                  <button class="pill sm-pill" data-sub="Farmers carry" onclick="toggleSub(2,'strength',this)">Farmers carry</button>
+                  <button class="pill sm-pill" data-sub="Core" onclick="toggleSub(2,'strength',this)">Core</button>
+                  <button class="pill sm-pill" data-sub="Burpees" onclick="toggleSub(2,'strength',this)">Burpees</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="e-field">
+              <label class="e-lbl">Workout details (optional)</label>
+              <textarea id="e-s2-workout" rows="3" placeholder="e.g. 5x5 back squat" oninput="setWorkout(2,this.value)" style="width:100%;padding:10px 12px;font-size:14px;font-family:inherit;background:#f8f8f8;border:1px solid #eee;border-radius:10px;color:#111;outline:none;resize:vertical;line-height:1.5;"></textarea>
+            </div>
+
+            <div class="e-row">
+              <div class="e-field"><label class="e-lbl">Duration (min)</label><input type="number" id="e-s2-dur-min" value="" placeholder="0" min="0" oninput="updateDurations();autoCalcPace(2)"></div>
+              <div class="e-field" id="e-s2-vol-wrap"><label class="e-lbl" id="e-s2-vol-lbl">Volume (km)</label><input type="text" id="e-s2-vol" value="" placeholder="0" oninput="setVol(2,this.value);autoCalcPace(2)"></div>
+            </div>
+            <div class="e-row">
+              <div class="e-field" id="e-s2-pace-wrap"><label class="e-lbl" id="e-s2-pace-lbl">Avg pace (auto)</label><input type="text" id="e-s2-pace" value="" placeholder="min/km" oninput="setPace(2,this.value)"></div>
+              <div class="e-field"><label class="e-lbl">Avg HR (bpm)</label><input type="text" id="e-s2-hr" value="" placeholder="0" oninput="setHR(2,this.value)"></div>
+            </div>
+            <div class="e-field"><label class="e-lbl">Active kcal</label><input type="text" id="e-s2-cal" value="" placeholder="0" oninput="setCal(2,this.value)"></div>
+
+            <div class="e-field">
+              <label class="e-lbl">HR Zones (optional)</label>
+              <div class="zone-sliders" id="s2-zone-sliders">
+                <div class="zone-row"><span class="zone-lbl z1-lbl">Z1</span><input type="range" min="0" max="100" value="0" class="zone-slider" oninput="updateZone(2,1,this.value)"><span class="zone-pct" id="s2-z1-pct">0%</span></div>
+                <div class="zone-row"><span class="zone-lbl z2-lbl">Z2</span><input type="range" min="0" max="100" value="0" class="zone-slider" oninput="updateZone(2,2,this.value)"><span class="zone-pct" id="s2-z2-pct">0%</span></div>
+                <div class="zone-row"><span class="zone-lbl z3-lbl">Z3</span><input type="range" min="0" max="100" value="0" class="zone-slider" oninput="updateZone(2,3,this.value)"><span class="zone-pct" id="s2-z3-pct">0%</span></div>
+                <div class="zone-row"><span class="zone-lbl z4-lbl">Z4</span><input type="range" min="0" max="100" value="0" class="zone-slider" oninput="updateZone(2,4,this.value)"><span class="zone-pct" id="s2-z4-pct">0%</span></div>
+                <div class="zone-row"><span class="zone-lbl z5-lbl">Z5</span><input type="range" min="0" max="100" value="0" class="zone-slider" oninput="updateZone(2,5,this.value)"><span class="zone-pct" id="s2-z5-pct">0%</span></div>
+                <div class="zone-total" id="s2-zone-total">Total: 0%</div>
+              </div>
+            </div>
+
+            <div id="s2-hyrox-metrics" style="display:none">
+              <div class="e-sec-label" style="margin:12px 0 8px;">Hyrox metrics</div>
+              <div class="e-row">
+                <div class="e-field"><label class="e-lbl">Compromised run (km)</label><input type="text" id="e-s2-comp-run" value="" placeholder="0" oninput="updateTotRun()"></div>
+                <div class="e-field"><label class="e-lbl">Sled push (m)</label><input type="text" id="e-s2-sled-push" value="" placeholder="0"></div>
+              </div>
+              <div class="e-row">
+                <div class="e-field"><label class="e-lbl">Sled pull (m)</label><input type="text" id="e-s2-sled-pull" value="" placeholder="0"></div>
+                <div class="e-field"><label class="e-lbl">Wall balls (reps)</label><input type="text" id="e-s2-wallballs" value="" placeholder="0"></div>
+              </div>
+              <div class="e-row">
+                <div class="e-field"><label class="e-lbl">Burpees (reps)</label><input type="text" id="e-s2-burpees" value="" placeholder="0"></div>
+                <div class="e-field"><label class="e-lbl">Lunges (reps)</label><input type="text" id="e-s2-lunges" value="" placeholder="0"></div>
+              </div>
+            </div>
+
+            <div class="e-field"><label class="e-lbl">Session 2 RPE — <span id="rpe2-disp">6</span>/10</label><input type="range" min="1" max="10" step="1" value="6" oninput="setRPE(2,this.value)"></div>
+          </div>
+
+          <!-- DAY TOTALS (2 sessions only) -->
+          <div id="e-totals-section" style="display:none;margin-top:20px;padding-top:20px;border-top:1px solid #eee;">
+            <div class="e-sec-label" style="margin-bottom:12px;">Day totals</div>
+            <div class="e-field"><label class="e-lbl">Total time (auto)</label><input type="text" id="e-tot-time-display" readonly style="background:#f0f0f0;color:#999"></div>
+            <div class="e-field"><label class="e-lbl">Total run vol. (auto)</label><input type="text" id="e-tot-run-display" readonly style="background:#f0f0f0;color:#999"></div>
+            <div class="e-field"><label class="e-lbl">Total active kcal</label><input type="text" id="e-tot-cal" value="" placeholder="0" oninput="setTotCal(this.value)"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div id="view-stats" class="view" style="display:none">
+      <div class="stats-wrap">
+        <div class="stats-header">Training history</div>
+        <div class="stats-period">
+          <button class="period-btn active" id="pb-week" onclick="setPeriod('week')">Week</button>
+          <button class="period-btn" id="pb-month" onclick="setPeriod('month')">Month</button>
+          <button class="period-btn" id="pb-year" onclick="setPeriod('year')">Year</button>
+        </div>
+        <div id="stats-content"><div class="stats-loading">Loading...</div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+<script src="auth.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
