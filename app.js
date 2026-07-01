@@ -231,7 +231,50 @@ function toggleSub(s, type, btn) {
   autoCalcPace(s);
   updateTotRun();
 }
+function setSingleSub(s, type, sub, btn) {
+  var pillsId = 's' + s + '-endurance-pills';
+  document.querySelectorAll('#' + pillsId + ' .pill').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  if (s === 1) s1Subtypes = [sub];
+  else s2Subtypes = [sub];
+  updateCardTypeLabel(s);
+  updatePaceVolLabels(s);
+  autoCalcPace(s);
+  updateTotRun();
+  updateVolPaceVisibility(s);
+}
 
+function updateVolPaceVisibility(s) {
+  var subs = s === 1 ? s1Subtypes : s2Subtypes;
+  var isMix = subs.indexOf('Mix modalities') > -1;
+  var volWrap = document.getElementById('e-s' + s + '-vol-wrap');
+  var paceWrap = document.getElementById('e-s' + s + '-pace-wrap');
+  if (volWrap) volWrap.style.display = isMix ? 'none' : 'block';
+  if (paceWrap) paceWrap.style.display = isMix ? 'none' : 'block';
+}
+
+function handlePaceInput(s, input) {
+  var f = getModalityFlags(s);
+  var val = input.value;
+  if (f.isErg) {
+    val = val.replace(/[^0-9:]/g, '');
+    if (val.length > 4) val = val.substring(0, 4);
+    if (val.includes(':')) {
+      var parts = val.split(':');
+      var mins = parseInt(parts[0]) || 0;
+      var secs = parts[1] !== undefined ? parts[1] : '';
+      if (secs.length === 2) {
+        var secsInt = parseInt(secs);
+        if (secsInt > 59) secs = '59';
+        if (mins < 1) mins = 1;
+        if (mins > 2 || (mins === 2 && secsInt > 59)) { mins = 2; secs = '59'; }
+        val = mins + ':' + secs;
+      }
+    }
+    input.value = val;
+  }
+  setPace(s, input.value);
+}
 function updatePaceVolLabels(s) {
   var type = s === 1 ? s1WorkoutType : s2WorkoutType;
   var subs = s === 1 ? s1Subtypes : s2Subtypes;
