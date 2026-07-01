@@ -309,8 +309,7 @@
             <div class="e-row">
               <div class="e-field" id="e-s1-pace-wrap"><label class="e-lbl" id="e-s1-pace-lbl">Avg pace (auto)</label><input type="text" id="e-s1-pace" value="" placeholder="min/km" oninput="setPace(1,this.value)"></div>
               <div class="e-field"><label class="e-lbl">Avg HR (bpm)</label><input type="text" id="e-s1-hr" value="" placeholder="0" oninput="setHR(1,this.value)"></div>
-            </div>
-            <div class="e-field"><label class="e-lbl">Active kcal</label><input type="text" id="e-s1-cal" value="" placeholder="0" oninput="setCal(1,this.value)"></div>
+            </div><div class="e-field"><label class="e-lbl">Active kcal</label><input type="text" id="e-s1-cal" value="" placeholder="0" oninput="setCal(1,this.value);autoCalcTotKcal()"></div>
 
             <!-- HR Zones -->
             <div class="e-field">
