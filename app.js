@@ -229,7 +229,6 @@ updateCardTypeLabel(s);
   autoCalcPace(s);
   updateTotRun();
   updateVolPaceVisibility(s);
-}
 
 function updateCardTypeLabel(s) {
   var type = s === 1 ? s1WorkoutType : s2WorkoutType;
