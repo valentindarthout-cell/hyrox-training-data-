@@ -140,15 +140,16 @@ function setWorkoutType(s, type, btn) {
   var hyroxMetrics = document.getElementById('s' + s + '-hyrox-metrics');
   if (hyroxMetrics) hyroxMetrics.style.display = type === 'hyrox' ? 'block' : 'none';
 
- function getModalityFlags(s) {
+function getModalityFlags(s) {
   var subs = s === 1 ? s1Subtypes : s2Subtypes;
   return {
-    isBike: subs.some(function(x){ return ['Echo bike','Bike outdoor','Bike indoor'].indexOf(x)>-1; }),
+    isBike: subs.some(function(x){ return ['Bike outdoor','Bike indoor'].indexOf(x)>-1; }),
     isEchoBike: subs.indexOf('Echo bike')>-1,
     isErg: subs.some(function(x){ return ['Ski erg','Row erg'].indexOf(x)>-1; }),
     isStair: subs.indexOf('Stair Stepper')>-1,
     isRun: subs.some(function(x){ return ['Run','Treadmill'].indexOf(x)>-1; }),
-    isElliptical: subs.indexOf('Elliptical')>-1
+    isElliptical: subs.indexOf('Elliptical')>-1,
+    isMix: subs.indexOf('Mix modalities')>-1
   };
 }
 
