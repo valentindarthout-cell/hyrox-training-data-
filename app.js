@@ -86,7 +86,7 @@ function setPhase(btn) {
   document.querySelectorAll('#phase-pills .pill').forEach(function(b) { b.classList.remove('active'); });
   btn.classList.add('active');
   selectedPhase = btn.dataset.phase;
-  var isRace = selectedPhase === 'Race prep';
+  var isRace = selectedPhase === 'Race';
   document.getElementById('race-fields').style.display = isRace ? 'block' : 'none';
   if (!isRace) {
     sync('c-race-name', selectedPhase);
