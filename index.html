@@ -307,7 +307,7 @@
 
             <!-- Pace / Watts -->
             <div class="e-row">
-              <div class="e-field" id="e-s1-pace-wrap"><label class="e-lbl" id="e-s1-pace-lbl">Avg pace (auto)</label><input type="text" id="e-s1-pace" value="" placeholder="min/km" oninput="setPace(1,this.value)"></div>
+              <div class="e-field" id="e-s1-pace-wrap"><label class="e-lbl" id="e-s1-pace-lbl">Avg pace (auto)</label><input type="text" id="e-s1-pace" value="" placeholder="min/km" oninput="handlePaceInput(1,this)"></div>
               <div class="e-field"><label class="e-lbl">Avg HR (bpm)</label><input type="text" id="e-s1-hr" value="" placeholder="0" oninput="setHR(1,this.value)"></div>
             </div><div class="e-field"><label class="e-lbl">Active kcal</label><input type="text" id="e-s1-cal" value="" placeholder="0" oninput="setCal(1,this.value);autoCalcTotKcal()"></div>
 
@@ -425,8 +425,7 @@
               <div class="e-field"><label class="e-lbl">Duration (min)</label><input type="number" id="e-s2-dur-min" value="" placeholder="0" min="0" oninput="updateDurations();autoCalcPace(2)"></div>
               <div class="e-field" id="e-s2-vol-wrap"><label class="e-lbl" id="e-s2-vol-lbl">Volume (km)</label><input type="text" id="e-s2-vol" value="" placeholder="0" oninput="setVol(2,this.value);autoCalcPace(2)"></div>
             </div>
-            <div class="e-row">
-              <div class="e-field" id="e-s2-pace-wrap"><label class="e-lbl" id="e-s2-pace-lbl">Avg pace (auto)</label><input type="text" id="e-s2-pace" value="" placeholder="min/km" oninput="setPace(2,this.value)"></div>
+            <div class="e-row"><div class="e-field" id="e-s2-pace-wrap"><label class="e-lbl" id="e-s2-pace-lbl">Avg pace (auto)</label><input type="text" id="e-s2-pace" value="" placeholder="min/km" oninput="handlePaceInput(2,this)"></div>
               <div class="e-field"><label class="e-lbl">Avg HR (bpm)</label><input type="text" id="e-s2-hr" value="" placeholder="0" oninput="setHR(2,this.value)"></div>
             </div><div class="e-field"><label class="e-lbl">Active kcal</label><input type="text" id="e-s2-cal" value="" placeholder="0" oninput="setCal(2,this.value);autoCalcTotKcal()"></div>
 
