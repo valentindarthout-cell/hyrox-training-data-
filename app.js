@@ -227,6 +227,9 @@ function toggleSub(s, type, btn) {
   if (idx > -1) { arr.splice(idx, 1); btn.classList.remove('active'); }
   else { arr.push(sub); btn.classList.add('active'); }
   updateCardTypeLabel(s);
+  updatePaceVolLabels(s);
+  autoCalcPace(s);
+  updateTotRun();
 }
 
 function updatePaceVolLabels(s) {
