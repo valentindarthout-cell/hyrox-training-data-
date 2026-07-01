@@ -126,3 +126,28 @@ input[type=range] { width: 100%; accent-color: #111; margin-top: 6px; }
 .stats-session-meta { font-size: 12px; color: #bbb; letter-spacing: 0.02em; }
 
 .e-select { -webkit-appearance: none; appearance: none; }
+.card-race-compact { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+.card-race-name { font-size:10px; font-weight:700; color:#bbb; letter-spacing:0.06em; }
+.card-race-div-compact { font-size:8px; color:rgba(255,255,255,0.25); letter-spacing:0.14em; text-transform:uppercase; }
+.card-race-days { font-size:9px; color:rgba(255,255,255,0.35); letter-spacing:0.06em; }
+.sess-type-label { font-size:8px; color:rgba(255,255,255,0.35); letter-spacing:0.16em; text-transform:uppercase; font-weight:600; margin-bottom:4px; }
+.sess-type-label-sm { font-size:7px; color:rgba(255,255,255,0.3); letter-spacing:0.14em; text-transform:uppercase; font-weight:600; margin-bottom:3px; }
+.sess-edit-block { margin-top:4px; }
+.sm-pill { padding:5px 10px; font-size:9px; }
+.zone-sliders { margin-top:4px; }
+.zone-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.zone-lbl { font-size:10px; font-weight:700; width:20px; flex-shrink:0; }
+.z1-lbl { color:#60a5fa; } .z2-lbl { color:#34d399; } .z3-lbl { color:#fbbf24; } .z4-lbl { color:#f97316; } .z5-lbl { color:#ef4444; }
+.zone-slider { flex:1; }
+.zone-pct { font-size:11px; color:#999; width:32px; text-align:right; flex-shrink:0; }
+.zone-total { font-size:11px; color:#999; text-align:right; margin-top:4px; font-weight:600; }
+.zones-display { margin:8px 0 10px; }
+.zones-display-sm { margin:6px 0 8px; }
+.zones-label { font-size:7px; color:rgba(255,255,255,0.25); letter-spacing:0.16em; text-transform:uppercase; margin-bottom:5px; }
+.zone-bar-wrap { display:flex; flex-direction:column; gap:3px; }
+.zone-bar-item { display:flex; align-items:center; gap:6px; }
+.zone-bar-track { flex:1; height:3px; background:rgba(255,255,255,0.08); border-radius:2px; overflow:hidden; }
+.zone-bar-fill { height:100%; border-radius:2px; transition:width 0.2s; }
+.zone-bar-label { display:flex; align-items:center; gap:4px; min-width:52px; }
+.zone-bar-z { font-size:7px; font-weight:700; letter-spacing:0.1em; }
+.zone-bar-pct { font-size:7px; color:rgba(255,255,255,0.3); }
