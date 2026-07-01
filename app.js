@@ -633,7 +633,7 @@ function load() {
       document.querySelectorAll('#phase-pills .pill').forEach(function(b){
         if(b.dataset.phase===data.phase){b.classList.add('active');}
       });
-      var isRace=data.phase==='Race prep';
+      var isRace=data.phase==='Race';
       document.getElementById('race-fields').style.display=isRace?'block':'none';
       if(!isRace) sync('c-race-name',data.phase);
     }
