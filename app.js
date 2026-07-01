@@ -140,7 +140,71 @@ function setWorkoutType(s, type, btn) {
   var hyroxMetrics = document.getElementById('s' + s + '-hyrox-metrics');
   if (hyroxMetrics) hyroxMetrics.style.display = type === 'hyrox' ? 'block' : 'none';
 
-  updatePaceVolLabels(s);
+ function getModalityFlags(s) {
+  var subs = s === 1 ? s1Subtypes : s2Subtypes;
+  return {
+    isBike: subs.some(function(x){ return ['Echo bike','Bike outdoor','Bike indoor'].indexOf(x)>-1; }),
+    isEchoBike: subs.indexOf('Echo bike')>-1,
+    isErg: subs.some(function(x){ return ['Ski erg','Row erg'].indexOf(x)>-1; }),
+    isStair: subs.indexOf('Stair Stepper')>-1,
+    isRun: subs.some(function(x){ return ['Run','Treadmill'].indexOf(x)>-1; }),
+    isElliptical: subs.indexOf('Elliptical')>-1
+  };
+}
+
+function updatePaceVolLabels(s) {
+  var f = getModalityFlags(s);
+  var paceLabel, volLabel, pacePlaceholder, showPace;
+
+  if (f.isStair) {
+    volLabel = 'Volume (steps)';
+    paceLabel = 'Steps/min (auto)';
+    pacePlaceholder = 'steps/min';
+    showPace = true;
+  } else if (f.isEchoBike || f.isElliptical) {
+    volLabel = 'Volume (km)';
+    paceLabel = 'Avg watts';
+    pacePlaceholder = 'watts';
+    showPace = true;
+  } else if (f.isBike) {
+    volLabel = 'Volume (km)';
+    paceLabel = 'Avg pace';
+    pacePlaceholder = '2:05/km';
+    showPace = true;
+  } else if (f.isErg) {
+    volLabel = 'Volume (km)';
+    paceLabel = 'Avg pace';
+    pacePlaceholder = '1:55/500m';
+    showPace = true;
+  } else {
+    volLabel = 'Volume (km)';
+    paceLabel = 'Avg pace (auto)';
+    pacePlaceholder = 'min/km';
+    showPace = true;
+  }
+
+  var elPaceLbl = document.getElementById('e-s'+s+'-pace-lbl');
+  var elVolLbl = document.getElementById('e-s'+s+'-vol-lbl');
+  var elPaceInput = document.getElementById('e-s'+s+'-pace');
+  var elPaceWrap = document.getElementById('e-s'+s+'-pace-wrap');
+  if (elPaceLbl) elPaceLbl.textContent = paceLabel;
+  if (elVolLbl) elVolLbl.textContent = volLabel;
+  if (elPaceInput) elPaceInput.placeholder = pacePlaceholder;
+  if (elPaceWrap) elPaceWrap.style.display = showPace ? 'block' : 'none';
+
+  var paceUnit = f.isStair ? 'steps/min' : f.isEchoBike||f.isElliptical ? 'w' : f.isBike ? '/km' : f.isErg ? '/500m' : 'min/km';
+  var volUnit = f.isStair ? 'steps' : 'km';
+
+  if (s===1) {
+    var v1=document.getElementById('c1-vol-lbl'); if(v1) v1.textContent=volUnit;
+    var p1=document.getElementById('c1-pace-lbl'); if(p1) p1.textContent=paceUnit;
+    var v2=document.getElementById('c2-s1-vol-lbl'); if(v2) v2.textContent=volUnit;
+    var p2=document.getElementById('c2-s1-pace-lbl'); if(p2) p2.textContent=paceUnit;
+  } else {
+    var v3=document.getElementById('c2-s2-vol-lbl'); if(v3) v3.textContent=volUnit;
+    var p3=document.getElementById('c2-s2-pace-lbl'); if(p3) p3.textContent=paceUnit;
+  }
+};
   updateCardTypeLabel(s);
 }
 
