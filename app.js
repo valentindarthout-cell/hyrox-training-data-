@@ -381,10 +381,12 @@ function setWorkout(s, val) {
 }
 
 function updateTotRun() {
-  var s1vol = parseNum('e-s1-vol');
+  var s1IsRun = s1Subtypes.some(function(x){ return ['Run','Treadmill'].indexOf(x)>-1; });
+  var s2IsRun = s2Subtypes.some(function(x){ return ['Run','Treadmill'].indexOf(x)>-1; });
+  var s1vol = s1IsRun ? parseNum('e-s1-vol') : 0;
   var s1comp = parseNum('e-s1-comp-run');
-  var s2vol = currentSess === 2 ? parseNum('e-s2-vol') : 0;
-  var s2comp = currentSess === 2 ? parseNum('e-s2-comp-run') : 0;
+  var s2vol = currentSess===2 && s2IsRun ? parseNum('e-s2-vol') : 0;
+  var s2comp = currentSess===2 ? parseNum('e-s2-comp-run') : 0;
   var total = s1vol + s1comp + s2vol + s2comp;
   var display = total > 0 ? total.toFixed(1).replace(/\.0$/,'') + ' km' : '';
   sync('c-tot-run', display);
