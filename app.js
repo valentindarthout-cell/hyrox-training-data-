@@ -224,7 +224,11 @@ function updatePaceVolLabels(s) {
     var p3=document.getElementById('c2-s2-pace-lbl'); if(p3) p3.textContent=paceUnit;
   }
 };
-  updateCardTypeLabel(s);
+updateCardTypeLabel(s);
+  updatePaceVolLabels(s);
+  autoCalcPace(s);
+  updateTotRun();
+  updateVolPaceVisibility(s);
 }
 
 function updateCardTypeLabel(s) {
