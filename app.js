@@ -370,6 +370,15 @@ function setRPE(s, val) {
 
 function setTotCal(val) { sync('c-tot-cal', val ? val + ' kcal' : ''); }
 
+function autoCalcTotKcal() {
+  var s1 = parseInt(document.getElementById('e-s1-cal').value) || 0;
+  var s2 = currentSess===2 ? (parseInt(document.getElementById('e-s2-cal').value)||0) : 0;
+  var total = s1 + s2;
+  var totEl = document.getElementById('e-tot-cal');
+  if (totEl) totEl.value = total || '';
+  sync('c-tot-cal', total ? total + ' kcal' : '');
+}
+
 function setWorkout(s, val) {
   if (s === 1) {
     var el = document.getElementById('c1-workout');
