@@ -250,6 +250,19 @@ function toggleSub(s, type, btn) {
   autoCalcPace(s);
   updateTotRun();
 }
+
+function setSingleSub(s, type, sub, btn) {
+  var pillsId = 's' + s + '-endurance-pills';
+  document.querySelectorAll('#' + pillsId + ' .pill').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  if (s === 1) s1Subtypes = [sub];
+  else s2Subtypes = [sub];
+  updateCardTypeLabel(s);
+  updatePaceVolLabels(s);
+  autoCalcPace(s);
+  updateTotRun();
+  updateVolPaceVisibility(s);
+}
 function setSingleSub(s, type, sub, btn) {
   var pillsId = 's' + s + '-endurance-pills';
   document.querySelectorAll('#' + pillsId + ' .pill').forEach(function(b) { b.classList.remove('active'); });
