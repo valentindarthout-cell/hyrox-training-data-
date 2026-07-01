@@ -365,23 +365,23 @@
               </div>
             </div>
 
-            <div id="s2-endurance-subtypes" style="display:none">
-              <div class="e-field">
-                <label class="e-lbl">Modality (multi-select)</label>
-                <div class="pill-group">
-                  <button class="pill sm-pill" data-sub="Run" onclick="toggleSub(2,'endurance',this)">Run</button>
-                  <button class="pill sm-pill" data-sub="Echo bike" onclick="toggleSub(2,'endurance',this)">Echo bike</button>
-                  <button class="pill sm-pill" data-sub="Bike outdoor" onclick="toggleSub(2,'endurance',this)">Bike outdoor</button>
-                  <button class="pill sm-pill" data-sub="Bike indoor" onclick="toggleSub(2,'endurance',this)">Bike indoor</button>
-                  <button class="pill sm-pill" data-sub="Ski erg" onclick="toggleSub(2,'endurance',this)">Ski erg</button>
-                  <button class="pill sm-pill" data-sub="Row erg" onclick="toggleSub(2,'endurance',this)">Row erg</button>
-                  <button class="pill sm-pill" data-sub="Mix" onclick="toggleSub(2,'endurance',this)">Mix</button>
-                  <button class="pill sm-pill" data-sub="Stair Stepper" onclick="toggleSub(2,'endurance',this)">Stair Stepper</button>
-                  <button class="pill sm-pill" data-sub="Treadmill" onclick="toggleSub(2,'endurance',this)">Treadmill</button>
-                  <button class="pill sm-pill" data-sub="Elliptical" onclick="toggleSub(2,'endurance',this)">Elliptical</button>
-                </div>
-              </div>
-            </div>
+          <div id="s2-endurance-subtypes" style="display:none">
+  <div class="e-field">
+    <label class="e-lbl">Modality</label>
+    <div class="pill-group" id="s2-endurance-pills">
+      <button class="pill sm-pill" data-sub="Run" onclick="setSingleSub(2,'endurance','Run',this)">Run</button>
+      <button class="pill sm-pill" data-sub="Echo bike" onclick="setSingleSub(2,'endurance','Echo bike',this)">Echo bike</button>
+      <button class="pill sm-pill" data-sub="Bike outdoor" onclick="setSingleSub(2,'endurance','Bike outdoor',this)">Bike outdoor</button>
+      <button class="pill sm-pill" data-sub="Bike indoor" onclick="setSingleSub(2,'endurance','Bike indoor',this)">Bike indoor</button>
+      <button class="pill sm-pill" data-sub="Ski erg" onclick="setSingleSub(2,'endurance','Ski erg',this)">Ski erg</button>
+      <button class="pill sm-pill" data-sub="Row erg" onclick="setSingleSub(2,'endurance','Row erg',this)">Row erg</button>
+      <button class="pill sm-pill" data-sub="Mix modalities" onclick="setSingleSub(2,'endurance','Mix modalities',this)">Mix modalities</button>
+      <button class="pill sm-pill" data-sub="Stair Stepper" onclick="setSingleSub(2,'endurance','Stair Stepper',this)">Stair Stepper</button>
+      <button class="pill sm-pill" data-sub="Treadmill" onclick="setSingleSub(2,'endurance','Treadmill',this)">Treadmill</button>
+      <button class="pill sm-pill" data-sub="Elliptical" onclick="setSingleSub(2,'endurance','Elliptical',this)">Elliptical</button>
+    </div>
+  </div>
+</div>
 
             <div id="s2-hyrox-subtypes" style="display:none">
               <div class="e-field">
