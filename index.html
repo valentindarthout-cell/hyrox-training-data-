@@ -448,19 +448,25 @@
             </div>
 
             <div id="s2-hyrox-metrics" style="display:none">
-              <div class="e-sec-label" style="margin:12px 0 8px;">Hyrox metrics</div>
-              <div class="e-row">
-                <div class="e-field"><label class="e-lbl">Compromised run (km)</label><input type="text" id="e-s2-comp-run" value="" placeholder="0" oninput="updateTotRun()"></div>
-                <div class="e-field"><label class="e-lbl">Sled push (m)</label><input type="text" id="e-s2-sled-push" value="" placeholder="0"></div>
-              </div>
-              <div class="e-row">
-                <div class="e-field"><label class="e-lbl">Sled pull (m)</label><input type="text" id="e-s2-sled-pull" value="" placeholder="0"></div>
-                <div class="e-field"><label class="e-lbl">Wall balls (reps)</label><input type="text" id="e-s2-wallballs" value="" placeholder="0"></div>
-              </div>
-              <div class="e-row">
-                <div class="e-field"><label class="e-lbl">Burpees (reps)</label><input type="text" id="e-s2-burpees" value="" placeholder="0"></div>
-                <div class="e-field"><label class="e-lbl">Lunges (reps)</label><input type="text" id="e-s2-lunges" value="" placeholder="0"></div>
-              </div>
+  <div class="e-sec-label" style="margin:12px 0 8px;">Hyrox metrics (AI pre-filled)</div>
+  <div class="e-row">
+    <div class="e-field"><label class="e-lbl">Ski erg (m)</label><input type="text" id="e-s1-ski-erg" value="" placeholder="0"></div>
+    <div class="e-field"><label class="e-lbl">Sled push (m)</label><input type="text" id="e-s1-sled-push" value="" placeholder="0"></div>
+  </div>
+  <div class="e-row">
+    <div class="e-field"><label class="e-lbl">Sled pull (m)</label><input type="text" id="e-s1-sled-pull" value="" placeholder="0"></div>
+    <div class="e-field"><label class="e-lbl">Burpees (reps)</label><input type="text" id="e-s1-burpees" value="" placeholder="0"></div>
+  </div>
+  <div class="e-row">
+    <div class="e-field"><label class="e-lbl">Row erg (m)</label><input type="text" id="e-s1-row-erg" value="" placeholder="0"></div>
+    <div class="e-field"><label class="e-lbl">Farmers carry (m)</label><input type="text" id="e-s1-farmers" value="" placeholder="0"></div>
+  </div>
+  <div class="e-row">
+    <div class="e-field"><label class="e-lbl">Lunges (reps)</label><input type="text" id="e-s1-lunges" value="" placeholder="0"></div>
+    <div class="e-field"><label class="e-lbl">Wall balls (reps)</label><input type="text" id="e-s1-wallballs" value="" placeholder="0"></div>
+  </div>
+  <div class="e-field"><label class="e-lbl">Compromised run (km)</label><input type="text" id="e-s1-comp-run" value="" placeholder="0" oninput="updateTotRun()"></div>
+</div>
             </div>
 
             <div class="e-field"><label class="e-lbl">Session 2 RPE — <span id="rpe2-disp">6</span>/10</label><input type="range" min="1" max="10" step="1" value="6" oninput="setRPE(2,this.value)"></div>
