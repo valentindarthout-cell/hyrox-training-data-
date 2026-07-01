@@ -297,20 +297,28 @@ function updateDurations() {
 }
 
 function autoCalcPace(s) {
-  var type = s === 1 ? s1WorkoutType : s2WorkoutType;
-  var subs = s === 1 ? s1Subtypes : s2Subtypes;
-  var isBike = subs.some(function(x) { return ['Echo bike','Bike outdoor','Bike indoor','Elliptical'].indexOf(x) > -1; });
-  var isErg = subs.some(function(x) { return ['Ski erg','Row erg'].indexOf(x) > -1; });
-  if (isBike || isErg) return;
-  var mins = parseMins(s === 1 ? 'e-s1-dur-min' : 'e-s2-dur-min');
-  var km = parseNum(s === 1 ? 'e-s1-vol' : 'e-s2-vol');
-  var paceEl = document.getElementById(s === 1 ? 'e-s1-pace' : 'e-s2-pace');
-  if (km > 0 && mins > 0) {
-    var pd = mins / km; var pm = Math.floor(pd); var ps = Math.round((pd - pm) * 60);
-    var str = pm + ':' + (ps < 10 ? '0' : '') + ps;
-    paceEl.value = str;
-    setPace(s, str);
+  var f = getModalityFlags(s);
+  var mins = parseMins(s===1?'e-s1-dur-min':'e-s2-dur-min');
+  var vol = parseNum(s===1?'e-s1-vol':'e-s2-vol');
+  var paceEl = document.getElementById(s===1?'e-s1-pace':'e-s2-pace');
+  if (!paceEl || !mins || !vol) return;
+  var str = '';
+  if (f.isStair) {
+    str = Math.round(vol / mins) + '';
+  } else if (f.isEchoBike || f.isElliptical) {
+    return;
+  } else if (f.isBike) {
+    var pd = mins / vol; var pm = Math.floor(pd); var ps = Math.round((pd-pm)*60);
+    str = pm + ':' + (ps<10?'0':'') + ps + '/km';
+  } else if (f.isErg) {
+    var pd500 = (mins / vol) / 2; var pm5 = Math.floor(pd500); var ps5 = Math.round((pd500-pm5)*60);
+    str = pm5 + ':' + (ps5<10?'0':'') + ps5 + '/500m';
+  } else {
+    var pd2 = mins / vol; var pm2 = Math.floor(pd2); var ps2 = Math.round((pd2-pm2)*60);
+    str = pm2 + ':' + (ps2<10?'0':'') + ps2;
   }
+  if (str) { paceEl.value = str; setPace(s, str); }
+}
 }
 
 function setVol(s, val) {
