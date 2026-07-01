@@ -149,7 +149,6 @@ function getModalityFlags(s) {
     isStair: subs.indexOf('Stair Stepper')>-1,
     isRun: subs.some(function(x){ return ['Run','Treadmill'].indexOf(x)>-1; }),
     isElliptical: subs.indexOf('Elliptical')>-1,
-    isMix: subs.indexOf('Mix modalities')>-1
   };
 }
 
@@ -301,19 +300,26 @@ function handlePaceInput(s, input) {
   var val = input.value;
   if (f.isErg) {
     val = val.replace(/[^0-9:]/g, '');
-    if (val.length > 4) val = val.substring(0, 4);
-    if (val.includes(':')) {
+    input.value = val;
+    if (/^\d+:\d{2}$/.test(val)) {
       var parts = val.split(':');
-      var mins = parseInt(parts[0]) || 0;
-      var secs = parts[1] !== undefined ? parts[1] : '';
-      if (secs.length === 2) {
-        var secsInt = parseInt(secs);
-        if (secsInt > 59) secs = '59';
-        if (mins < 1) mins = 1;
-        if (mins > 2 || (mins === 2 && secsInt > 59)) { mins = 2; secs = '59'; }
-        val = mins + ':' + secs;
-      }
+      var mins = parseInt(parts[0]);
+      var secs = parseInt(parts[1]);
+      if (secs > 59) secs = 59;
+      if (mins < 1) mins = 1;
+      if (mins > 2) { mins = 2; secs = 59; }
+      var clean = mins + ':' + (secs < 10 ? '0' : '') + secs;
+      input.value = clean;
+      setPace(s, clean);
     }
+  } else if (f.isEchoBike || f.isElliptical) {
+    val = val.replace(/[^0-9]/g, '');
+    input.value = val;
+    setPace(s, val);
+  } else {
+    setPace(s, val);
+  }
+}
     input.value = val;
   }
   setPace(s, input.value);
