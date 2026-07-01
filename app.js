@@ -222,9 +222,16 @@ function updatePaceVolLabels(s) {
   } else {
     var v3=document.getElementById('c2-s2-vol-lbl'); if(v3) v3.textContent=volUnit;
     var p3=document.getElementById('c2-s2-pace-lbl'); if(p3) p3.textContent=paceUnit;
-  }
-};
-updateCardTypeLabel(s);
+}
+}
+
+function setSingleSub(s, type, sub, btn) {
+  var pillsId = 's' + s + '-endurance-pills';
+  document.querySelectorAll('#' + pillsId + ' .pill').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  if (s === 1) s1Subtypes = [sub];
+  else s2Subtypes = [sub];
+  updateCardTypeLabel(s);
   updatePaceVolLabels(s);
   autoCalcPace(s);
   updateTotRun();
