@@ -155,34 +155,52 @@ function getModalityFlags(s) {
 
 function updatePaceVolLabels(s) {
   var f = getModalityFlags(s);
-  var paceLabel, volLabel, pacePlaceholder, showPace;
+  var paceLabel, volLabel, pacePlaceholder;
 
-  if (f.isStair) {
-    volLabel = 'Volume (steps)';
-    paceLabel = 'Steps/min (auto)';
-    pacePlaceholder = 'steps/min';
-    showPace = true;
+  if (f.isMix || f.isStair) {
+    volLabel = f.isStair ? 'Volume (steps)' : 'Volume (km)';
+    paceLabel = f.isStair ? 'Steps/min (auto)' : 'Avg pace';
+    pacePlaceholder = f.isStair ? 'steps/min' : '—';
   } else if (f.isEchoBike || f.isElliptical) {
     volLabel = 'Volume (km)';
     paceLabel = 'Avg watts';
     pacePlaceholder = 'watts';
-    showPace = true;
   } else if (f.isBike) {
     volLabel = 'Volume (km)';
     paceLabel = 'Avg pace';
     pacePlaceholder = '2:05/km';
-    showPace = true;
   } else if (f.isErg) {
     volLabel = 'Volume (km)';
-    paceLabel = 'Avg pace';
-    pacePlaceholder = '1:55/500m';
-    showPace = true;
+    paceLabel = 'Avg pace /500m';
+    pacePlaceholder = '1:55';
   } else {
     volLabel = 'Volume (km)';
     paceLabel = 'Avg pace (auto)';
     pacePlaceholder = 'min/km';
-    showPace = true;
   }
+
+  var elPaceLbl = document.getElementById('e-s'+s+'-pace-lbl');
+  var elVolLbl = document.getElementById('e-s'+s+'-vol-lbl');
+  var elPaceInput = document.getElementById('e-s'+s+'-pace');
+  if (elPaceLbl) elPaceLbl.textContent = paceLabel;
+  if (elVolLbl) elVolLbl.textContent = volLabel;
+  if (elPaceInput) elPaceInput.placeholder = pacePlaceholder;
+
+  var paceUnit = f.isEchoBike||f.isElliptical ? 'w' : f.isBike ? '/km' : f.isErg ? '/500m' : f.isStair ? 'steps/min' : 'min/km';
+  var volUnit = f.isStair ? 'steps' : 'km';
+
+  if (s===1) {
+    var v1=document.getElementById('c1-vol-lbl'); if(v1) v1.textContent=volUnit;
+    var p1=document.getElementById('c1-pace-lbl'); if(p1) p1.textContent=paceUnit;
+    var v2=document.getElementById('c2-s1-vol-lbl'); if(v2) v2.textContent=volUnit;
+    var p2=document.getElementById('c2-s1-pace-lbl'); if(p2) p2.textContent=paceUnit;
+  } else {
+    var v3=document.getElementById('c2-s2-vol-lbl'); if(v3) v3.textContent=volUnit;
+    var p3=document.getElementById('c2-s2-pace-lbl'); if(p3) p3.textContent=paceUnit;
+  }
+
+  updateVolPaceVisibility(s);
+}
 
   var elPaceLbl = document.getElementById('e-s'+s+'-pace-lbl');
   var elVolLbl = document.getElementById('e-s'+s+'-vol-lbl');
@@ -345,6 +363,7 @@ function updateDurations() {
 
 function autoCalcPace(s) {
   var f = getModalityFlags(s);
+  if (f.isEchoBike || f.isElliptical || f.isMix) return;
   var mins = parseMins(s===1?'e-s1-dur-min':'e-s2-dur-min');
   var vol = parseNum(s===1?'e-s1-vol':'e-s2-vol');
   var paceEl = document.getElementById(s===1?'e-s1-pace':'e-s2-pace');
@@ -352,14 +371,16 @@ function autoCalcPace(s) {
   var str = '';
   if (f.isStair) {
     str = Math.round(vol / mins) + '';
-  } else if (f.isEchoBike || f.isElliptical) {
-    return;
+  } else if (f.isErg) {
+    var secsTotal = (mins * 60) / (vol * 2);
+    var pm5 = Math.floor(secsTotal / 60);
+    var ps5 = Math.round(secsTotal % 60);
+    if (pm5 < 1) pm5 = 1;
+    if (pm5 > 2) { pm5 = 2; ps5 = 59; }
+    str = pm5 + ':' + (ps5<10?'0':'') + ps5;
   } else if (f.isBike) {
     var pd = mins / vol; var pm = Math.floor(pd); var ps = Math.round((pd-pm)*60);
-    str = pm + ':' + (ps<10?'0':'') + ps + '/km';
-  } else if (f.isErg) {
-    var pd500 = (mins / vol) / 2; var pm5 = Math.floor(pd500); var ps5 = Math.round((pd500-pm5)*60);
-    str = pm5 + ':' + (ps5<10?'0':'') + ps5 + '/500m';
+    str = pm + ':' + (ps<10?'0':'') + ps;
   } else {
     var pd2 = mins / vol; var pm2 = Math.floor(pd2); var ps2 = Math.round((pd2-pm2)*60);
     str = pm2 + ':' + (ps2<10?'0':'') + ps2;
