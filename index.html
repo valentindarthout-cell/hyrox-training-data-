@@ -187,12 +187,13 @@
         <div class="e-section">
           <div class="e-sec-label">Training phase</div>
           <div class="pill-group" id="phase-pills">
-            <button class="pill" data-phase="Base" onclick="setPhase(this)">Base</button>
-            <button class="pill" data-phase="Build" onclick="setPhase(this)">Build</button>
-            <button class="pill" data-phase="Peak" onclick="setPhase(this)">Peak</button>
-            <button class="pill" data-phase="Taper" onclick="setPhase(this)">Taper</button>
-            <button class="pill" data-phase="Race prep" onclick="setPhase(this)">Race prep</button>
-          </div>
+  <button class="pill" data-phase="Base" onclick="setPhase(this)">Base</button>
+  <button class="pill" data-phase="Build" onclick="setPhase(this)">Build</button>
+  <button class="pill" data-phase="Peak" onclick="setPhase(this)">Peak</button>
+  <button class="pill" data-phase="Taper" onclick="setPhase(this)">Taper</button>
+  <button class="pill" data-phase="General prep" onclick="setPhase(this)">General prep</button>
+  <button class="pill" data-phase="Race" onclick="setPhase(this)">Race</button>
+</div>
           <div id="race-fields" style="display:none;margin-top:14px;">
             <div class="e-field"><label class="e-lbl">Race name</label><input type="text" id="e-race-name" value="" oninput="setRace();save()"></div>
             <div class="e-field"><label class="e-lbl">Race date</label><input type="date" id="e-race-date" oninput="setRace();save()"></div>
