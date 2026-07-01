@@ -356,10 +356,13 @@ function setHR(s, val) {
 function setCal(s, val) {
   var u = ' <span class="metric-unit">kcal</span>';
   var us = ' <span class="metric-sm-unit">kcal</span>';
-  if (s === 1) {
-    document.getElementById('c1-cal').innerHTML = val ? val + u : '';
-    document.getElementById('c2-s1-cal').innerHTML = val ? val + us : '';
-  } else { document.getElementById('c2-s2-cal').innerHTML = val ? val + us : ''; }
+  if (s===1) {
+    document.getElementById('c1-cal').innerHTML = val ? val+u : '';
+    document.getElementById('c2-s1-cal').innerHTML = val ? val+us : '';
+  } else {
+    document.getElementById('c2-s2-cal').innerHTML = val ? val+us : '';
+  }
+  autoCalcTotKcal();
 }
 
 function setRPE(s, val) {
