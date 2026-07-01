@@ -319,7 +319,6 @@ function autoCalcPace(s) {
   }
   if (str) { paceEl.value = str; setPace(s, str); }
 }
-}
 
 function setVol(s, val) {
   var u = ' <span class="metric-unit">km</span>';
