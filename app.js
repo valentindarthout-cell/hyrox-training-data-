@@ -230,6 +230,7 @@ updateCardTypeLabel(s);
   updateTotRun();
   updateVolPaceVisibility(s);
 }
+
 function updateCardTypeLabel(s) {
   var type = s === 1 ? s1WorkoutType : s2WorkoutType;
   var subs = s === 1 ? s1Subtypes : s2Subtypes;
