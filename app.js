@@ -318,11 +318,8 @@ function handlePaceInput(s, input) {
     setPace(s, val);
   } else {
     setPace(s, val);
-  }
 }
-    input.value = val;
   }
-  setPace(s, input.value);
 }
 
 
