@@ -324,39 +324,7 @@ function handlePaceInput(s, input) {
   }
   setPace(s, input.value);
 }
-function updatePaceVolLabels(s) {
-  var type = s === 1 ? s1WorkoutType : s2WorkoutType;
-  var subs = s === 1 ? s1Subtypes : s2Subtypes;
-  var isBike = subs.some(function(x) { return ['Echo bike','Bike outdoor','Bike indoor','Elliptical'].indexOf(x) > -1; });
-  var isErg = subs.some(function(x) { return ['Ski erg','Row erg'].indexOf(x) > -1; });
-  var isStair = subs.indexOf('Stair Stepper') > -1;
-  var paceLabel, volLabel, pacePlaceholder;
-  if (isBike) { paceLabel = 'Avg watts'; pacePlaceholder = 'watts'; }
-  else if (isErg) { paceLabel = 'Avg pace'; pacePlaceholder = '2:00 /500m'; }
-  else { paceLabel = 'Avg pace (auto)'; pacePlaceholder = 'min/km'; }
-  volLabel = isStair ? 'Volume (steps)' : 'Volume (km)';
-  var volUnit = isStair ? 'steps' : 'km';
-  var paceUnit = isBike ? 'w' : isErg ? '/500m' : 'min/km';
 
-  var elPaceLbl = document.getElementById('e-s' + s + '-pace-lbl');
-  var elVolLbl = document.getElementById('e-s' + s + '-vol-lbl');
-  var elPaceInput = document.getElementById('e-s' + s + '-pace');
-  if (elPaceLbl) elPaceLbl.textContent = paceLabel;
-  if (elVolLbl) elVolLbl.textContent = volLabel;
-  if (elPaceInput) elPaceInput.placeholder = pacePlaceholder;
-
-  var cVolLbl = document.getElementById('c' + (currentSess===1?'1':'2-s'+s) + '-vol-lbl');
-  var cPaceLbl = document.getElementById('c' + (currentSess===1?'1':'2-s'+s) + '-pace-lbl');
-  if (s === 1) {
-    var v1 = document.getElementById('c1-vol-lbl'); if (v1) v1.textContent = volUnit;
-    var p1 = document.getElementById('c1-pace-lbl'); if (p1) p1.textContent = paceUnit;
-    var v2 = document.getElementById('c2-s1-vol-lbl'); if (v2) v2.textContent = volUnit;
-    var p2 = document.getElementById('c2-s1-pace-lbl'); if (p2) p2.textContent = paceUnit;
-  } else {
-    var v3 = document.getElementById('c2-s2-vol-lbl'); if (v3) v3.textContent = volUnit;
-    var p3 = document.getElementById('c2-s2-pace-lbl'); if (p3) p3.textContent = paceUnit;
-  }
-}
 
 // ---- SESSIONS ----
 function setSess(n) {
