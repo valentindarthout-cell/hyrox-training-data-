@@ -1,56 +1,57 @@
-module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
-  try {
-    const { image, mediaType, workoutType } = req.body;
-    if (!image) { res.status(400).json({ error: 'No image' }); return; }
+// Claude Vision — reads a fitness app screenshot and extracts session data
+const { cors } = require('./_supabase.js');
 
-    const prompt = workoutType === 'hyrox'
-      ? `This is a Hyrox workout screenshot. Respond ONLY with JSON, no markdown:
-{"name":"workout name","duration_min":null,"distance_km":null,"avg_hr":null,"calories":null,
-"zone1_pct":null,"zone2_pct":null,"zone3_pct":null,"zone4_pct":null,"zone5_pct":null,
-"workout_description":"full workout on separate lines max 400 chars or null",
-"compromised_run_km":null,"sled_push_m":null,"sled_pull_m":null,
-"wallballs_reps":null,"burpees_reps":null,"lunges_reps":null}`
-      : workoutType === 'strength'
-      ? `This is a strength training screenshot. Respond ONLY with JSON, no markdown:
-{"name":"workout name","duration_min":null,"avg_hr":null,"calories":null,
-"zone1_pct":null,"zone2_pct":null,"zone3_pct":null,"zone4_pct":null,"zone5_pct":null,
-"workout_description":"full workout on separate lines max 400 chars or null"}`
-      : `This is an endurance training screenshot (Garmin, Strava, Fitr or similar). Respond ONLY with JSON, no markdown:
-{"name":"workout name","duration_min":null,"distance_km":null,"avg_hr":null,"calories":null,
-"avg_pace":"string like 5:30 or null","avg_watts":null,
-"zone1_pct":null,"zone2_pct":null,"zone3_pct":null,"zone4_pct":null,"zone5_pct":null,
-"workout_description":"full workout on separate lines max 400 chars or null"}`;
+const PROMPTS = {
+  endurance: `Extract the workout data from this fitness app screenshot. Respond ONLY with a JSON object, no markdown, no preamble:
+{"name": string|null, "duration_min": int|null, "distance_km": number|null, "avg_hr": int|null, "calories": int|null, "zones": [z1,z2,z3,z4,z5] as integer percentages summing to 100 or null, "workout_description": string|null}
+For workout_description: keep ONLY the structured workout content (intervals, sets, distances, paces). Remove app UI text, motivational notes, coach comments, and anything not describing the actual workout. Format it cleanly with line breaks between parts. Use null for anything not visible.`,
+  hyrox: `Extract the workout data from this fitness app screenshot of a Hyrox-style training session. Respond ONLY with a JSON object, no markdown, no preamble:
+{"name": string|null, "duration_min": int|null, "avg_hr": int|null, "calories": int|null, "zones": [z1,z2,z3,z4,z5] as integer percentages summing to 100 or null, "workout_description": string|null, "compromised_run_km": number|null, "ski_erg_m": int|null, "sled_push_m": int|null, "sled_pull_m": int|null, "burpees_reps": int|null, "row_erg_m": int|null, "farmers_m": int|null, "lunges_m": int|null, "wallballs_reps": int|null}
+Rules: burpee broad jumps expressed in meters convert to reps at 2 m = 1 rep. Lunges expressed in reps convert to meters at 1 rep = 1 m. Sum quantities across rounds (e.g. 4 rounds of 250 m ski = 1000 m).
+For workout_description: keep ONLY the structured workout content. Remove app UI text, notes, and coach comments. Use null for anything not visible.`,
+  strength: `Extract the workout data from this fitness app screenshot of a strength session. Respond ONLY with a JSON object, no markdown, no preamble:
+{"name": string|null, "duration_min": int|null, "avg_hr": int|null, "calories": int|null, "zones": [z1,z2,z3,z4,z5] as integer percentages summing to 100 or null, "workout_description": string|null}
+For workout_description: keep ONLY the structured workout content (exercises, sets, reps, loads). Remove app UI text, notes, and coach comments. Format cleanly with line breaks. Use null for anything not visible.`
+};
 
+module.exports = async function handler(req, res){
+  cors(res);
+  if(req.method === 'OPTIONS') return res.status(200).end();
+  if(req.method !== 'POST') return res.status(405).json({error:'Method not allowed'});
+
+  const { image, media_type, workout_type } = req.body || {};
+  if(!image) return res.status(400).json({error:'No image provided'});
+  const prompt = PROMPTS[workout_type] || PROMPTS.endurance;
+
+  try{
     const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
         'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01'
+        'anthropic-version':'2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: [
-          { type: 'image', source: { type: 'base64', media_type: mediaType, data: image } },
-          { type: 'text', text: prompt }
-        ]}]
+        model:'claude-sonnet-4-6',
+        max_tokens: 1500,
+        messages:[{
+          role:'user',
+          content:[
+            { type:'image', source:{ type:'base64', media_type: media_type || 'image/png', data: image } },
+            { type:'text', text: prompt }
+          ]
+        }]
       })
     });
-
-    const raw = await r.text();
-    const data = JSON.parse(raw);
-    if (data.error) { res.status(500).json({ error: data.error.message }); return; }
-    const text = data.content[0].text;
-    const clean = text.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(clean);
-    res.status(200).json(parsed);
-  } catch(e) {
-    console.log('ERR:', e.message);
-    res.status(500).json({ error: e.message });
+    const data = await r.json();
+    if(!r.ok) return res.status(500).json({error: (data.error && data.error.message) || 'AI request failed'});
+    const text = (data.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+    const clean = text.replace(/```json|```/g,'').trim();
+    let extracted;
+    try{ extracted = JSON.parse(clean); }
+    catch(e){ return res.status(500).json({error:'Could not read the screenshot — try a clearer image'}); }
+    return res.status(200).json({ extracted });
+  }catch(e){
+    return res.status(500).json({error:'AI request failed'});
   }
-}
+};
