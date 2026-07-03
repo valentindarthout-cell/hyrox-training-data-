@@ -173,6 +173,14 @@
     </div>
 
     <div class="section-card">
+      <div class="section-label">Connections</div>
+      <div class="logo-row">
+        <div id="stravaStatus" class="hint" style="margin-top:0">Checking Strava…</div>
+      </div>
+      <button id="stravaBtn" class="ghost-btn" onclick="connectStrava()">Connect Strava</button>
+    </div>
+
+    <div class="section-card">
       <div class="section-label">Program logo</div>
       <div class="logo-row">
         <img id="logoPreview" class="logo-preview" style="display:none">
@@ -204,6 +212,17 @@
 
 <!-- hidden file input for AI import -->
 <input id="importFile" type="file" accept="image/*" hidden onchange="handleImportFile(event)">
+
+<!-- Strava activity picker -->
+<div id="stravaModal" class="strava-modal" style="display:none">
+  <div class="strava-sheet">
+    <div class="strava-sheet-head">
+      <div class="section-label" style="margin:0">Import from Strava</div>
+      <button class="mini-btn" onclick="closeStravaModal()">Close</button>
+    </div>
+    <div id="stravaList" class="strava-list"></div>
+  </div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="auth.js"></script>
