@@ -73,6 +73,7 @@ async function enterApp(){
   }catch(e){ profile = {}; }
   await loadDay(selectedDate);
   await refreshWeekDots();
+  checkStravaStatus();
 }
 if(getToken()) enterApp();
 
@@ -237,6 +238,7 @@ function sessionHTML(s,i){
       <div class="session-title">Session ${i+1}</div>
       <div class="session-actions">
         <button class="mini-btn" onclick="startImport(${i})">AI import</button>
+        <button class="mini-btn" onclick="openStravaModal(${i})">Strava</button>
         ${daySessions.length>1?`<button class="mini-btn" onclick="removeSession(${i})">Remove</button>`:''}
       </div>
     </div>
@@ -251,7 +253,8 @@ function sessionHTML(s,i){
     </div>
     <div class="metric-grid">${metricFields}</div>
     ${hyroxBlock}
-    <textarea class="text-input" style="margin-top:12px" placeholder="Workout description (optional)" oninput="upd(${i},'workout_desc',this.value)">${esc(s.workout_desc)}</textarea>
+    <textarea id="desc_${i}" class="text-input" style="margin-top:12px" placeholder="Workout description (optional)" oninput="upd(${i},'workout_desc',this.value)">${esc(s.workout_desc)}</textarea>
+    ${s.workout_type==='hyrox'?`<button class="mini-btn" style="margin-top:8px" onclick="extractFromText(${i})">Extract stations from text</button>`:''}
     <div class="zones-block">
       <div class="section-sublabel">HR zones (optional)</div>
       ${zoneRows}
@@ -490,6 +493,92 @@ async function handleImportFile(ev){
     setTimeout(()=>msg.textContent='',2500);
   }catch(e){ msg.textContent='Import failed — '+e.message; }
   importTarget=null;
+}
+
+/* ================================================================
+   STRAVA
+================================================================ */
+async function checkStravaStatus(){
+  const el=document.getElementById('stravaStatus'), btn=document.getElementById('stravaBtn');
+  if(!el) return;
+  try{
+    const d=await api('/api/strava-status');
+    if(d.connected){ el.textContent='Strava connected'; btn.textContent='Reconnect Strava'; }
+    else { el.textContent='Not connected'; btn.textContent='Connect Strava'; }
+  }catch(e){ el.textContent=''; }
+}
+function connectStrava(){
+  window.location.href = '/api/strava-connect?token='+encodeURIComponent(getToken());
+}
+(function checkStravaRedirect(){
+  const p=new URLSearchParams(location.search);
+  if(p.has('strava')){
+    history.replaceState({},'',location.pathname);
+  }
+})();
+
+let stravaTarget=null;
+async function openStravaModal(i){
+  stravaTarget=i;
+  const modal=document.getElementById('stravaModal'), list=document.getElementById('stravaList');
+  modal.style.display='flex';
+  list.innerHTML='<div class="empty-state">Loading activities…</div>';
+  try{
+    const d=await api('/api/strava-import?action=list');
+    if(!d.activities||!d.activities.length){ list.innerHTML='<div class="empty-state">No recent Strava activities. Connect Strava in Settings first.</div>'; return; }
+    list.innerHTML=d.activities.map(a=>`
+      <div class="strava-item">
+        <div class="strava-item-main">
+          <div class="strava-item-name">${esc(a.name)}</div>
+          <div class="strava-item-meta">${a.type} · ${fmtShort((a.date||'').slice(0,10))} · ${a.distance_km?a.distance_km+' km · ':''}${a.duration_min?a.duration_min+' min':''}</div>
+        </div>
+        <button class="mini-btn" onclick="importStravaActivity(${a.id})">Import</button>
+      </div>`).join('');
+  }catch(e){ list.innerHTML=`<div class="empty-state">${e.message}</div>`; }
+}
+function closeStravaModal(){ document.getElementById('stravaModal').style.display='none'; stravaTarget=null; }
+async function importStravaActivity(id){
+  if(stravaTarget==null) return;
+  const list=document.getElementById('stravaList');
+  list.innerHTML='<div class="empty-state">Importing…</div>';
+  try{
+    const d=await api('/api/strava-import?action=detail&id='+id);
+    const x=d.session||{}, s=daySessions[stravaTarget];
+    s.workout_type='endurance';
+    if(x.subtypes&&x.subtypes.length) s.subtypes=x.subtypes;
+    if(x.name) s.name=x.name;
+    if(x.duration_min!=null) s.duration_min=x.duration_min;
+    if(x.distance_km!=null) s.volume=x.distance_km;
+    if(x.avg_hr!=null) s.avg_hr=x.avg_hr;
+    if(x.calories!=null) s.kcal=x.calories;
+    if(x.workout_description) s.workout_desc=x.workout_description;
+    if(x.session_date && x.session_date!==selectedDate){
+      // activity is from a different day than the one currently open — still fill it in, athlete can re-save on the right day
+    }
+    renderSessions();
+    closeStravaModal();
+    const msg=document.getElementById('saveMsg');
+    msg.textContent='Imported from Strava — review and adjust'; setTimeout(()=>msg.textContent='',2500);
+  }catch(e){ list.innerHTML=`<div class="empty-state">${e.message}</div>`; }
+}
+
+/* ================================================================
+   HYROX TEXT EXTRACTION
+================================================================ */
+async function extractFromText(i){
+  const text=(document.getElementById('desc_'+i)||{}).value || daySessions[i].workout_desc;
+  if(!text||!text.trim()){ return; }
+  const msg=document.getElementById('saveMsg');
+  msg.textContent='Reading workout text…';
+  try{
+    const d=await api('/api/extract-hyrox-text',{method:'POST',body:JSON.stringify({text})});
+    const x=d.extracted||{}, s=daySessions[i];
+    const map=['ski_erg_m','sled_push_m','sled_pull_m','burpees_reps','row_erg_m','farmers_m','lunges_m','wallballs_reps'];
+    map.forEach(k=>{ if(x[k]!=null) s.stations[k]=x[k]; });
+    if(x.compromised_run_km!=null) s.compromised_run_km=x.compromised_run_km;
+    renderSessions();
+    msg.textContent='Stations filled — review and adjust'; setTimeout(()=>msg.textContent='',2500);
+  }catch(e){ msg.textContent='Could not read the text — '+e.message; }
 }
 
 /* ================================================================
