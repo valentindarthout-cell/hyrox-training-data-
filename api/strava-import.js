@@ -71,8 +71,8 @@ module.exports = async function handler(req, res){
     if(!r.ok) return res.status(500).json({error:'Could not reach Strava'});
 
     const subtype = TYPE_MAP[a.type] || null;
-    const zones = {};
-    // Strava doesn't reliably expose HR zone distribution via this endpoint; left null, user can fill.
+    const zones = await fetchZones(id, accessToken);
+
     return res.status(200).json({ session:{
       name: a.name || null,
       workout_type: 'endurance',
@@ -82,9 +82,46 @@ module.exports = async function handler(req, res){
       avg_hr: a.average_heartrate ? Math.round(a.average_heartrate) : null,
       calories: a.calories ? Math.round(a.calories) : null,
       workout_description: a.description || null,
-      session_date: (a.start_date_local||'').slice(0,10)
+      session_date: (a.start_date_local||'').slice(0,10),
+      zones: zones
     }});
   }
 
   return res.status(400).json({error:'Unknown action'});
 };
+
+// Pulls time-in-heart-rate-zone from Strava (requires the athlete to have HR zones
+// configured in Strava, and the activity to have HR data). Converts Strava's zone
+// buckets into our 5-zone / 5%-step format. Returns null if unavailable.
+async function fetchZones(activityId, accessToken){
+  try{
+    const r = await fetch(`https://www.strava.com/api/v3/activities/${activityId}/zones`, {
+      headers:{ 'Authorization':'Bearer '+accessToken }
+    });
+    if(!r.ok) return null;
+    const data = await r.json();
+    const hr = (data || []).find(z => z.type === 'heartrate');
+    if(!hr || !hr.distribution_buckets || !hr.distribution_buckets.length) return null;
+
+    const buckets = hr.distribution_buckets;
+    const totalTime = buckets.reduce((sum,b)=>sum+b.time,0);
+    if(totalTime <= 0) return null;
+
+    // Strava's athlete-configured zones may not be exactly 5 — map proportionally into 5 bins.
+    const n = buckets.length;
+    const zonePct = [0,0,0,0,0];
+    buckets.forEach((b,i)=>{
+      const targetZone = Math.min(4, Math.floor(i * 5 / n));
+      zonePct[targetZone] += b.time;
+    });
+    let pct5 = zonePct.map(t => Math.round((t/totalTime*100)/5)*5);
+    let diff = 100 - pct5.reduce((a,b)=>a+b,0);
+    if(diff !== 0){
+      const maxIdx = pct5.indexOf(Math.max(...pct5));
+      pct5[maxIdx] = Math.max(0, pct5[maxIdx] + diff);
+    }
+    return pct5.reduce((a,b)=>a+b,0) === 100 ? pct5 : null;
+  }catch(e){
+    return null;
+  }
+}
