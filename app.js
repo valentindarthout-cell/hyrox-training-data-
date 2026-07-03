@@ -87,6 +87,7 @@ function switchTab(tab){
   });
   if(tab==='stats') loadStats();
   if(tab==='share') loadShare();
+  if(tab==='settings') maybeAutoFillZones();
 }
 function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
 
@@ -510,6 +511,32 @@ async function checkStravaStatus(){
 function connectStrava(){
   window.location.href = '/api/strava-connect?token='+encodeURIComponent(getToken());
 }
+async function fetchStravaZones(){
+  const msg=document.getElementById('zonesMsg');
+  msg.textContent='Fetching from Strava…';
+  try{
+    const d=await api('/api/strava-zones');
+    const b=d.boundaries||{};
+    if(b.hr_z1_max!=null) document.getElementById('hrz1').value=b.hr_z1_max;
+    if(b.hr_z2_max!=null) document.getElementById('hrz2').value=b.hr_z2_max;
+    if(b.hr_z3_max!=null) document.getElementById('hrz3').value=b.hr_z3_max;
+    if(b.hr_z4_max!=null) document.getElementById('hrz4').value=b.hr_z4_max;
+    msg.textContent='Filled from Strava — review and save';
+    setTimeout(()=>msg.textContent='',3000);
+  }catch(e){ msg.textContent=e.message; }
+}
+let autoZoneAttempted=false;
+async function maybeAutoFillZones(){
+  if(autoZoneAttempted) return;
+  const allEmpty = ['hrz1','hrz2','hrz3','hrz4'].every(id=>!document.getElementById(id).value);
+  if(!allEmpty) return;
+  autoZoneAttempted=true;
+  try{
+    const st=await api('/api/strava-status');
+    if(!st.connected) return;
+    await fetchStravaZones();
+  }catch(e){}
+}
 (function checkStravaRedirect(){
   const p=new URLSearchParams(location.search);
   if(p.has('strava')){
@@ -552,6 +579,9 @@ async function importStravaActivity(id){
     if(x.avg_hr!=null) s.avg_hr=x.avg_hr;
     if(x.calories!=null) s.kcal=x.calories;
     if(x.workout_description) s.workout_desc=x.workout_description;
+    if(Array.isArray(x.zones) && x.zones.length===5 && x.zones.reduce((a,b)=>a+b,0)===100){
+      s.zones = x.zones;
+    }
     if(x.session_date && x.session_date!==selectedDate){
       // activity is from a different day than the one currently open — still fill it in, athlete can re-save on the right day
     }
@@ -1032,6 +1062,10 @@ function fillSettings(){
   document.getElementById('setWeight').value=profile._weight??'';
   document.getElementById('setHrvLow').value=profile.hrv_low??'';
   document.getElementById('setHrvHigh').value=profile.hrv_high??'';
+  document.getElementById('hrz1').value=profile.hr_z1_max??'';
+  document.getElementById('hrz2').value=profile.hr_z2_max??'';
+  document.getElementById('hrz3').value=profile.hr_z3_max??'';
+  document.getElementById('hrz4').value=profile.hr_z4_max??'';
   document.getElementById('setRaceName').value=profile.race_name??'';
   document.getElementById('setRaceDate').value=profile.race_date??'';
   phaseSel=profile.training_phase||null;
@@ -1050,6 +1084,10 @@ async function saveSettings(){
     age:intOrNull(document.getElementById('setAge').value),
     hrv_low:intOrNull(document.getElementById('setHrvLow').value),
     hrv_high:intOrNull(document.getElementById('setHrvHigh').value),
+    hr_z1_max:intOrNull(document.getElementById('hrz1').value),
+    hr_z2_max:intOrNull(document.getElementById('hrz2').value),
+    hr_z3_max:intOrNull(document.getElementById('hrz3').value),
+    hr_z4_max:intOrNull(document.getElementById('hrz4').value),
     training_phase:phaseSel,
     race_name:document.getElementById('setRaceName').value||null,
     race_date:document.getElementById('setRaceDate').value||null,
