@@ -23,7 +23,9 @@ module.exports = async function handler(req, res){
     const profileFields = {
       age: body.age, hrv_low: body.hrv_low, hrv_high: body.hrv_high,
       training_phase: body.training_phase, race_name: body.race_name,
-      race_date: body.race_date, race_divisions: body.race_divisions
+      race_date: body.race_date, race_divisions: body.race_divisions,
+      hr_z1_max: body.hr_z1_max, hr_z2_max: body.hr_z2_max,
+      hr_z3_max: body.hr_z3_max, hr_z4_max: body.hr_z4_max
     };
     const up = await sb(`/rest/v1/profiles?id=eq.${user.id}`, token, {
       method:'PATCH',
