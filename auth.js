@@ -18,10 +18,10 @@ async function handleAuth(){
   var btn = document.getElementById('authBtn');
   btn.disabled = true;
   try{
-    var res = await fetch('/api/auth-' + (authMode==='login'?'login':'signup'), {
+    var res = await fetch('/api/auth', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({email:email, password:password})
+      body: JSON.stringify({action: authMode, email:email, password:password})
     });
     var data = await res.json();
     if(!res.ok || !data.access_token){
