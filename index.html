@@ -160,6 +160,19 @@
     </div>
 
     <div class="section-card">
+      <div class="section-label">Heart rate zones</div>
+      <div class="hr-zone-rows">
+        <div class="hr-zone-row"><span class="hr-zone-tag" style="color:#60a5fa">Z1</span><span class="hr-zone-arrow">up to</span><input id="hrz1" type="number" inputmode="numeric" class="num-input" placeholder="bpm"></div>
+        <div class="hr-zone-row"><span class="hr-zone-tag" style="color:#34d399">Z2</span><span class="hr-zone-arrow">up to</span><input id="hrz2" type="number" inputmode="numeric" class="num-input" placeholder="bpm"></div>
+        <div class="hr-zone-row"><span class="hr-zone-tag" style="color:#fbbf24">Z3</span><span class="hr-zone-arrow">up to</span><input id="hrz3" type="number" inputmode="numeric" class="num-input" placeholder="bpm"></div>
+        <div class="hr-zone-row"><span class="hr-zone-tag" style="color:#f97316">Z4</span><span class="hr-zone-arrow">up to</span><input id="hrz4" type="number" inputmode="numeric" class="num-input" placeholder="bpm"></div>
+        <div class="hr-zone-row"><span class="hr-zone-tag" style="color:#ef4444">Z5</span><span class="hr-zone-arrow">above Z4</span></div>
+      </div>
+      <button class="ghost-btn" onclick="fetchStravaZones()">Use Strava zones</button>
+      <div id="zonesMsg" class="hint"></div>
+    </div>
+
+    <div class="section-card">
       <div class="section-label">Training phase</div>
       <div class="pill-row wrap" id="phasePills"></div>
     </div>
