@@ -466,7 +466,7 @@ async function handleImportFile(ev){
     r.onerror=rej; r.readAsDataURL(file);
   });
   try{
-    const data=await api('/api/import-session',{method:'POST',body:JSON.stringify({
+    const data=await api('/api/ai',{method:'POST',body:JSON.stringify({mode:'screenshot',
       image:b64, media_type:file.type||'image/png', workout_type:daySessions[i].workout_type
     })});
     const s=daySessions[i], x=data.extracted||{};
@@ -503,7 +503,7 @@ async function checkStravaStatus(){
   const el=document.getElementById('stravaStatus'), btn=document.getElementById('stravaBtn');
   if(!el) return;
   try{
-    const d=await api('/api/strava-status');
+    const d=await api('/api/strava?action=status');
     if(d.connected){ el.textContent='Strava connected'; btn.textContent='Reconnect Strava'; }
     else { el.textContent='Not connected'; btn.textContent='Connect Strava'; }
   }catch(e){ el.textContent=''; }
@@ -515,7 +515,7 @@ async function fetchStravaZones(){
   const msg=document.getElementById('zonesMsg');
   msg.textContent='Fetching from Strava…';
   try{
-    const d=await api('/api/strava-zones');
+    const d=await api('/api/strava?action=zones');
     const b=d.boundaries||{};
     if(b.hr_z1_max!=null) document.getElementById('hrz1').value=b.hr_z1_max;
     if(b.hr_z2_max!=null) document.getElementById('hrz2').value=b.hr_z2_max;
@@ -532,7 +532,7 @@ async function maybeAutoFillZones(){
   if(!allEmpty) return;
   autoZoneAttempted=true;
   try{
-    const st=await api('/api/strava-status');
+    const st=await api('/api/strava?action=status');
     if(!st.connected) return;
     await fetchStravaZones();
   }catch(e){}
@@ -551,7 +551,7 @@ async function openStravaModal(i){
   modal.style.display='flex';
   list.innerHTML='<div class="empty-state">Loading activities…</div>';
   try{
-    const d=await api('/api/strava-import?action=list');
+    const d=await api('/api/strava?action=list');
     if(!d.activities||!d.activities.length){ list.innerHTML='<div class="empty-state">No recent Strava activities. Connect Strava in Settings first.</div>'; return; }
     list.innerHTML=d.activities.map(a=>`
       <div class="strava-item">
@@ -569,7 +569,7 @@ async function importStravaActivity(id){
   const list=document.getElementById('stravaList');
   list.innerHTML='<div class="empty-state">Importing…</div>';
   try{
-    const d=await api('/api/strava-import?action=detail&id='+id);
+    const d=await api('/api/strava?action=detail&id='+id);
     const x=d.session||{}, s=daySessions[stravaTarget];
     s.workout_type='endurance';
     if(x.subtypes&&x.subtypes.length) s.subtypes=x.subtypes;
@@ -601,7 +601,7 @@ async function extractFromText(i){
   const msg=document.getElementById('saveMsg');
   msg.textContent='Reading workout text…';
   try{
-    const d=await api('/api/extract-hyrox-text',{method:'POST',body:JSON.stringify({text})});
+    const d=await api('/api/ai',{method:'POST',body:JSON.stringify({mode:'text',text})});
     const x=d.extracted||{}, s=daySessions[i];
     const map=['ski_erg_m','sled_push_m','sled_pull_m','burpees_reps','row_erg_m','farmers_m','lunges_m','wallballs_reps'];
     map.forEach(k=>{ if(x[k]!=null) s.stations[k]=x[k]; });
