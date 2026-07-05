@@ -27,6 +27,8 @@ module.exports = async function handler(req, res){
       hr_z1_max: body.hr_z1_max, hr_z2_max: body.hr_z2_max,
       hr_z3_max: body.hr_z3_max, hr_z4_max: body.hr_z4_max
     };
+    if(body.onboarded !== undefined) profileFields.onboarded = body.onboarded;
+    if(body.streak_target !== undefined) profileFields.streak_target = body.streak_target;
     const up = await sb(`/rest/v1/profiles?id=eq.${user.id}`, token, {
       method:'PATCH',
       headers:{ 'Prefer':'return=representation' },
