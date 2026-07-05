@@ -936,6 +936,15 @@ function setStatsPeriod(p){
 }
 function shiftStatsPeriod(n){ statsAnchor=shiftAnchor(statsPeriod,statsAnchor,n); loadStats(); }
 
+/* stacked single-line chart for stats (items: [{label,value,color}]) */
+function statStackedLine(items){
+  const tot=items.reduce((a,x)=>a+x.value,0);
+  if(tot<=0) return '';
+  const segs=items.map(x=>x.value>0?`<div class="s-zline-seg" style="width:${x.value/tot*100}%;background:${x.color}"></div>`:'').join('');
+  const lbls=items.map(x=>{const p=Math.round(x.value/tot*100);return p>0?`<span style="color:${x.color}">${x.label} ${p}%</span>`:''}).join('');
+  return `<div class="s-zline">${segs}</div><div class="s-zline-lbls">${lbls}</div>`;
+}
+
 async function loadStats(){
   const [start,end]=periodRange(statsPeriod,statsAnchor);
   document.getElementById('statsPeriodLabel').textContent=periodLabel(statsPeriod,start,end);
@@ -978,49 +987,46 @@ async function loadStats(){
 
   let html=`<div class="stat-hero">${tiles.map(t=>`<div class="stat-tile"><div class="v">${t.v}</div><div class="l">${t.l}</div></div>`).join('')}</div>`;
 
-  // 1 — training split
+  // 1 — training split (stacked line)
   const spTot=st.splitMin.endurance+st.splitMin.hyrox+st.splitMin.strength;
   if(spTot>0){
-    const rows=[['Endurance',st.splitMin.endurance],['Hyrox',st.splitMin.hyrox],['Strength',st.splitMin.strength]];
     html+=`<div class="section-card"><div class="chart-title">Training split</div>`+
-      rows.map(r=>`<div class="hbar-row"><div class="hbar-tag">${r[0]}</div>
-        <div class="hbar-track"><div class="hbar-fill" style="width:${Math.round(r[1]/spTot*100)}%"></div></div>
-        <div class="hbar-val">${hm(r[1])}</div></div>`).join('')+`</div>`;
+      statStackedLine([
+        {label:'Endurance',value:st.splitMin.endurance,color:SPLIT_COLORS.endurance},
+        {label:'Hyrox',value:st.splitMin.hyrox,color:SPLIT_COLORS.hyrox},
+        {label:'Strength',value:st.splitMin.strength,color:SPLIT_COLORS.strength},
+      ])+`</div>`;
   }
 
-  // 2 — overall time in zones (% only)
+  // 2 — overall time in zones (stacked line)
   const zTot=st.zoneMin.reduce((a,b)=>a+b,0);
   if(zTot>0){
     html+=`<div class="section-card"><div class="chart-title">Time in zones</div>`+
-      st.zoneMin.map((m,z)=>{const p=Math.round(m/zTot*100);return `<div class="hbar-row"><div class="hbar-tag" style="color:${ZONE_COLORS[z]}">Z${z+1}</div>
-        <div class="hbar-track"><div class="hbar-fill" style="width:${p}%;background:${ZONE_COLORS[z]}"></div></div>
-        <div class="hbar-val">${p}%</div></div>`;}).join('')+`</div>`;
+      statStackedLine(st.zoneMin.map((m,z)=>({label:'Z'+(z+1),value:m,color:ZONE_COLORS[z]})))+`</div>`;
   }
 
-  // 3 — run zones (% only)
+  // 3 — run zones (stacked line)
   const rzTot=st.runZoneMin.reduce((a,b)=>a+b,0);
   if(rzTot>0){
     html+=`<div class="section-card"><div class="chart-title">Run — time in zones</div>`+
-      st.runZoneMin.map((m,z)=>{const p=Math.round(m/rzTot*100);return `<div class="hbar-row"><div class="hbar-tag" style="color:${ZONE_COLORS[z]}">Z${z+1}</div>
-        <div class="hbar-track"><div class="hbar-fill" style="width:${p}%;background:${ZONE_COLORS[z]}"></div></div>
-        <div class="hbar-val">${p}%</div></div>`;}).join('')+`</div>`;
+      statStackedLine(st.runZoneMin.map((m,z)=>({label:'Z'+(z+1),value:m,color:ZONE_COLORS[z]})))+`</div>`;
   }
 
-  // 4 — hyrox stations
-  const stationTiles=STATIONS.filter(x=>st.stations[x.k]>0);
-  if(stationTiles.length){
-    html+=`<div class="section-card"><div class="chart-title">Hyrox stations</div><div class="station-grid">`+
-      stationTiles.map(x=>`<div class="stat-tile" style="border:none;padding:8px 2px;box-shadow:none"><div class="v">${fmtNum(st.stations[x.k])}<small>${x.unit}</small></div><div class="l">${x.label}</div></div>`).join('')+
-      `</div></div>`;
-  }
-
-  // 5 — training time buckets
-  const buckets=bucketize(statsPeriod==='custom'?'week':statsPeriod, start, end, st.perDayMin);
-  if(buckets.some(b=>b.v>0)){
-    const max=Math.max(...buckets.map(b=>b.v));
-    html+=`<div class="section-card"><div class="chart-title">Training time</div><div class="vbars">`+
-      buckets.map(b=>`<div class="vbar-col"><div class="vbar" style="height:${max?Math.max(2,Math.round(b.v/max*100)):2}%"></div><div class="vbar-lbl">${b.l}</div></div>`).join('')+
-      `</div></div>`;
+  // 4 — hyrox stations: all 8, race order, ranked bars
+  {
+    const maxSt=Math.max(...STATIONS.map(x=>st.stations[x.k]),1);
+    const anySt=STATIONS.some(x=>st.stations[x.k]>0);
+    if(anySt){
+      html+=`<div class="section-card"><div class="chart-title">Hyrox stations</div>`+
+        STATIONS.map(x=>{
+          const v=st.stations[x.k]||0;
+          return `<div class="station-row">
+            <div class="station-name">${x.label}</div>
+            <div class="station-track"><div class="station-fill" style="width:${Math.max(v/maxSt*100, v>0?2:0)}%"></div></div>
+            <div class="station-val">${fmtNum(v)}<small>${x.unit}</small></div>
+          </div>`;
+        }).join('')+`</div>`;
+    }
   }
 
   // 6 — daily pulse (load + physiology per day)
@@ -1031,6 +1037,14 @@ async function loadStats(){
 
 /* ---- daily pulse chart: bars = min/day, RPE max on top, dots = HRV / readiness / resting HR ---- */
 const READY_COLORS={drained:'#ef4444',steady:'#fbbf24',primed:'#34d399'};
+/* bar shade: light grey (easy) -> near-black (hard), monochrome */
+function rpeShade(rpe){
+  if(!rpe) return '#e7e5df';                    // rest / no RPE: faint
+  const t=Math.min(Math.max((rpe-1)/9,0),1);    // 1..10 -> 0..1
+  const from=[217,215,209], to=[15,15,14];
+  const c=from.map((f,i)=>Math.round(f+(to[i]-f)*t));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
 function pulseChartHTML(sessions,phys,start,end){
   const perDayMin={}, perDayRpe={};
   sessions.forEach(s=>{
@@ -1088,15 +1102,16 @@ function pulseChartHTML(sessions,phys,start,end){
 
   const max=Math.max(...cols.map(c=>c.min),1);
   const inner=cols.map(c=>`<div class="pulse-col">
-      <div class="pulse-rpe">${c.rpe||''}</div>
-      <div class="pulse-barwrap"><div class="pulse-bar" style="height:${Math.max(2,Math.round(c.min/max*100))}%"></div></div>
+      <div class="pulse-hours">${c.min>0?(c.min/60).toFixed(1):''}</div>
+      <div class="pulse-barwrap"><div class="pulse-bar" style="height:${Math.max(2,Math.round(c.min/max*100))}%;background:${rpeShade(c.rpe)}"></div></div>
       <div class="pulse-lbl">${c.lbl}</div>
       <div class="pulse-dots">${c.dots.map(d=>`<div class="pulse-dot" style="background:${d}"></div>`).join('')}</div>
+      <div class="pulse-rpe">${c.rpe||''}</div>
     </div>`).join('');
 
   const legend = weekly
-    ? `<div class="pulse-legend"><span><i style="background:#34d399"></i>HRV balanced</span><span><i style="background:#f97316"></i>HRV unbalanced</span><span>Number = max RPE</span></div>`
-    : `<div class="pulse-legend"><span><i style="background:#34d399"></i>Good</span><span><i style="background:#fbbf24"></i>Mid</span><span><i style="background:#f97316"></i>Off</span><span>Dots: HRV · Readiness · Resting HR</span><span>Number = max RPE</span></div>`;
+    ? `<div class="pulse-legend"><span><i style="background:#34d399"></i>HRV balanced</span><span><i style="background:#f97316"></i>HRV unbalanced</span><span>Bar shade = intensity · top = hours · bottom = max RPE</span></div>`
+    : `<div class="pulse-legend"><span><i style="background:#34d399"></i>Good</span><span><i style="background:#fbbf24"></i>Mid</span><span><i style="background:#f97316"></i>Off</span><span>Dots: HRV · Readiness · Resting HR</span><span>Bar shade = intensity · top = hours · bottom = max RPE</span></div>`;
 
   return `<div class="section-card"><div class="chart-title">Daily load & recovery</div>
     <div class="pulse-scroll"><div class="pulse-chart" style="min-width:${cols.length>14?cols.length*13:0}px">${inner}</div></div>${legend}</div>`;
@@ -1340,35 +1355,18 @@ function renderPeriodCard(card,togWrap,sessions,phys,start,end){
   }
   const spTot=st.splitMin.endurance+st.splitMin.hyrox+st.splitMin.strength;
   if(shareToggles['split'] && spTot>0){
-    inner+=`<div class="c-chart-lbl">Training split</div>
-      <div class="c-donut-row">
-        <canvas id="donutCanvas" width="180" height="180" style="width:90px;height:90px"></canvas>
-        <div class="c-donut-legend">${[['Endurance',st.splitMin.endurance,'#60a5fa'],['Hyrox',st.splitMin.hyrox,'#fbbf24'],['Strength',st.splitMin.strength,'#ef4444']]
-          .filter(r=>r[1]>0)
-          .map(r=>`<div class="c-leg-row"><div class="c-leg-dot" style="background:${r[2]}"></div><div class="c-leg-txt">${r[0]}</div><div class="c-leg-pct">${Math.round(r[1]/spTot*100)}%</div></div>`).join('')}
-        </div></div>`;
+    const items=[
+      {label:'Endurance',value:st.splitMin.endurance,color:SPLIT_COLORS.endurance},
+      {label:'Hyrox',value:st.splitMin.hyrox,color:SPLIT_COLORS.hyrox},
+      {label:'Strength',value:st.splitMin.strength,color:SPLIT_COLORS.strength},
+    ];
+    const segs=items.map(x=>x.value>0?`<div class="c-zline-seg" style="width:${x.value/spTot*100}%;background:${x.color}"></div>`:'').join('');
+    const lbls=items.map(x=>{const p=Math.round(x.value/spTot*100);return p>0?`<span style="color:${x.color}">${x.label} ${p}%</span>`:''}).join('');
+    inner+=`<div class="c-chart-lbl">Training split</div><div class="c-zline">${segs}</div><div class="c-zline-lbls">${lbls}</div>`;
   }
   inner+=`<div class="c-brand">HYROX TRAINING DATA${levelTag()}</div>`;
   card.innerHTML=inner;
-
-  if(shareToggles['split'] && spTot>0) drawDonut(st.splitMin,spTot);
 }
-function drawDonut(split,total){
-  const cv=document.getElementById('donutCanvas'); if(!cv) return;
-  const ctx=cv.getContext('2d');
-  ctx.clearRect(0,0,180,180);
-  const segs=[[split.endurance,'#60a5fa'],[split.hyrox,'#fbbf24'],[split.strength,'#ef4444']].filter(s=>s[0]>0);
-  let a=-Math.PI/2;
-  segs.forEach(seg=>{
-    const sweep=seg[0]/total*Math.PI*2;
-    ctx.beginPath();
-    ctx.arc(90,90,72,a+0.03,a+sweep-0.03);
-    ctx.strokeStyle=seg[1]; ctx.lineWidth=20; ctx.lineCap='round';
-    ctx.stroke();
-    a+=sweep;
-  });
-}
-
 /* ---- EXPORT ---- */
 async function renderCardPNG(){
   const card=document.getElementById('card');
