@@ -5,6 +5,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>Hyrox Training Data</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -38,6 +41,7 @@
       </div>
     </div>
     <div id="weekStrip" class="week-strip"></div>
+    <div id="streakChip" class="streak-chip" style="display:none"></div>
 
     <div id="sessionsWrap"></div>
     <button id="addSessionBtn" class="ghost-btn" onclick="addSession()">+ Add session</button>
@@ -129,6 +133,14 @@
       <div id="sharePeriodLabel" class="stats-period-label">—</div>
       <button class="strip-arrow" onclick="shiftSharePeriod(1)">›</button>
     </div>
+    <div id="dayCardPicker" class="pill-row" style="display:none;margin-top:10px"></div>
+    <div class="style-row">
+      <div class="pill-row">
+        <button id="styleGlass" class="pill" onclick="setCardStyle('glass')">Glass</button>
+        <button id="styleClear" class="pill" onclick="setCardStyle('clear')">Transparent</button>
+      </div>
+      <div id="fontSwatches" class="swatch-row" style="display:none"></div>
+    </div>
     <div id="shareToggles" class="share-toggles"></div>
     <div class="card-stage">
       <div id="card"></div>
@@ -148,6 +160,8 @@
         <div class="macro-field"><label>Weight kg</label><input id="setWeight" type="number" inputmode="decimal" step="0.1"></div>
       </div>
       <div class="hint">Weight and height changes are recorded over time.</div>
+      <div class="section-sublabel">Weekly training target</div>
+      <div class="pill-row" id="targetPills"></div>
     </div>
 
     <div class="section-card">
@@ -191,6 +205,12 @@
         <div id="stravaStatus" class="hint" style="margin-top:0">Checking Strava…</div>
       </div>
       <button id="stravaBtn" class="ghost-btn" onclick="connectStrava()">Connect Strava</button>
+      <div class="section-sublabel">Import past activities</div>
+      <div class="pill-row">
+        <button class="pill" onclick="bulkImport(7)">Last 7 days</button>
+        <button class="pill" onclick="bulkImport(30)">Last 30 days</button>
+      </div>
+      <div id="bulkMsg" class="hint"></div>
     </div>
 
     <div class="section-card">
@@ -234,6 +254,50 @@
       <button class="mini-btn" onclick="closeStravaModal()">Close</button>
     </div>
     <div id="stravaList" class="strava-list"></div>
+  </div>
+</div>
+
+<!-- Paste workout modal (Fitr / coach programs) -->
+<div id="pasteModal" class="strava-modal" style="display:none">
+  <div class="strava-sheet">
+    <div class="strava-sheet-head">
+      <div class="section-label" style="margin:0">Paste workout</div>
+      <button class="mini-btn" onclick="closePasteModal()">Close</button>
+    </div>
+    <div class="hint" style="margin:0 0 10px">Paste the workout text from Fitr, your coach, or anywhere — the fields fill automatically.</div>
+    <textarea id="pasteText" class="text-input" style="min-height:140px" placeholder="e.g. 4 rounds: 250m ski, 50m sled push 102kg, 20 burpee broad jumps…"></textarea>
+    <button class="cta" style="margin-top:12px" onclick="runPasteExtract()">Fill session</button>
+    <div id="pasteMsg" class="hint"></div>
+  </div>
+</div>
+
+<!-- Onboarding wizard -->
+<div id="wizard" class="wizard" style="display:none">
+  <div class="wizard-inner">
+    <div class="brand-mark" style="margin-bottom:30px">HYROX TRAINING DATA</div>
+
+    <div id="wizStep1" class="wiz-step">
+      <div class="wiz-title">Your training,<br>already in here.</div>
+      <div class="wiz-sub">Connect Strava and your last 30 days of training appear instantly — stats, zones, everything.</div>
+      <button class="cta" onclick="wizConnectStrava()">Connect Strava</button>
+      <button class="ghost-btn" onclick="wizGoto(3)">I'll log manually</button>
+    </div>
+
+    <div id="wizStep2" class="wiz-step" style="display:none">
+      <div class="wiz-title">Importing<br>your training…</div>
+      <div class="wiz-progress"><div id="wizBar" class="wiz-bar"></div></div>
+      <div id="wizFeed" class="wiz-feed"></div>
+    </div>
+
+    <div id="wizStep3" class="wiz-step" style="display:none">
+      <div class="wiz-title">Set your target.</div>
+      <div class="wiz-sub">Training days per week — this powers your streak.</div>
+      <div class="pill-row" id="wizTargetPills" style="justify-content:center;margin-bottom:22px"></div>
+      <div class="wiz-sub">Next race, if you have one.</div>
+      <input id="wizRaceName" class="text-input" type="text" placeholder="Race name (optional)">
+      <input id="wizRaceDate" class="text-input" type="date">
+      <button class="cta" onclick="finishWizard()">Start training</button>
+    </div>
   </div>
 </div>
 
