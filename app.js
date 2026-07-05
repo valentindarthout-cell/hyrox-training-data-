@@ -74,6 +74,8 @@ async function enterApp(){
   await loadDay(selectedDate);
   await refreshWeekDots();
   checkStravaStatus();
+  loadTrailing();          // streak + level (last 84 days)
+  maybeStartWizard();
 }
 if(getToken()) enterApp();
 
@@ -153,7 +155,8 @@ async function loadDay(ds){
         stations:{ski_erg_m:row.ski_erg_m??'',sled_push_m:row.sled_push_m??'',sled_pull_m:row.sled_pull_m??'',
           burpees_reps:row.burpees_reps??'',row_erg_m:row.row_erg_m??'',farmers_m:row.farmers_m??'',
           lunges_m:row.lunges_m??'',wallballs_reps:row.wallballs_reps??''},
-        compromised_run_km:row.compromised_run_km??''
+        compromised_run_km:row.compromised_run_km??'',
+        strava_id:row.strava_id||null
       });
     });
     dayPhys = (d.physiology||[])[0] || {};
@@ -179,7 +182,7 @@ function renderSessions(){
   const wrap=document.getElementById('sessionsWrap');
   wrap.innerHTML = daySessions.map((s,i)=>sessionHTML(s,i)).join('');
   document.getElementById('addSessionBtn').style.display = daySessions.length<3?'block':'none';
-  daySessions.forEach((s,i)=>{ autoPace(i); updateZoneUI(i); });
+  daySessions.forEach((s,i)=>{ autoPace(i); updateZoneUI(i); maybeAutoRpe(i); });
   updateSaveState();
 }
 
@@ -210,7 +213,7 @@ function sessionHTML(s,i){
     <div class="metric-field"><label>Active kcal</label>
       <input type="number" inputmode="numeric" value="${esc(s.kcal)}" oninput="upd(${i},'kcal',this.value)"></div>
     <div class="metric-field"><label>RPE /10</label>
-      <input type="number" inputmode="numeric" min="1" max="10" value="${esc(s.rpe)}" oninput="upd(${i},'rpe',this.value)"></div>`;
+      <input id="rpe_${i}" class="${s._rpeAuto?'rpe-auto':''}" type="number" inputmode="numeric" min="1" max="10" value="${esc(s.rpe)}" oninput="upd(${i},'rpe',this.value)"></div>`;
 
   let hyroxBlock='';
   if(s.workout_type==='hyrox'){
@@ -239,6 +242,7 @@ function sessionHTML(s,i){
       <div class="session-title">Session ${i+1}</div>
       <div class="session-actions">
         <button class="mini-btn" onclick="startImport(${i})">AI import</button>
+        <button class="mini-btn" onclick="openPasteModal(${i})">Paste</button>
         <button class="mini-btn" onclick="openStravaModal(${i})">Strava</button>
         ${daySessions.length>1?`<button class="mini-btn" onclick="removeSession(${i})">Remove</button>`:''}
       </div>
@@ -265,7 +269,14 @@ function sessionHTML(s,i){
 }
 
 function esc(v){ return v===null||v===undefined?'':String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
-function upd(i,k,v){ daySessions[i][k]=v; if(['duration_min','volume'].includes(k)) autoPace(i); }
+function upd(i,k,v){
+  daySessions[i][k]=v;
+  if(['duration_min','volume'].includes(k)) autoPace(i);
+  if(k==='rpe'){
+    daySessions[i]._rpeAuto=false;
+    const el=document.getElementById('rpe_'+i); if(el) el.classList.remove('rpe-auto');
+  }
+}
 function updStation(i,k,v){ daySessions[i].stations[k]=v; }
 function setType(i,t){ const s=daySessions[i]; s.workout_type=t; s.subtypes=[]; s.pace=''; renderSessions(); }
 function toggleSub(i,o,multi){
@@ -327,7 +338,31 @@ function mmss(totalSec){
 function stepZone(i,z,delta){
   const s=daySessions[i];
   s.zones[z]=Math.max(0,Math.min(100,(s.zones[z]||0)+delta));
-  updateZoneUI(i); updateSaveState();
+  updateZoneUI(i); maybeAutoRpe(i); updateSaveState();
+}
+/* RPE = weighted zone intensity: (Z1·2 + Z2·4 + Z3·6 + Z4·8 + Z5·10)/100
+   Overrides: Z5 ≥ 10% → min 9 · Z4+Z5 ≥ 40% → min 7 · floor 3.
+   Fills only when zones total 100% and RPE is empty or was auto-set. */
+function autoRpeFromZones(z){
+  if(z.reduce((a,b)=>a+b,0)!==100) return null;
+  let r=Math.round((z[0]*2+z[1]*4+z[2]*6+z[3]*8+z[4]*10)/100);
+  if(z[4]>=10) r=Math.max(r,9);
+  else if(z[3]+z[4]>=40) r=Math.max(r,7);
+  return Math.min(Math.max(r,3),10);
+}
+function maybeAutoRpe(i){
+  const s=daySessions[i];
+  const wasManual = s.rpe!=='' && s.rpe!=null && !s._rpeAuto;
+  if(wasManual) return;
+  const auto=autoRpeFromZones(s.zones);
+  const el=document.getElementById('rpe_'+i);
+  if(auto!=null){
+    s.rpe=auto; s._rpeAuto=true;
+    if(el){ el.value=auto; el.classList.add('rpe-auto'); }
+  }else if(s._rpeAuto){
+    s.rpe=''; s._rpeAuto=false;
+    if(el){ el.value=''; el.classList.remove('rpe-auto'); }
+  }
 }
 function updateZoneUI(i){
   const s=daySessions[i];
@@ -428,7 +463,8 @@ async function saveDay(){
       sled_pull_m:intOrNull(s.stations.sled_pull_m), burpees_reps:intOrNull(s.stations.burpees_reps),
       row_erg_m:intOrNull(s.stations.row_erg_m), farmers_m:intOrNull(s.stations.farmers_m),
       lunges_m:intOrNull(s.stations.lunges_m), wallballs_reps:intOrNull(s.stations.wallballs_reps),
-      compromised_run_km:numOrNull(s.compromised_run_km)
+      compromised_run_km:numOrNull(s.compromised_run_km),
+      strava_id:s.strava_id||null
     })),
     physiology:{
       sleep_hours:parseFloat(document.getElementById('sleepVal').textContent)||null,
@@ -510,6 +546,21 @@ async function checkStravaStatus(){
 }
 function connectStrava(){
   window.location.href = '/api/strava-connect?token='+encodeURIComponent(getToken());
+}
+async function bulkImport(days){
+  const msg=document.getElementById('bulkMsg');
+  msg.textContent=`Importing last ${days} days from Strava…`;
+  try{
+    const d=await api('/api/strava?action=bulk&days='+days);
+    if(d.message){ msg.textContent=d.message; }
+    else{
+      msg.textContent=`Imported ${d.imported} session${d.imported===1?'':'s'}`+
+        (d.skipped?` · ${d.skipped} skipped (already imported or day full)`:'');
+    }
+    datesWithData.clear();
+    await loadDay(selectedDate);
+    await refreshWeekDots();
+  }catch(e){ msg.textContent='Import failed — '+e.message; }
 }
 async function fetchStravaZones(){
   const msg=document.getElementById('zonesMsg');
@@ -609,6 +660,182 @@ async function extractFromText(i){
     renderSessions();
     msg.textContent='Stations filled — review and adjust'; setTimeout(()=>msg.textContent='',2500);
   }catch(e){ msg.textContent='Could not read the text — '+e.message; }
+}
+
+/* ================================================================
+   ONBOARDING WIZARD
+================================================================ */
+function maybeStartWizard(){
+  const p=new URLSearchParams(location.search);
+  const resuming = localStorage.getItem('htd_wiz')==='1' && p.get('strava')==='connected';
+  if(resuming){
+    history.replaceState({},'',location.pathname);
+    showWizard(); wizGoto(2); wizRunImport();
+    return;
+  }
+  if(profile && profile.onboarded===false) { showWizard(); wizGoto(1); }
+}
+function showWizard(){
+  document.getElementById('wizard').style.display='flex';
+  const pills=document.getElementById('wizTargetPills');
+  if(!pills.innerHTML){
+    pills.innerHTML=[3,4,5,6].map(n=>`<button class="pill ${n===4?'active':''}" data-n="${n}" onclick="wizPickTarget(${n})">${n} days</button>`).join('');
+  }
+}
+let wizTarget=4;
+function wizPickTarget(n){
+  wizTarget=n;
+  document.querySelectorAll('#wizTargetPills .pill').forEach(b=>b.classList.toggle('active',+b.dataset.n===n));
+}
+function wizGoto(n){
+  [1,2,3].forEach(i=>document.getElementById('wizStep'+i).style.display=i===n?'block':'none');
+}
+function wizConnectStrava(){
+  localStorage.setItem('htd_wiz','1');
+  connectStrava();
+}
+async function wizRunImport(){
+  const bar=document.getElementById('wizBar');
+  const feed=document.getElementById('wizFeed');
+  bar.style.width='18%';
+  const drift=setInterval(()=>{
+    const w=parseFloat(bar.style.width)||18;
+    if(w<82) bar.style.width=(w+4)+'%';
+  },700);
+  let d=null;
+  try{ d=await api('/api/strava?action=bulk&days=30'); }catch(e){}
+  clearInterval(drift);
+  bar.style.width='100%';
+  const items=(d&&d.items)||[];
+  if(items.length){
+    let i=0;
+    const tick=setInterval(()=>{
+      if(i>=items.length||i>=8){ clearInterval(tick); setTimeout(()=>wizGoto(3),900); return; }
+      const it=items[i++];
+      feed.insertAdjacentHTML('beforeend',
+        `<div class="wiz-feed-item"><b>${esc(it.name||cap(it.type))}</b> — ${fmtShort(it.date)}</div>`);
+    },350);
+  }else{
+    feed.innerHTML='<div class="wiz-feed-item">No recent activities found — you can log manually or import later from Settings.</div>';
+    setTimeout(()=>wizGoto(3),1600);
+  }
+}
+async function finishWizard(){
+  const raceName=document.getElementById('wizRaceName').value.trim();
+  const raceDate=document.getElementById('wizRaceDate').value;
+  try{
+    await api('/api/profile',{method:'PUT',body:JSON.stringify({
+      onboarded:true, streak_target:wizTarget,
+      race_name:raceName||null, race_date:raceDate||null,
+      training_phase:profile.training_phase||null,
+      race_divisions:profile.race_divisions||[]
+    })});
+  }catch(e){}
+  profile.onboarded=true; profile.streak_target=wizTarget;
+  if(raceName) profile.race_name=raceName;
+  if(raceDate) profile.race_date=raceDate;
+  localStorage.removeItem('htd_wiz');
+  document.getElementById('wizard').style.display='none';
+  datesWithData.clear();
+  await loadDay(selectedDate);
+  await refreshWeekDots();
+  loadTrailing();
+  fillSettings();
+}
+
+/* ================================================================
+   STREAK + LEVEL (rolling 84 days)
+================================================================ */
+const LEVELS=[
+  {min:15, name:'Elite'},
+  {min:11, name:'Performance'},
+  {min:8,  name:'Competitor'},
+  {min:5,  name:'Committed'},
+  {min:0,  name:'Foundation'},
+];
+let athleteLevel=null, athleteStreak=0;
+async function loadTrailing(){
+  const end=todayStr(), start=addDays(mondayOf(end),-7*12);
+  let d;
+  try{ d=await api(`/api/get-data?start=${start}&end=${end}`); }catch(e){ return; }
+  const sessions=d.sessions||[];
+  // group by week (Mon-based)
+  const weekDays={}, weekMin={};
+  sessions.forEach(s=>{
+    const w=mondayOf(s.session_date);
+    (weekDays[w]=weekDays[w]||new Set()).add(s.session_date);
+    weekMin[w]=(weekMin[w]||0)+(s.duration_min||0);
+  });
+  // level: avg weekly hours over the 12 full trailing weeks
+  const weeks=[];
+  for(let i=0;i<12;i++) weeks.push(addDays(mondayOf(end),-7*(11-i)));
+  const avgH=weeks.reduce((a,w)=>a+(weekMin[w]||0),0)/12/60;
+  athleteLevel=LEVELS.find(l=>avgH>=l.min).name;
+  // streak: consecutive weeks meeting target, counting current week if already met
+  const target=profile.streak_target||4;
+  const curWeek=mondayOf(end);
+  let streak=0;
+  if((weekDays[curWeek]||new Set()).size>=target) streak++;
+  let w=addDays(curWeek,-7);
+  while((weekDays[w]||new Set()).size>=target){ streak++; w=addDays(w,-7); }
+  athleteStreak=streak;
+  renderStreakChip();
+}
+function renderStreakChip(){
+  const el=document.getElementById('streakChip');
+  if(!el) return;
+  if(athleteLevel==null){ el.style.display='none'; return; }
+  const parts=[];
+  if(athleteStreak>0) parts.push(`<b>${athleteStreak}-week streak</b>`);
+  parts.push(`<b>${athleteLevel}</b>`);
+  el.innerHTML=parts.join('<span class="dot"></span>');
+  el.style.display='flex';
+  // sunday recap nudge
+  if(new Date().getDay()===0 && !document.getElementById('sundayNudge')){
+    el.insertAdjacentHTML('afterend',
+      `<button id="sundayNudge" class="ghost-btn" style="margin-top:2px" onclick="switchTab('share');setSharePeriod('week')">Your week is ready to share →</button>`);
+  }
+}
+function levelTag(){
+  return athleteLevel? `<span class="c-level">${athleteLevel}</span>` : '';
+}
+
+/* ================================================================
+   PASTE WORKOUT (Fitr / coach programs)
+================================================================ */
+let pasteTarget=null;
+function openPasteModal(i){
+  pasteTarget=i;
+  document.getElementById('pasteText').value='';
+  document.getElementById('pasteMsg').textContent='';
+  document.getElementById('pasteModal').style.display='flex';
+}
+function closePasteModal(){ document.getElementById('pasteModal').style.display='none'; pasteTarget=null; }
+async function runPasteExtract(){
+  if(pasteTarget==null) return;
+  const text=document.getElementById('pasteText').value;
+  const msg=document.getElementById('pasteMsg');
+  if(!text.trim()){ msg.textContent='Paste the workout first.'; return; }
+  msg.textContent='Reading workout…';
+  const i=pasteTarget, s=daySessions[i];
+  try{
+    const d=await api('/api/ai',{method:'POST',body:JSON.stringify({mode:'text',text,workout_type:s.workout_type})});
+    const x=d.extracted||{};
+    if(x.name) s.name=x.name;
+    if(x.duration_min!=null) s.duration_min=x.duration_min;
+    if(x.distance_km!=null && s.workout_type==='endurance') s.volume=x.distance_km;
+    if(x.workout_description) s.workout_desc=x.workout_description;
+    if(s.workout_type==='hyrox'){
+      ['ski_erg_m','sled_push_m','sled_pull_m','burpees_reps','row_erg_m','farmers_m','lunges_m','wallballs_reps'].forEach(k=>{
+        if(x[k]!=null) s.stations[k]=x[k];
+      });
+      if(x.compromised_run_km!=null) s.compromised_run_km=x.compromised_run_km;
+    }
+    renderSessions();
+    closePasteModal();
+    const sm=document.getElementById('saveMsg');
+    sm.textContent='Session filled — review and adjust'; setTimeout(()=>sm.textContent='',2500);
+  }catch(e){ msg.textContent='Could not read it — '+e.message; }
 }
 
 /* ================================================================
@@ -723,28 +950,35 @@ async function loadStats(){
   }
   const st=computeStats(sessions,phys,start,end);
 
+  // previous equivalent period for comparison deltas
+  let prev=null;
+  if(statsPeriod!=='custom'){
+    const spanDays=Math.round((parseDate(end)-parseDate(start))/86400000)+1;
+    const pStart=addDays(start,-spanDays), pEnd=addDays(start,-1);
+    try{
+      const pd=await api(`/api/get-data?start=${pStart}&end=${pEnd}`);
+      if((pd.sessions||[]).length) prev=computeStats(pd.sessions||[],pd.physiology||[],pStart,pEnd);
+    }catch(e){}
+  }
+  const delta=(cur,pv)=>{
+    if(prev==null||pv==null||pv===0||cur==null) return '';
+    const pct=Math.round((cur-pv)/pv*100);
+    if(pct===0) return '';
+    return `<span class="stat-delta ${pct>0?'up':'down'}">${pct>0?'↑':'↓'} ${Math.abs(pct)}%</span>`;
+  };
+
   const tiles=[
-    {v:hm(st.totalMin), l:'Total training time'},
-    {v:st.sessionCount, l:'Sessions'},
-    {v:st.runKm.toFixed(1)+'<small>km</small>', l:`Run volume · ${st.compPct}% compromised`},
-    {v:st.endExKm.toFixed(1)+'<small>km</small>', l:'Endurance excl. run · '+hm(st.endExMin)},
-    st.avgKcalDay!=null?{v:st.avgKcalDay+'<small>kcal</small>', l:'Avg active kcal / day'}:null,
-    st.avgSleep!=null?{v:st.avgSleep.toFixed(1)+'<small>h</small>', l:'Avg sleep'}:null,
-    st.avgRpe!=null?{v:st.avgRpe.toFixed(1)+'<small>/10</small>', l:'Avg RPE'}:null,
+    {v:hm(st.totalMin)+delta(st.totalMin,prev&&prev.totalMin), l:'Total training time'},
+    {v:st.sessionCount+delta(st.sessionCount,prev&&prev.sessionCount), l:'Sessions'},
+    {v:st.runKm.toFixed(1)+'<small>km</small>'+delta(st.runKm,prev&&prev.runKm), l:`Run volume · ${st.compPct}% compromised`},
+    {v:st.endExKm.toFixed(1)+'<small>km</small>'+delta(st.endExKm,prev&&prev.endExKm), l:'Endurance excl. run · '+hm(st.endExMin)},
+    st.avgKcalDay!=null?{v:st.avgKcalDay+'<small>kcal</small>'+delta(st.avgKcalDay,prev&&prev.avgKcalDay), l:'Avg active kcal / day'}:null,
+    st.avgSleep!=null?{v:st.avgSleep.toFixed(1)+'<small>h</small>'+delta(st.avgSleep,prev&&prev.avgSleep), l:'Avg sleep'}:null,
   ].filter(Boolean);
 
   let html=`<div class="stat-hero">${tiles.map(t=>`<div class="stat-tile"><div class="v">${t.v}</div><div class="l">${t.l}</div></div>`).join('')}</div>`;
 
-  // time in zones
-  const zTot=st.zoneMin.reduce((a,b)=>a+b,0);
-  if(zTot>0){
-    html+=`<div class="section-card"><div class="chart-title">Time in zones</div>`+
-      st.zoneMin.map((m,z)=>`<div class="hbar-row"><div class="hbar-tag" style="color:${ZONE_COLORS[z]}">Z${z+1}</div>
-        <div class="hbar-track"><div class="hbar-fill" style="width:${zTot?Math.round(m/zTot*100):0}%;background:${ZONE_COLORS[z]}"></div></div>
-        <div class="hbar-val">${hm(m)}</div></div>`).join('')+`</div>`;
-  }
-
-  // split
+  // 1 — training split
   const spTot=st.splitMin.endurance+st.splitMin.hyrox+st.splitMin.strength;
   if(spTot>0){
     const rows=[['Endurance',st.splitMin.endurance],['Hyrox',st.splitMin.hyrox],['Strength',st.splitMin.strength]];
@@ -754,16 +988,33 @@ async function loadStats(){
         <div class="hbar-val">${hm(r[1])}</div></div>`).join('')+`</div>`;
   }
 
-  // run zones
+  // 2 — overall time in zones (% only)
+  const zTot=st.zoneMin.reduce((a,b)=>a+b,0);
+  if(zTot>0){
+    html+=`<div class="section-card"><div class="chart-title">Time in zones</div>`+
+      st.zoneMin.map((m,z)=>{const p=Math.round(m/zTot*100);return `<div class="hbar-row"><div class="hbar-tag" style="color:${ZONE_COLORS[z]}">Z${z+1}</div>
+        <div class="hbar-track"><div class="hbar-fill" style="width:${p}%;background:${ZONE_COLORS[z]}"></div></div>
+        <div class="hbar-val">${p}%</div></div>`;}).join('')+`</div>`;
+  }
+
+  // 3 — run zones (% only)
   const rzTot=st.runZoneMin.reduce((a,b)=>a+b,0);
   if(rzTot>0){
     html+=`<div class="section-card"><div class="chart-title">Run — time in zones</div>`+
-      st.runZoneMin.map((m,z)=>`<div class="hbar-row"><div class="hbar-tag" style="color:${ZONE_COLORS[z]}">Z${z+1}</div>
-        <div class="hbar-track"><div class="hbar-fill" style="width:${Math.round(m/rzTot*100)}%;background:${ZONE_COLORS[z]}"></div></div>
-        <div class="hbar-val">${hm(m)}</div></div>`).join('')+`</div>`;
+      st.runZoneMin.map((m,z)=>{const p=Math.round(m/rzTot*100);return `<div class="hbar-row"><div class="hbar-tag" style="color:${ZONE_COLORS[z]}">Z${z+1}</div>
+        <div class="hbar-track"><div class="hbar-fill" style="width:${p}%;background:${ZONE_COLORS[z]}"></div></div>
+        <div class="hbar-val">${p}%</div></div>`;}).join('')+`</div>`;
   }
 
-  // volume per day (week) / per bucket
+  // 4 — hyrox stations
+  const stationTiles=STATIONS.filter(x=>st.stations[x.k]>0);
+  if(stationTiles.length){
+    html+=`<div class="section-card"><div class="chart-title">Hyrox stations</div><div class="station-grid">`+
+      stationTiles.map(x=>`<div class="stat-tile" style="border:none;padding:8px 2px;box-shadow:none"><div class="v">${fmtNum(st.stations[x.k])}<small>${x.unit}</small></div><div class="l">${x.label}</div></div>`).join('')+
+      `</div></div>`;
+  }
+
+  // 5 — training time buckets
   const buckets=bucketize(statsPeriod==='custom'?'week':statsPeriod, start, end, st.perDayMin);
   if(buckets.some(b=>b.v>0)){
     const max=Math.max(...buckets.map(b=>b.v));
@@ -772,14 +1023,83 @@ async function loadStats(){
       `</div></div>`;
   }
 
-  // stations
-  const stationTiles=STATIONS.filter(x=>st.stations[x.k]>0);
-  if(stationTiles.length){
-    html+=`<div class="section-card"><div class="chart-title">Hyrox stations</div><div class="station-grid">`+
-      stationTiles.map(x=>`<div class="stat-tile" style="border:none;padding:8px 2px"><div class="v">${fmtNum(st.stations[x.k])}<small>${x.unit}</small></div><div class="l">${x.label}</div></div>`).join('')+
-      `</div></div>`;
-  }
+  // 6 — daily pulse (load + physiology per day)
+  html+=pulseChartHTML(sessions,phys,start,end);
+
   wrap.innerHTML=html;
+}
+
+/* ---- daily pulse chart: bars = min/day, RPE max on top, dots = HRV / readiness / resting HR ---- */
+const READY_COLORS={drained:'#ef4444',steady:'#fbbf24',primed:'#34d399'};
+function pulseChartHTML(sessions,phys,start,end){
+  const perDayMin={}, perDayRpe={};
+  sessions.forEach(s=>{
+    perDayMin[s.session_date]=(perDayMin[s.session_date]||0)+(s.duration_min||0);
+    if(s.rpe) perDayRpe[s.session_date]=Math.max(perDayRpe[s.session_date]||0,s.rpe);
+  });
+  const physByDay={};
+  phys.forEach(p=>{ physByDay[p.day]=p; });
+
+  const spanDays=Math.round((parseDate(end)-parseDate(start))/86400000)+1;
+  const weekly = spanDays>62;   // year & long custom ranges aggregate weekly
+
+  // resting HR baseline = period average
+  const rhrVals=phys.filter(p=>p.resting_hr!=null).map(p=>Number(p.resting_hr));
+  const rhrAvg=rhrVals.length? rhrVals.reduce((a,b)=>a+b,0)/rhrVals.length : null;
+  const hrvOK=v=>profile&&profile.hrv_low!=null&&profile.hrv_high!=null&&v!=null
+    ? (v>=profile.hrv_low&&v<=profile.hrv_high?'#34d399':'#f97316') : '#e2e0da';
+  const rhrColor=v=>{
+    if(v==null||rhrAvg==null) return '#e2e0da';
+    if(v<=rhrAvg) return '#34d399';
+    if(v<=rhrAvg+5) return '#fbbf24';
+    return '#f97316';
+  };
+
+  let cols=[];
+  if(!weekly){
+    for(let i=0;i<spanDays;i++){
+      const ds=addDays(start,i);
+      const p=physByDay[ds]||{};
+      cols.push({
+        lbl: spanDays<=7 ? ['M','T','W','T','F','S','S'][(parseDate(ds).getDay()+6)%7] : String(parseDate(ds).getDate()),
+        min:perDayMin[ds]||0, rpe:perDayRpe[ds]||null,
+        dots:[hrvOK(p.hrv!=null?Number(p.hrv):null),
+              p.readiness?READY_COLORS[p.readiness]||'#e2e0da':'#e2e0da',
+              rhrColor(p.resting_hr!=null?Number(p.resting_hr):null)]
+      });
+    }
+  }else{
+    let ws=mondayOf(start), wi=1;
+    while(ws<=end){
+      let min=0,rpe=0,hrvSum=0,hrvN=0;
+      for(let i=0;i<7;i++){
+        const ds=addDays(ws,i);
+        min+=perDayMin[ds]||0;
+        if(perDayRpe[ds]) rpe=Math.max(rpe,perDayRpe[ds]);
+        const p=physByDay[ds];
+        if(p&&p.hrv!=null){ hrvSum+=Number(p.hrv); hrvN++; }
+      }
+      cols.push({ lbl:'W'+wi, min, rpe:rpe||null,
+        dots:[hrvOK(hrvN?hrvSum/hrvN:null)] });   // weekly mode: HRV only (weekly average)
+      ws=addDays(ws,7); wi++;
+    }
+  }
+  if(!cols.some(c=>c.min>0||c.dots.some(d=>d!=='#e2e0da'))) return '';
+
+  const max=Math.max(...cols.map(c=>c.min),1);
+  const inner=cols.map(c=>`<div class="pulse-col">
+      <div class="pulse-rpe">${c.rpe||''}</div>
+      <div class="pulse-barwrap"><div class="pulse-bar" style="height:${Math.max(2,Math.round(c.min/max*100))}%"></div></div>
+      <div class="pulse-lbl">${c.lbl}</div>
+      <div class="pulse-dots">${c.dots.map(d=>`<div class="pulse-dot" style="background:${d}"></div>`).join('')}</div>
+    </div>`).join('');
+
+  const legend = weekly
+    ? `<div class="pulse-legend"><span><i style="background:#34d399"></i>HRV balanced</span><span><i style="background:#f97316"></i>HRV unbalanced</span><span>Number = max RPE</span></div>`
+    : `<div class="pulse-legend"><span><i style="background:#34d399"></i>Good</span><span><i style="background:#fbbf24"></i>Mid</span><span><i style="background:#f97316"></i>Off</span><span>Dots: HRV · Readiness · Resting HR</span><span>Number = max RPE</span></div>`;
+
+  return `<div class="section-card"><div class="chart-title">Daily load & recovery</div>
+    <div class="pulse-scroll"><div class="pulse-chart" style="min-width:${cols.length>14?cols.length*13:0}px">${inner}</div></div>${legend}</div>`;
 }
 function fmtNum(n){ n=Math.round(n); return n>=10000? (n/1000).toFixed(1)+'k' : String(n); }
 
@@ -810,7 +1130,7 @@ function bucketize(period,start,end,perDay){
    SHARE — IG CARDS
 ================================================================ */
 function setSharePeriod(p){
-  sharePeriod=p; shareToggles={};
+  sharePeriod=p; shareToggles={}; shareDayCard='day';
   document.querySelectorAll('.share-pill').forEach(b=>b.classList.toggle('active',b.dataset.p===p));
   loadShare();
 }
@@ -829,24 +1149,66 @@ async function loadShare(){
   renderShareCard();
 }
 
-function tOn(key,label){
-  if(!(key in shareToggles)) shareToggles[key]=true;
-  return shareToggles[key];
-}
 function toggleShare(key){ shareToggles[key]=!shareToggles[key]; renderShareCard(); }
 
+/* ---- card style system ---- */
+const FONT_SWATCHES=['#FFFFFF','#0F0F0E','#F4EFE6','#C9C5BB','#C8A96A'];
+let cardStyle=localStorage.getItem('htd_card_style')||'glass';
+let cardInk=localStorage.getItem('htd_card_ink')||'#FFFFFF';
+function setCardStyle(s){
+  cardStyle=s; localStorage.setItem('htd_card_style',s);
+  applyCardStyle(); renderShareCard();
+}
+function setCardInk(c){
+  cardInk=c; localStorage.setItem('htd_card_ink',c);
+  applyCardStyle(); renderShareCard();
+}
+function hexToRgba(hex,a){
+  const h=hex.replace('#','');
+  const r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function applyCardStyle(){
+  const card=document.getElementById('card');
+  document.getElementById('styleGlass').classList.toggle('active',cardStyle==='glass');
+  document.getElementById('styleClear').classList.toggle('active',cardStyle==='clear');
+  const sw=document.getElementById('fontSwatches');
+  sw.style.display=cardStyle==='clear'?'flex':'none';
+  sw.innerHTML=FONT_SWATCHES.map(c=>`<button class="swatch ${c===cardInk?'active':''}" style="background:${c}" onclick="setCardInk('${c}')"></button>`).join('');
+  card.className=cardStyle;
+  const ink = cardStyle==='glass' ? '#F2F0EC' : cardInk;
+  card.style.setProperty('--ci-hi',ink);
+  card.style.setProperty('--ci-mid',hexToRgba(ink,.62));
+  card.style.setProperty('--ci-low',hexToRgba(ink,.36));
+  card.style.setProperty('--ci-faint',hexToRgba(ink,.22));
+  card.style.setProperty('--ci-line',hexToRgba(ink,.12));
+  card.style.setProperty('--ci-track',hexToRgba(ink,.1));
+}
+
+let shareDayCard='day';   // 'day' or session array index
 function renderShareCard(){
   const card=document.getElementById('card');
   const togWrap=document.getElementById('shareToggles');
+  const picker=document.getElementById('dayCardPicker');
+  applyCardStyle();
   if(!shareData){ card.innerHTML=''; return; }
   const {sessions,phys,start,end}=shareData;
   if(sessions.length===0){
-    card.innerHTML='<div style="text-align:center;color:rgba(255,255,255,.45);font-size:12px;padding:40px 0">Nothing logged in this period.</div>';
-    togWrap.innerHTML=''; return;
+    card.innerHTML='<div style="text-align:center;color:var(--ci-mid);font-size:12px;padding:40px 0">Nothing logged in this period.</div>';
+    togWrap.innerHTML=''; picker.style.display='none'; return;
   }
-  if(sharePeriod==='day') renderDayCard(card,togWrap,sessions,start);
-  else renderPeriodCard(card,togWrap,sessions,phys,start,end);
+  if(sharePeriod==='day'){
+    picker.style.display='flex';
+    picker.innerHTML=[`<button class="pill ${shareDayCard==='day'?'active':''}" onclick="pickDayCard('day')">Day</button>`]
+      .concat(sessions.map((s,i)=>`<button class="pill ${shareDayCard===i?'active':''}" onclick="pickDayCard(${i})">Session ${i+1}</button>`)).join('');
+    if(shareDayCard==='day'||sessions.length===1&&shareDayCard>=sessions.length) renderDaySummaryCard(card,togWrap,sessions,start);
+    else renderSessionCard(card,togWrap,sessions[shareDayCard]||sessions[0],start);
+  }else{
+    picker.style.display='none';
+    renderPeriodCard(card,togWrap,sessions,phys,start,end);
+  }
 }
+function pickDayCard(v){ shareDayCard=v; shareToggles={}; renderShareCard(); }
 
 function metaLine(){
   const bits=[];
@@ -861,66 +1223,81 @@ function metaLine(){
 function logoImg(){
   return profile.logo_url? `<img class="c-logo" src="${profile.logo_url}" crossorigin="anonymous">` : '';
 }
-function cardZones(zoneArr,pctMode){
+/* single-line stacked zone bar */
+function zoneLineBar(zoneArr){
   const tot=zoneArr.reduce((a,b)=>a+b,0);
   if(tot<=0) return '';
-  return `<div class="c-zones">`+zoneArr.map((v,z)=>{
-    const pct=pctMode? v : Math.round(v/tot*100);
-    return `<div class="c-zone-row"><div class="c-zone-tag">Z${z+1}</div>
-      <div class="c-zone-track"><div class="c-zone-fill" style="width:${pct}%;background:${ZONE_COLORS[z]}"></div></div>
-      <div class="c-zone-pct">${pct}%</div></div>`;
-  }).join('')+`</div>`;
+  const segs=zoneArr.map((v,z)=>v>0?`<div class="c-zline-seg" style="width:${v/tot*100}%;background:${ZONE_COLORS[z]}"></div>`:'').join('');
+  const lbls=zoneArr.map((v,z)=>{const p=Math.round(v/tot*100);return p>0?`<span style="color:${ZONE_COLORS[z]}">Z${z+1} ${p}%</span>`:''}).join('');
+  return `<div class="c-zline">${segs}</div><div class="c-zline-lbls">${lbls}</div>`;
 }
 
-/* ---- DAY CARD ---- */
-function sessionBlock(s, compact){
-  const mets=[];
-  if(s.duration_min) mets.push({v:s.duration_min,u:'min',l:'Duration'});
-  if(s.volume) mets.push({v:s.volume,u:s.volume_unit||'km',l:'Volume'});
-  if(s.pace) mets.push({v:s.pace,u:s.pace_unit||'',l:'Avg pace'});
-  if(s.avg_hr) mets.push({v:s.avg_hr,u:'bpm',l:'Avg HR'});
-  if(s.kcal) mets.push({v:s.kcal,u:'kcal',l:'Active'});
+/* ---- DAY SUMMARY CARD (compact: totals + one-line zones) ---- */
+function renderDaySummaryCard(card,togWrap,sessions,dateStr){
+  togWrap.innerHTML='';
+  const totMin=sessions.reduce((a,s)=>a+(s.duration_min||0),0);
+  const runKm=sessions.reduce((a,s)=>{
+    let k=0;
+    if(s.workout_type==='endurance'&&(s.subtypes||[]).some(x=>['Run','Treadmill'].includes(x))&&s.volume_unit!=='steps') k+=parseFloat(s.volume)||0;
+    k+=parseFloat(s.compromised_run_km)||0; return a+k;
+  },0);
+  const kcal=sessions.reduce((a,s)=>a+(s.kcal||0),0);
+  const dz=[0,0,0,0,0];
+  sessions.forEach(s=>{ const zs=[s.zone1,s.zone2,s.zone3,s.zone4,s.zone5]; if(zs.some(z=>z>0)) zs.forEach((z,i)=>dz[i]+=(s.duration_min||0)*(z||0)/100); });
+  const names=sessions.map(s=>s.name).filter(Boolean);
+
+  let inner=`<div class="c-top"><div class="c-date">${fmtDay(dateStr)}</div>${logoImg()}</div>
+    <div class="c-meta">${metaLine()}</div><div class="c-rule"></div>
+    <div class="c-type">${sessions.length>1?sessions.length+' sessions':'Session'}</div>
+    ${names.length?`<div class="c-name">${names.map(esc).join(' · ')}</div>`:''}
+    <div class="c-metrics">
+      <div class="c-metric"><div class="mv">${hm(totMin)}</div><div class="ml">Total time</div></div>
+      ${runKm>0?`<div class="c-metric"><div class="mv">${runKm.toFixed(1)}<small>km</small></div><div class="ml">Run volume</div></div>`:''}
+      ${kcal>0?`<div class="c-metric"><div class="mv">${kcal}<small>kcal</small></div><div class="ml">Active</div></div>`:''}
+    </div>
+    ${zoneLineBar(dz)}
+    <div class="c-brand">HYROX TRAINING DATA${levelTag()}</div>`;
+  card.innerHTML=inner;
+}
+
+/* ---- SESSION CARD (exhaustive, with deselect chips) ---- */
+function renderSessionCard(card,togWrap,s,dateStr){
+  const zones=[s.zone1||0,s.zone2||0,s.zone3||0,s.zone4||0,s.zone5||0];
+  const parts=[
+    {k:'name', l:'Name', show:!!s.name},
+    {k:'desc', l:'Workout', show:!!s.workout_desc},
+    {k:'duration', l:'Duration', show:!!s.duration_min},
+    {k:'volume', l:'Volume', show:!!s.volume},
+    {k:'pace', l:'Pace', show:!!s.pace},
+    {k:'hr', l:'Avg HR', show:!!s.avg_hr},
+    {k:'kcal', l:'Kcal', show:!!s.kcal},
+    {k:'zones', l:'Zones', show:zones.some(z=>z>0)},
+    {k:'rpe', l:'RPE', show:!!s.rpe},
+  ].filter(x=>x.show);
+  togWrap.innerHTML=parts.map(x=>{
+    if(!(x.k in shareToggles)) shareToggles[x.k]=true;
+    return `<button class="tog ${shareToggles[x.k]?'on':''}" onclick="toggleShare('${x.k}')">${x.l}</button>`;
+  }).join('');
+  const on=k=>shareToggles[k];
+
   const typeLbl = s.workout_type==='hyrox'?'Hyrox / Mix':cap(s.workout_type||'');
   const sub=(s.subtypes||[]).join(' · ');
-  return `<div class="c-session">
-    <div class="c-type">${typeLbl}${sub?' — '+sub:''}</div>
-    ${s.name?`<div class="c-name">${esc(s.name)}</div>`:''}
-    ${s.workout_desc&&!compact?`<div class="c-desc">${esc(s.workout_desc)}</div>`:''}
-    <div class="c-metrics">${mets.map(m=>`<div class="c-metric"><div class="mv">${m.v}<small>${m.u}</small></div><div class="ml">${m.l}</div></div>`).join('')}</div>
-    ${cardZones([s.zone1||0,s.zone2||0,s.zone3||0,s.zone4||0,s.zone5||0],true)}
-    ${s.rpe?`<div class="c-rpe"><span class="rl">RPE</span><span class="rv">${s.rpe}/10</span></div>`:''}
-  </div>`;
-}
-function renderDayCard(card,togWrap,sessions,dateStr){
-  togWrap.innerHTML='';
-  const multi=sessions.length>1;
+  const mets=[];
+  if(on('duration')&&s.duration_min) mets.push({v:s.duration_min,u:'min',l:'Duration'});
+  if(on('volume')&&s.volume) mets.push({v:s.volume,u:s.volume_unit||'km',l:'Volume'});
+  if(on('pace')&&s.pace) mets.push({v:s.pace,u:s.pace_unit||'',l:'Avg pace'});
+  if(on('hr')&&s.avg_hr) mets.push({v:s.avg_hr,u:'bpm',l:'Avg HR'});
+  if(on('kcal')&&s.kcal) mets.push({v:s.kcal,u:'kcal',l:'Active'});
+
   let inner=`<div class="c-top"><div class="c-date">${fmtDay(dateStr)}</div>${logoImg()}</div>
-    <div class="c-meta">${metaLine()}</div><div class="c-rule"></div>`;
-
-  if(sessions.length===2){
-    inner+=`<div class="c-cols">${sessions.map(s=>`<div class="c-col">${sessionBlock(s,true)}</div>`).join('')}</div>`;
-  }else{
-    inner+=sessions.map((s,i)=>(i>0?'<div class="c-rule"></div>':'')+sessionBlock(s, sessions.length>1)).join('');
-  }
-
-  if(multi){
-    const totMin=sessions.reduce((a,s)=>a+(s.duration_min||0),0);
-    const runKm=sessions.reduce((a,s)=>{
-      let k=0;
-      if(s.workout_type==='endurance'&&(s.subtypes||[]).some(x=>['Run','Treadmill'].includes(x))&&s.volume_unit!=='steps') k+=parseFloat(s.volume)||0;
-      k+=parseFloat(s.compromised_run_km)||0; return a+k;
-    },0);
-    const kcal=sessions.reduce((a,s)=>a+(s.kcal||0),0);
-    const dz=[0,0,0,0,0];
-    sessions.forEach(s=>{ const zs=[s.zone1,s.zone2,s.zone3,s.zone4,s.zone5]; if(zs.some(z=>z>0)) zs.forEach((z,i)=>dz[i]+=(s.duration_min||0)*(z||0)/100); });
-    inner+=`<div class="c-rule"></div><div class="c-type">Day totals</div>
-      <div class="c-metrics">
-        <div class="c-metric"><div class="mv">${hm(totMin)}</div><div class="ml">Total time</div></div>
-        ${runKm>0?`<div class="c-metric"><div class="mv">${runKm.toFixed(1)}<small>km</small></div><div class="ml">Run volume</div></div>`:''}
-        ${kcal>0?`<div class="c-metric"><div class="mv">${kcal}<small>kcal</small></div><div class="ml">Active</div></div>`:''}
-      </div>${cardZones(dz,false)}`;
-  }
-  inner+=`<div class="c-brand">HYROX TRAINING DATA</div>`;
+    <div class="c-meta">${metaLine()}</div><div class="c-rule"></div>
+    <div class="c-type">${typeLbl}${sub?' — '+sub:''}</div>
+    ${on('name')&&s.name?`<div class="c-name">${esc(s.name)}</div>`:''}
+    ${on('desc')&&s.workout_desc?`<div class="c-desc">${esc(s.workout_desc)}</div>`:''}
+    ${mets.length?`<div class="c-metrics">${mets.map(m=>`<div class="c-metric"><div class="mv">${m.v}<small>${m.u}</small></div><div class="ml">${m.l}</div></div>`).join('')}</div>`:''}
+    ${on('zones')?zoneLineBar(zones):''}
+    ${on('rpe')&&s.rpe?`<div class="c-rpe"><span class="rl">RPE</span><span class="rv">${s.rpe}/10</span></div>`:''}
+    <div class="c-brand">HYROX TRAINING DATA${levelTag()}</div>`;
   card.innerHTML=inner;
 }
 
@@ -933,7 +1310,6 @@ function renderPeriodCard(card,togWrap,sessions,phys,start,end){
     {k:'run', v:st.runKm.toFixed(1)+'<small>km</small>', l:'Run volume', show:st.runKm>0},
     {k:'kcal', v:st.avgKcalDay!=null?st.avgKcalDay+'<small>kcal</small>':'', l:'Avg kcal / day', show:st.avgKcalDay!=null},
     {k:'sleep', v:st.avgSleep!=null?st.avgSleep.toFixed(1)+'<small>h</small>':'', l:'Avg sleep', show:st.avgSleep!=null},
-    {k:'rpe', v:st.avgRpe!=null?st.avgRpe.toFixed(1)+'<small>/10</small>':'', l:'Avg RPE', show:st.avgRpe!=null},
   ].filter(x=>x.show);
   const charts=[
     {k:'zones', l:'Zones', show:st.zoneMin.some(m=>m>0)},
@@ -952,7 +1328,7 @@ function renderPeriodCard(card,togWrap,sessions,phys,start,end){
     <div class="c-kpis">${kpis.filter(x=>shareToggles[x.k]).map(x=>`<div class="c-kpi"><div class="kv">${x.v}</div><div class="kl">${x.l}</div></div>`).join('')}</div>`;
 
   if(shareToggles['zones'] && st.zoneMin.some(m=>m>0)){
-    inner+=`<div class="c-chart-lbl">Time in zones</div>`+cardZones(st.zoneMin,false);
+    inner+=`<div class="c-chart-lbl">Time in zones</div>`+zoneLineBar(st.zoneMin);
   }
   if(shareToggles['bars']){
     const buckets=bucketize(sharePeriod,start,end,st.perDayMin);
@@ -972,7 +1348,7 @@ function renderPeriodCard(card,togWrap,sessions,phys,start,end){
           .map(r=>`<div class="c-leg-row"><div class="c-leg-dot" style="background:${r[2]}"></div><div class="c-leg-txt">${r[0]}</div><div class="c-leg-pct">${Math.round(r[1]/spTot*100)}%</div></div>`).join('')}
         </div></div>`;
   }
-  inner+=`<div class="c-brand">HYROX TRAINING DATA</div>`;
+  inner+=`<div class="c-brand">HYROX TRAINING DATA${levelTag()}</div>`;
   card.innerHTML=inner;
 
   if(shareToggles['split'] && spTot>0) drawDonut(st.splitMin,spTot);
@@ -1040,7 +1416,14 @@ function triggerDownload(blob){
    SETTINGS
 ================================================================ */
 let phaseSel=null, divisionSel=[];
+let targetSel=4;
+function pickTarget(n){
+  targetSel=n;
+  document.querySelectorAll('#targetPills .pill').forEach(b=>b.classList.toggle('active',+b.dataset.n===n));
+}
 function buildSettingsPills(){
+  document.getElementById('targetPills').innerHTML=[3,4,5,6].map(n=>
+    `<button class="pill" data-n="${n}" onclick="pickTarget(${n})">${n} days</button>`).join('');
   document.getElementById('phasePills').innerHTML=PHASES.map(p=>
     `<button class="pill" data-v="${p}" onclick="pickPhase('${p}')">${p}</button>`).join('');
   document.getElementById('divisionPills').innerHTML=DIVISIONS.map(d=>
@@ -1068,6 +1451,8 @@ function fillSettings(){
   document.getElementById('hrz4').value=profile.hr_z4_max??'';
   document.getElementById('setRaceName').value=profile.race_name??'';
   document.getElementById('setRaceDate').value=profile.race_date??'';
+  targetSel=profile.streak_target||4;
+  document.querySelectorAll('#targetPills .pill').forEach(b=>b.classList.toggle('active',+b.dataset.n===targetSel));
   phaseSel=profile.training_phase||null;
   divisionSel=(profile.race_divisions||[]).slice(0,3);
   document.querySelectorAll('#phasePills .pill').forEach(b=>b.classList.toggle('active',b.dataset.v===phaseSel));
@@ -1089,6 +1474,7 @@ async function saveSettings(){
     hr_z3_max:intOrNull(document.getElementById('hrz3').value),
     hr_z4_max:intOrNull(document.getElementById('hrz4').value),
     training_phase:phaseSel,
+    streak_target:targetSel,
     race_name:document.getElementById('setRaceName').value||null,
     race_date:document.getElementById('setRaceDate').value||null,
     race_divisions:divisionSel,
