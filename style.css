@@ -155,9 +155,9 @@ textarea.text-input{resize:vertical;min-height:70px}
   border:0.5px solid rgba(255,255,255,.08);
 }
 #card.clear{background:transparent;border:none;-webkit-backdrop-filter:none;backdrop-filter:none}
-.c-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px}
+.c-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:7px}
 .c-date{font-family:var(--font-display);font-size:10px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--ci-hi)}
-.c-logo{max-height:26px;max-width:84px;object-fit:contain}
+.c-logo{max-height:26px;max-width:84px;object-fit:contain;margin-top:-4px}
 .c-meta{font-size:10px;font-weight:600;color:var(--ci-mid);margin-bottom:14px;letter-spacing:.05em;line-height:1.7}
 .c-meta .sep{color:var(--ci-faint);margin:0 6px}
 .c-rule{height:1px;background:var(--ci-line);margin:13px 0 15px}
@@ -281,3 +281,20 @@ textarea.text-input{resize:vertical;min-height:70px}
 .stat-delta{font-family:var(--font-display);font-size:10px;font-weight:600;margin-left:6px}
 .stat-delta.up{color:#0e9f6e}
 .stat-delta.down{color:#d97706}
+
+/* ============ STATS STACKED LINE (matches card style, on light) ============ */
+.s-zline{display:flex;height:7px;border-radius:999px;overflow:hidden;background:#efeee9;margin-top:2px}
+.s-zline-seg{height:100%}
+.s-zline-lbls{display:flex;gap:12px;margin-top:9px;flex-wrap:wrap}
+.s-zline-lbls span{font-family:var(--font-display);font-size:10px;font-weight:600;letter-spacing:.04em}
+
+/* ============ STATION RANKED BARS ============ */
+.station-row{display:flex;align-items:center;gap:12px;margin-bottom:11px}
+.station-name{width:76px;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);flex-shrink:0}
+.station-track{flex:1;height:5px;border-radius:999px;background:#efeee9;overflow:hidden}
+.station-fill{height:100%;border-radius:999px;background:var(--ink)}
+.station-val{width:78px;text-align:right;font-family:var(--font-display);font-size:12px;font-weight:600;flex-shrink:0}
+.station-val small{font-size:9px;font-weight:500;color:var(--muted);margin-left:2px}
+
+/* ============ PULSE hours label ============ */
+.pulse-hours{font-family:var(--font-display);font-size:8px;font-weight:600;color:var(--muted);height:12px}
