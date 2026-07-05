@@ -10,6 +10,7 @@ const ENDURANCE_MODS = ['Run','Echo bike','Bike outdoor','Bike indoor','Ski erg'
 const HYROX_FOCUSES = ['Simulation','Station work','Compromised run','Sled work','Erg work','Technique','Strength endurance'];
 const STRENGTH_FOCUSES = ['Full body','Lower body','Upper body','Strength endurance','Wall balls','Sled push','Sled pull','Grip work','Farmers carry','Core','Burpees'];
 const ZONE_COLORS = ['#60a5fa','#34d399','#fbbf24','#f97316','#ef4444'];
+const SPLIT_COLORS = {endurance:'#60a5fa',hyrox:'#fbbf24',strength:'#ef4444'};
 const STATIONS = [
   {k:'ski_erg_m',   label:'Ski erg',    unit:'m'},
   {k:'sled_push_m', label:'Sled push',  unit:'m'},
