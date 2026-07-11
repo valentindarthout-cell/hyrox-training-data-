@@ -258,6 +258,13 @@ async function saveCoachSettings(){
 }
 if(getToken()) enterApp();
 
+// If another tab in this browser logs into a different account, this tab's
+// session token silently changes underneath it (localStorage is shared across
+// tabs). Force a reload so this tab never acts using a foreign account's token.
+window.addEventListener('storage', function(e){
+  if(e.key === 'htd_token') location.reload();
+});
+
 /* ================================================================
    TAB NAV
 ================================================================ */
