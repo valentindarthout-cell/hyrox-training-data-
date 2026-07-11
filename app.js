@@ -84,6 +84,7 @@ async function enterApp(){
   if(profile.role === 'coach'){ enterCoach(); return; }
   fillSettings();
   renderCoachSection();
+  applyPendingCode();
   await loadDay(selectedDate);
   await refreshWeekDots();
   checkStravaStatus();
@@ -143,12 +144,15 @@ function enterCoach(){
 function coachTab(t){
   document.getElementById('coachHome').style.display = t==='home'?'block':'none';
   document.getElementById('coachAthleteView').style.display='none';
+  document.getElementById('coachProg').style.display = t==='prog'?'block':'none';
   document.getElementById('coachFinance').style.display = t==='finance'?'block':'none';
   document.getElementById('coachSettings').style.display = t==='settings'?'block':'none';
   document.getElementById('cnavHome').classList.toggle('active',t==='home');
+  document.getElementById('cnavProg').classList.toggle('active',t==='prog');
   document.getElementById('cnavFinance').classList.toggle('active',t==='finance');
   document.getElementById('cnavSettings').classList.toggle('active',t==='settings');
   if(t==='finance') loadFinance();
+  if(t==='prog'){ loadTemplates(); if(!coachAthletes.length) api('/api/coach?action=athletes').then(d=>coachAthletes=d.athletes||[]).catch(()=>{}); }
 }
 async function regenCode(){
   try{
@@ -196,6 +200,8 @@ function openAthlete(i){
   document.querySelectorAll('.ca-period').forEach(b=>b.classList.toggle('active',b.dataset.p==='week'));
   document.getElementById('caCustomRange').style.display='none';
   document.getElementById('caPeriodNav').style.display='flex';
+  wlWeek=mondayOf(todayStr());
+  renderWlSection();
   loadCaStats();
 }
 async function saveCrm(){
@@ -250,6 +256,7 @@ function fillCoachSettings(){
   document.getElementById('csDesc').value=profile.program_desc||'';
   document.getElementById('csUrl').value=profile.program_url||'';
   document.getElementById('csCurrency').value=profile.currency||'EUR';
+  loadMyLanding();
   if(profile.logo_url){
     const img=document.getElementById('csLogoPreview');
     img.src=profile.logo_url; img.style.display='block';
@@ -330,6 +337,7 @@ async function refreshWeekDots(){
     (d.physiology||[]).forEach(p=>datesWithData.add(p.day));
   }catch(e){}
   renderWeekStrip();
+  loadAssignments();
 }
 
 /* ================================================================
@@ -366,6 +374,7 @@ async function loadDay(ds){
   if(daySessions.length===0) daySessions=[blankSession()];
   renderSessions();
   fillPhysiology();
+  renderAssigned();
 }
 
 function addSession(){
@@ -746,7 +755,7 @@ async function checkStravaStatus(){
   }catch(e){ el.textContent=''; }
 }
 function connectStrava(){
-  window.location.href = '/api/strava-connect?token='+encodeURIComponent(getToken());
+  window.location.href = '/api/strava?action=connect&token='+encodeURIComponent(getToken());
 }
 async function bulkImport(days){
   const msg=document.getElementById('bulkMsg');
@@ -794,7 +803,21 @@ async function maybeAutoFillZones(){
   if(p.has('strava')){
     history.replaceState({},'',location.pathname);
   }
+  if(p.has('code')){
+    localStorage.setItem('htd_pending_code', p.get('code'));
+    history.replaceState({},'',location.pathname);
+  }
 })();
+async function applyPendingCode(){
+  const code=localStorage.getItem('htd_pending_code');
+  if(!code || coachInfo || (profile&&profile.role==='coach')) { if(code&&profile&&profile.role==='coach') localStorage.removeItem('htd_pending_code'); return; }
+  try{
+    const d=await api('/api/coach',{method:'POST',body:JSON.stringify({action:'join',code})});
+    coachInfo=d.coach||null;
+    localStorage.removeItem('htd_pending_code');
+    renderCoachSection();
+  }catch(e){ localStorage.removeItem('htd_pending_code'); }
+}
 
 let stravaTarget=null;
 async function openStravaModal(i){
@@ -863,6 +886,329 @@ async function extractFromText(i){
   }catch(e){ msg.textContent='Could not read the text — '+e.message; }
 }
 
+
+/* ================================================================
+   COACH — PROGRAMMING (builder, library, assignment)
+================================================================ */
+const EX_UNITS=['reps','m','km','min','s'];
+let wkTemplates=[], wk=null, wkMode='template';   // wk = current builder state
+
+function newWorkout(){
+  wk={id:null,title:'',workout_type:'hyrox',duration_min:60,objective:'',blocks:[{name:'Warm-up',exercises:[]},{name:'Main',exercises:[]}],stations:{}};
+  wkMode='template';
+  openBuilder();
+}
+function openBuilder(){
+  document.getElementById('wkList').style.display='none';
+  document.querySelector('#coachProg .coach-toolbar').style.display='none';
+  document.getElementById('wkBuilder').style.display='block';
+  document.getElementById('wkTitle').value=wk.title||'';
+  document.getElementById('wkDuration').value=wk.duration_min||60;
+  document.getElementById('wkObjective').value=wk.objective||'';
+  document.querySelectorAll('.wk-type').forEach(b=>b.classList.toggle('active',b.dataset.t===wk.workout_type));
+  renderBlocks(); renderWkStations();
+}
+function closeBuilder(){
+  document.getElementById('wkBuilder').style.display='none';
+  document.getElementById('wkList').style.display='grid';
+  document.querySelector('#coachProg .coach-toolbar').style.display='flex';
+  loadTemplates();
+}
+function setWkType(t){
+  wk.workout_type=t;
+  document.querySelectorAll('.wk-type').forEach(b=>b.classList.toggle('active',b.dataset.t===t));
+}
+async function loadTemplates(){
+  const list=document.getElementById('wkList');
+  list.innerHTML='<div class="empty-state">Loading…</div>';
+  try{
+    const d=await api('/api/workouts?action=templates');
+    wkTemplates=d.templates||[];
+  }catch(e){ list.innerHTML='<div class="empty-state">Could not load.</div>'; return; }
+  if(!wkTemplates.length){ list.innerHTML='<div class="empty-state">No workouts yet — create your first or generate one with AI.</div>'; return; }
+  list.innerHTML=wkTemplates.map((t,i)=>`<div class="athlete-card" onclick="editTemplate(${i})">
+    <div class="an">${esc(t.title||'Untitled')}</div>
+    <div class="am">${t.workout_type==='hyrox'?'Hyrox / Mix':cap(t.workout_type||'')} · ${t.duration_min||'—'} min</div>
+    <span class="as active">${(t.blocks||[]).reduce((a,b)=>a+(b.exercises||[]).length,0)} exercises</span>
+  </div>`).join('');
+}
+function editTemplate(i){
+  const t=wkTemplates[i];
+  wk=JSON.parse(JSON.stringify({id:t.id,title:t.title,workout_type:t.workout_type,duration_min:t.duration_min,objective:t.objective,blocks:t.blocks||[],stations:t.stations||{}}));
+  wkMode='template';
+  openBuilder();
+}
+function addBlock(){ wk.blocks.push({name:'Block '+(wk.blocks.length+1),exercises:[]}); renderBlocks(); }
+function delBlock(bi){ wk.blocks.splice(bi,1); renderBlocks(); }
+function addEx(bi){ wk.blocks[bi].exercises.push({name:'',sets:null,qty:null,unit:'reps',load_pct:null,load_ref:null,zone:null,notes:null}); renderBlocks(); }
+function delEx(bi,ei){ wk.blocks[bi].exercises.splice(ei,1); renderBlocks(); }
+function updBlockName(bi,v){ wk.blocks[bi].name=v; }
+function updExLoad(bi,ei,v){
+  const ex=wk.blocks[bi].exercises[ei];
+  if(v===''){ ex.load_pct=null; ex.zone=null; }
+  else if(v.startsWith('I')){ ex.zone=v; ex.load_pct=null; }
+  else { ex.load_pct=parseInt(v); ex.zone=null; }
+}
+function updEx(bi,ei,k,v){
+  const ex=wk.blocks[bi].exercises[ei];
+  if(['sets','load_pct'].includes(k)) ex[k]=v===''?null:parseInt(v);
+  else if(k==='qty') ex[k]=v===''?null:parseFloat(v);
+  else ex[k]=v||null;
+}
+function renderBlocks(){
+  const wrap=document.getElementById('wkBlocks');
+  wrap.innerHTML=wk.blocks.map((b,bi)=>`<div class="wk-block">
+    <div class="wk-block-head">
+      <input value="${esc(b.name)}" oninput="updBlockName(${bi},this.value)">
+      <button class="mini-btn" onclick="delBlock(${bi})">Remove</button>
+    </div>
+    <div class="wk-ex-labels"><span>Exercise</span><span>Sets</span><span>Qty</span><span>Unit</span><span>Load / Zone</span><span>Ref lift</span><span></span></div>
+    ${b.exercises.map((ex,ei)=>`<div class="wk-ex">
+      <input placeholder="e.g. Back squat / Run / Ski erg" value="${esc(ex.name)}" oninput="updEx(${bi},${ei},'name',this.value)">
+      <input type="number" placeholder="—" value="${ex.sets??''}" oninput="updEx(${bi},${ei},'sets',this.value)">
+      <input type="number" step="0.1" placeholder="—" value="${ex.qty??''}" oninput="updEx(${bi},${ei},'qty',this.value)">
+      <select onchange="updEx(${bi},${ei},'unit',this.value)">${EX_UNITS.map(u=>`<option ${ex.unit===u?'selected':''}>${u}</option>`).join('')}</select>
+      <select onchange="updExLoad(${bi},${ei},this.value)">
+        <option value="">—</option>
+        <optgroup label="%1RM">${[60,65,70,75,80,85,90,95].map(p=>`<option value="${p}" ${ex.load_pct===p?'selected':''}>${p}%</option>`).join('')}</optgroup>
+        <optgroup label="Zone">${PACE_ZONES.map(z=>`<option value="${z.z}" ${ex.zone===z.z?'selected':''}>${z.z}</option>`).join('')}</optgroup>
+      </select>
+      <select onchange="updEx(${bi},${ei},'load_ref',this.value)">
+        <option value="">—</option>
+        ${LIFTS.map(l=>`<option value="${l.k}" ${ex.load_ref===l.k?'selected':''}>${l.label}</option>`).join('')}
+      </select>
+      <button class="wk-ex-del" onclick="delEx(${bi},${ei})">×</button>
+    </div>`).join('')}
+    <button class="mini-btn" onclick="addEx(${bi})">+ Exercise</button>
+  </div>`).join('');
+}
+function renderWkStations(){
+  const g=document.getElementById('wkStations');
+  const fields=[{k:'run_km',label:'Run km'},{k:'compromised_run_km',label:'Compromised run km'}]
+    .concat(STATIONS.map(s=>({k:s.k,label:s.label+' '+s.unit})));
+  g.innerHTML=fields.map(f=>`<div class="metric-field"><label>${f.label}</label>
+    <input type="number" step="0.1" value="${wk.stations[f.k]??''}" oninput="wk.stations['${f.k}']=this.value===''?null:parseFloat(this.value)"></div>`).join('');
+}
+function collectBuilder(){
+  wk.title=document.getElementById('wkTitle').value;
+  wk.duration_min=intOrNull(document.getElementById('wkDuration').value);
+  wk.objective=document.getElementById('wkObjective').value;
+}
+async function generateWorkout(){
+  collectBuilder();
+  const msg=document.getElementById('wkGenMsg');
+  if(!wk.objective.trim()){ msg.textContent='Describe the objective first.'; return; }
+  msg.textContent='Generating…';
+  try{
+    const d=await api('/api/ai',{method:'POST',body:JSON.stringify({
+      mode:'workout', duration_min:wk.duration_min, objective:wk.objective, workout_type:wk.workout_type
+    })});
+    const g=d.workout||{};
+    if(g.title && !wk.title) wk.title=g.title;
+    if(Array.isArray(g.blocks)) wk.blocks=g.blocks.map(b=>({name:b.name||'Block',exercises:(b.exercises||[]).map(e=>({
+      name:e.name||'',sets:e.sets??null,qty:e.qty??null,unit:e.unit||'reps',
+      load_pct:e.load_pct??null,load_ref:e.load_ref||null,zone:e.zone||null,notes:e.notes||null
+    }))}));
+    if(g.stations) wk.stations=g.stations;
+    document.getElementById('wkTitle').value=wk.title;
+    renderBlocks(); renderWkStations();
+    msg.textContent='Generated — edit anything, then save';
+    setTimeout(()=>msg.textContent='',3000);
+  }catch(e){ msg.textContent=e.message; }
+}
+async function quantifyWorkout(){
+  collectBuilder();
+  const msg=document.getElementById('wkMsg');
+  const text=wk.blocks.map(b=>b.name+':\n'+b.exercises.map(exToPlainText).join('\n')).join('\n\n');
+  if(!text.trim()){ msg.textContent='Add exercises first.'; return; }
+  msg.textContent='Quantifying…';
+  try{
+    const d=await api('/api/ai',{method:'POST',body:JSON.stringify({mode:'text',text,workout_type:'hyrox'})});
+    const x=d.extracted||{};
+    ['ski_erg_m','sled_push_m','sled_pull_m','burpees_reps','row_erg_m','farmers_m','lunges_m','wallballs_reps','compromised_run_km'].forEach(k=>{
+      if(x[k]!=null) wk.stations[k]=x[k];
+    });
+    renderWkStations();
+    msg.textContent='Volumes updated'; setTimeout(()=>msg.textContent='',2500);
+  }catch(e){ msg.textContent=e.message; }
+}
+function exToPlainText(ex){
+  let s=ex.name||'';
+  if(ex.sets&&ex.qty) s+=' — '+ex.sets+'×'+ex.qty+(ex.unit||'');
+  else if(ex.qty) s+=' — '+ex.qty+(ex.unit||'');
+  if(ex.load_pct) s+=' @'+ex.load_pct+'%';
+  if(ex.zone) s+=' @'+ex.zone;
+  return s;
+}
+async function saveTemplate(){
+  collectBuilder();
+  const msg=document.getElementById('wkMsg');
+  msg.textContent='Saving…';
+  try{
+    if(wkMode==='assignment'){
+      await api('/api/workouts',{method:'POST',body:JSON.stringify({
+        action:'update-assignment', id:wk.assignment_id,
+        title:wk.title, workout_type:wk.workout_type, duration_min:wk.duration_min,
+        objective:wk.objective, blocks:wk.blocks, stations:wk.stations
+      })});
+      msg.textContent='Athlete copy updated';
+    }else{
+      const d=await api('/api/workouts',{method:'POST',body:JSON.stringify({action:'save-template',workout:wk})});
+      if(d.workout) wk.id=d.workout.id;
+      msg.textContent='Saved to library';
+    }
+    setTimeout(()=>msg.textContent='',2500);
+  }catch(e){ msg.textContent=e.message; }
+}
+
+/* ---- assign modal ---- */
+function openAssign(){
+  collectBuilder();
+  if(!wk.id){ document.getElementById('wkMsg').textContent='Save to library first, then assign.'; return; }
+  document.getElementById('assignModal').style.display='flex';
+  document.getElementById('assignDate').value=todayStr();
+  const wrap=document.getElementById('assignAthletes');
+  wrap.innerHTML = coachAthletes.length
+    ? coachAthletes.map((a,i)=>{
+        const nm=[a.first_name,a.last_name].filter(Boolean).join(' ')||a.email;
+        return `<button class="pill" data-i="${i}" onclick="this.classList.toggle('active')">${esc(nm)}</button>`;
+      }).join('')
+    : '<div class="hint">No athletes linked yet.</div>';
+}
+function closeAssign(){ document.getElementById('assignModal').style.display='none'; }
+async function doAssign(){
+  const msg=document.getElementById('assignMsg');
+  const ids=[...document.querySelectorAll('#assignAthletes .pill.active')].map(b=>coachAthletes[+b.dataset.i].id);
+  const date=document.getElementById('assignDate').value;
+  if(!ids.length||!date){ msg.textContent='Pick at least one athlete and a date.'; return; }
+  msg.textContent='Assigning…';
+  try{
+    const d=await api('/api/workouts',{method:'POST',body:JSON.stringify({action:'assign',workout_id:wk.id,athlete_ids:ids,date})});
+    msg.textContent=`Assigned to ${d.assigned} athlete${d.assigned>1?'s':''}`;
+    setTimeout(()=>{ msg.textContent=''; closeAssign(); },1600);
+  }catch(e){ msg.textContent=e.message; }
+}
+
+/* ---- voice dictation for objective ---- */
+let micActive=false, recognition=null;
+function toggleMic(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const btn=document.getElementById('micBtn');
+  if(!SR){ document.getElementById('wkGenMsg').textContent='Voice input not supported in this browser.'; return; }
+  if(micActive){ recognition.stop(); return; }
+  recognition=new SR();
+  recognition.lang='fr-FR';
+  recognition.interimResults=true; recognition.continuous=true;
+  const field=document.getElementById('wkObjective');
+  const base=field.value;
+  recognition.onresult=e=>{
+    let t=''; for(const r of e.results) t+=r[0].transcript;
+    field.value=(base?base+' ':'')+t;
+  };
+  recognition.onend=()=>{ micActive=false; btn.style.background=''; };
+  recognition.start(); micActive=true; btn.style.background='#e7f7ef';
+}
+
+/* ---- coach: week labels + assignments in athlete view ---- */
+const WEEK_LABELS=['Power','Volume','Deload','Taper'];
+let wlWeek=mondayOf(todayStr());
+function shiftWlWeek(n){ wlWeek=addDays(wlWeek,7*n); renderWlSection(); }
+async function renderWlSection(){
+  document.getElementById('wlWeekLabel').textContent=fmtShort(wlWeek)+' – '+fmtShort(addDays(wlWeek,6));
+  let assignments=[], label=null;
+  try{
+    const d=await api(`/api/workouts?action=assignments&athlete_id=${caCurrent.id}&start=${wlWeek}&end=${addDays(wlWeek,6)}`);
+    assignments=d.assignments||[];
+  }catch(e){}
+  // current label: fetch via week_labels through assignments endpoint? simplest: keep local cache set on click
+  const pills=document.getElementById('wlPills');
+  pills.innerHTML=WEEK_LABELS.map(l=>`<button class="pill ${caWlCache[caCurrent.id+wlWeek]===l?'active':''}" onclick="setWeekLabel('${l}')">${l}</button>`).join('')+
+    `<button class="pill" onclick="setWeekLabel(null)">Clear</button>`;
+  const wrap=document.getElementById('caAssignments');
+  wrap.innerHTML = assignments.length
+    ? assignments.map(a=>`<div class="hbar-row" style="align-items:center">
+        <div style="flex:1;font-size:12px"><b>${esc(a.title||'Workout')}</b> · ${fmtShort(a.date)} · ${a.status==='done'?'Done'+(a.difficulty?' '+a.difficulty+'/10':''):'Assigned'}</div>
+        <button class="mini-btn" onclick='editAssignment(${JSON.stringify(JSON.stringify(a))})'>Edit</button>
+        <button class="mini-btn" onclick="deleteAssignment('${a.id}')">Remove</button>
+      </div>`).join('')
+    : '<div class="hint">No workouts assigned this week.</div>';
+}
+let caWlCache={};
+async function setWeekLabel(l){
+  try{
+    await api('/api/workouts',{method:'POST',body:JSON.stringify({action:'week-label',athlete_id:caCurrent.id,week_start:wlWeek,label:l})});
+    caWlCache[caCurrent.id+wlWeek]=l;
+    renderWlSection();
+  }catch(e){}
+}
+function editAssignment(json){
+  const a=JSON.parse(json);
+  wk={id:a.workout_id,assignment_id:a.id,title:a.title,workout_type:a.workout_type,duration_min:a.duration_min,objective:a.objective||'',blocks:a.blocks||[],stations:a.stations||{}};
+  wkMode='assignment';
+  coachTab('prog');
+  openBuilder();
+  document.getElementById('wkMsg').textContent='Editing '+([caCurrent.first_name,caCurrent.last_name].filter(Boolean).join(' ')||caCurrent.email)+"'s copy — saving updates only their workout";
+}
+async function deleteAssignment(id){
+  try{
+    await api('/api/workouts',{method:'POST',body:JSON.stringify({action:'delete-assignment',id})});
+    renderWlSection();
+  }catch(e){}
+}
+
+/* ---- coach: landing page publisher ---- */
+let lpPhotoUrl=null;
+async function loadMyLanding(){
+  try{
+    const d=await api('/api/workouts?action=my-landing');
+    const L=d.landing;
+    if(L){
+      document.getElementById('lpSlug').value=L.slug||'';
+      document.getElementById('lpHeadline').value=L.headline||'';
+      document.getElementById('lpBio').value=L.bio||'';
+      document.getElementById('lpIg').value=L.ig_url||'';
+      lpPhotoUrl=L.photo_url||null;
+      if(L.photo_url){ const p=document.getElementById('lpPhotoPreview'); p.src=L.photo_url; p.style.display='block'; }
+      if(L.published) showLpUrl(L.slug);
+    }
+  }catch(e){}
+}
+function showLpUrl(slug){
+  document.getElementById('lpUrl').innerHTML='Live at <b>'+location.origin+'/c/'+slug+'</b>';
+}
+async function uploadLandingPhoto(ev){
+  const file=ev.target.files[0]; ev.target.value='';
+  if(!file) return;
+  const msg=document.getElementById('lpMsg');
+  msg.textContent='Uploading…';
+  const b64=await new Promise((res,rej)=>{
+    const r=new FileReader(); r.onload=()=>res(r.result.split(',')[1]); r.onerror=rej; r.readAsDataURL(file);
+  });
+  try{
+    const d=await api('/api/upload-logo',{method:'POST',body:JSON.stringify({image:b64,content_type:file.type||'image/jpeg',kind:'photo'})});
+    lpPhotoUrl=d.url||d.logo_url;
+    const p=document.getElementById('lpPhotoPreview'); p.src=lpPhotoUrl; p.style.display='block';
+    msg.textContent='Photo uploaded'; setTimeout(()=>msg.textContent='',2000);
+  }catch(e){ msg.textContent=e.message; }
+}
+async function publishLanding(){
+  const msg=document.getElementById('lpMsg');
+  msg.textContent='Publishing…';
+  try{
+    const d=await api('/api/workouts',{method:'POST',body:JSON.stringify({
+      action:'publish-landing',
+      slug:document.getElementById('lpSlug').value||null,
+      headline:document.getElementById('lpHeadline').value||null,
+      bio:document.getElementById('lpBio').value||null,
+      ig_url:document.getElementById('lpIg').value||null,
+      photo_url:lpPhotoUrl, published:true
+    })});
+    msg.textContent='Published';
+    document.getElementById('lpSlug').value=d.landing.slug;
+    showLpUrl(d.landing.slug);
+    setTimeout(()=>msg.textContent='',2500);
+  }catch(e){ msg.textContent=e.message; }
+}
 /* ================================================================
    COACH — FINANCE
 ================================================================ */
@@ -961,6 +1307,62 @@ async function loadFinance(){
   wrap.innerHTML=html;
 }
 
+
+/* ================================================================
+   RUN PACES (VMA / Karvonen) + LIFT MAXES
+================================================================ */
+const PACE_ZONES=[
+  {z:'I1',name:'Endurance fondamentale',vma:[40,60], hrr:[null,70]},
+  {z:'I2',name:'Capacité aérobie 1',    vma:[60,75], hrr:[70,80]},
+  {z:'I3',name:'Capacité aérobie 2',    vma:[75,82], hrr:[80,90]},
+  {z:'I4',name:'Seuil anaérobie',       vma:[82,90], hrr:[90,94]},
+  {z:'I5',name:'PMA / VMA',             vma:[90,100],hrr:[94,97]},
+  {z:'I6',name:'Anaérobie lactique',    vma:[100,120],hrr:[97,100]},
+];
+const LIFTS=[
+  {k:'deadlift',label:'Deadlift'},{k:'back_squat',label:'Back squat'},
+  {k:'front_squat',label:'Front squat'},{k:'bench',label:'Bench'},{k:'strict_press',label:'Strict press'}
+];
+function paceFromSpeed(kmh){ if(!kmh||kmh<=0) return '—'; return mmss(3600/kmh/60*60); }
+function splitTime(distKm,kmh){ if(!kmh) return '—'; const s=distKm/kmh*3600; return s>=60? mmss(s) : Math.round(s)+'s'; }
+function karvonen(pct){ 
+  const r=parseFloat(document.getElementById('setFcRest').value)||profile.fc_rest,
+        m=parseFloat(document.getElementById('setFcMax').value)||profile.fc_max;
+  if(!r||!m) return null;
+  return Math.round(r+pct/100*(m-r));
+}
+function renderPaces(){
+  const el=document.getElementById('pacesTable'); if(!el) return;
+  const vma=parseFloat(document.getElementById('setVma').value);
+  if(!vma){ el.innerHTML='<div class="hint">Enter your VMA to see your zone paces.</div>'; return; }
+  let rows='';
+  PACE_ZONES.forEach(pz=>{
+    const sLo=vma*pz.vma[0]/100, sHi=vma*pz.vma[1]/100;
+    const hrLo=pz.hrr[0]!=null?karvonen(pz.hrr[0]):null, hrHi=karvonen(pz.hrr[1]);
+    const hr=hrHi? (hrLo? hrLo+'–'+hrHi : '≤'+hrHi) : '—';
+    const mid=(sLo+sHi)/2;
+    rows+=`<tr>
+      <td class="pz">${pz.z}</td>
+      <td>${pz.vma[0]}–${pz.vma[1]}%</td>
+      <td class="pv">${paceFromSpeed(sHi)}–${paceFromSpeed(sLo)}</td>
+      <td class="pv">${hr}</td>
+      <td class="pv">${splitTime(1,mid)}</td>
+      <td class="pv">${splitTime(0.4,mid)}</td>
+    </tr>`;
+  });
+  el.innerHTML=`<table class="paces-table">
+    <tr><th>Zone</th><th>%VMA</th><th>Pace /km</th><th>HR bpm</th><th>1km</th><th>400m</th></tr>${rows}</table>`;
+}
+function zonePaceRange(zoneKey, vma){
+  const pz=PACE_ZONES.find(p=>p.z===zoneKey); if(!pz||!vma) return null;
+  return paceFromSpeed(vma*pz.vma[1]/100)+'–'+paceFromSpeed(vma*pz.vma[0]/100)+'/km';
+}
+function renderMaxesGrid(){
+  const g=document.getElementById('maxesGrid'); if(!g) return;
+  const mx=profile.maxes||{};
+  g.innerHTML=LIFTS.map(l=>`<div class="macro-field"><label>${l.label}</label>
+    <input id="max_${l.k}" type="number" inputmode="decimal" step="0.5" value="${mx[l.k]??''}"></div>`).join('');
+}
 /* ================================================================
    ONBOARDING WIZARD
 ================================================================ */
@@ -1157,6 +1559,99 @@ async function runPasteExtract(){
   }catch(e){ msg.textContent='Could not read it — '+e.message; }
 }
 
+
+/* ================================================================
+   ATHLETE — ASSIGNED WORKOUTS + WEEK LABELS
+================================================================ */
+let myAssignments=[], weekLabelMap={};
+async function loadAssignments(){
+  try{
+    const d=await api(`/api/workouts?action=my-assignments&start=${weekStart}&end=${addDays(weekStart,6)}`);
+    myAssignments=d.assignments||[];
+    weekLabelMap={};
+    (d.labels||[]).forEach(l=>weekLabelMap[l.week_start]=l.label);
+  }catch(e){ myAssignments=[]; }
+  renderWeekLabelChip();
+  renderAssigned();
+}
+function renderWeekLabelChip(){
+  let chip=document.getElementById('weekLabelChip');
+  const label=weekLabelMap[weekStart];
+  if(!chip){
+    const strip=document.getElementById('weekStrip');
+    strip.insertAdjacentHTML('afterend','<div id="weekLabelChip" class="week-label-chip" style="display:none"></div>');
+    chip=document.getElementById('weekLabelChip');
+  }
+  if(label){ chip.textContent=label+' WEEK'; chip.style.display='block'; }
+  else chip.style.display='none';
+}
+function resolveExText(ex){
+  let main='<b>'+esc(ex.name||'')+'</b>';
+  const parts=[];
+  if(ex.sets&&ex.qty!=null) parts.push(ex.sets+'×'+ex.qty+(ex.unit&&ex.unit!=='reps'?ex.unit:''));
+  else if(ex.qty!=null) parts.push(ex.qty+(ex.unit&&ex.unit!=='reps'?ex.unit:' reps'));
+  let target='';
+  if(ex.load_pct){
+    target='@'+ex.load_pct+'%';
+    const maxes=profile.maxes||{};
+    if(ex.load_ref && maxes[ex.load_ref]){
+      target+=' <span class="aw-target">('+(Math.round(maxes[ex.load_ref]*ex.load_pct/100/2.5)*2.5)+'kg)</span>';
+    }
+  }else if(ex.zone){
+    target='@'+ex.zone;
+    const pr=profile.vma? zonePaceRange(ex.zone, profile.vma) : null;
+    if(pr) target+=' <span class="aw-target">('+pr+')</span>';
+  }
+  if(ex.notes) parts.push(esc(ex.notes));
+  return main+(parts.length?' — '+parts.join(' · '):'')+(target?' '+target:'');
+}
+function renderAssigned(){
+  const wrap=document.getElementById('assignedWrap'); if(!wrap) return;
+  const todays=myAssignments.filter(a=>a.date===selectedDate);
+  if(!todays.length){ wrap.innerHTML=''; return; }
+  wrap.innerHTML=todays.map((a,i)=>{
+    const done=a.status==='done';
+    return `<div class="assigned-card">
+      <div class="aw-type">${coachInfo&&coachInfo.program_name?esc(coachInfo.program_name):'Assigned workout'} · ${a.workout_type==='hyrox'?'Hyrox / Mix':cap(a.workout_type||'')}${a.duration_min?' · '+a.duration_min+' min':''}</div>
+      <div class="aw-title">${esc(a.title||'Workout')}</div>
+      ${(a.blocks||[]).map(b=>`<div class="aw-block">${esc(b.name)}</div>`+
+        (b.exercises||[]).map(ex=>`<div class="aw-ex">${resolveExText(ex)}</div>`).join('')).join('')}
+      ${done
+        ? `<span class="aw-done-tag">Done${a.difficulty?' · '+a.difficulty+'/10':''}</span>`
+        : `<div class="assigned-done">
+             <span style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5)">Difficulty</span>
+             <input type="range" min="1" max="10" value="6" oninput="this.nextElementSibling.textContent=this.value" id="diff_${a.id}">
+             <span class="dv">6</span>
+           </div>
+           <button class="cta" onclick="markDone('${a.id}',${i})">Mark done</button>`}
+    </div>`;
+  }).join('');
+}
+async function markDone(id, idx){
+  const a=myAssignments.find(x=>x.id===id); if(!a) return;
+  const diff=parseInt((document.getElementById('diff_'+id)||{}).value)||null;
+  try{
+    await api('/api/workouts',{method:'POST',body:JSON.stringify({action:'complete',id,difficulty:diff})});
+    a.status='done'; a.difficulty=diff;
+    // prefill a session from the assignment
+    const s=blankSession();
+    s.name=a.title||''; s.workout_type=a.workout_type||'hyrox';
+    s.duration_min=a.duration_min??''; s.rpe=diff??''; s._rpeAuto=false;
+    s.workout_desc=(a.blocks||[]).map(b=>b.name+':\n'+(b.exercises||[]).map(exToPlainText).join('\n')).join('\n\n');
+    const st=a.stations||{};
+    ['ski_erg_m','sled_push_m','sled_pull_m','burpees_reps','row_erg_m','farmers_m','lunges_m','wallballs_reps'].forEach(k=>{ if(st[k]!=null) s.stations[k]=st[k]; });
+    if(st.compromised_run_km!=null) s.compromised_run_km=st.compromised_run_km;
+    if(s.workout_type==='endurance' && st.run_km!=null){ s.volume=st.run_km; s.subtypes=['Run']; }
+    // replace an untouched blank session or append
+    if(daySessions.length===1 && !daySessions[0].name && !daySessions[0].duration_min) daySessions[0]=s;
+    else if(daySessions.length<3) daySessions.push(s);
+    renderSessions(); renderAssigned();
+    document.getElementById('saveMsg').textContent='Session pre-filled from the workout — review and save your day';
+    setTimeout(()=>document.getElementById('saveMsg').textContent='',3500);
+  }catch(e){
+    document.getElementById('saveMsg').textContent=e.message;
+  }
+}
 /* ================================================================
    STATS ENGINE
 ================================================================ */
@@ -1766,6 +2261,10 @@ function fillSettings(){
   updateSetAge();
   document.getElementById('setHeight').value=profile._height??'';
   document.getElementById('setWeight').value=profile._weight??'';
+  document.getElementById('setVma').value=profile.vma??'';
+  document.getElementById('setFcRest').value=profile.fc_rest??'';
+  document.getElementById('setFcMax').value=profile.fc_max??'';
+  renderPaces(); renderMaxesGrid();
   document.getElementById('setHrvLow').value=profile.hrv_low??'';
   document.getElementById('setHrvHigh').value=profile.hrv_high??'';
   document.getElementById('hrz1').value=profile.hr_z1_max??'';
@@ -1794,6 +2293,10 @@ async function saveSettings(){
     dob:document.getElementById('setDob').value||null,
     city:document.getElementById('setCity').value||null,
     country:document.getElementById('setCountry').value||null,
+    vma:numOrNull(document.getElementById('setVma').value),
+    fc_rest:intOrNull(document.getElementById('setFcRest').value),
+    fc_max:intOrNull(document.getElementById('setFcMax').value),
+    maxes:LIFTS.reduce((o,l)=>{const v=numOrNull(document.getElementById('max_'+l.k).value); if(v!=null)o[l.k]=v; return o;},{}),
     hrv_low:intOrNull(document.getElementById('setHrvLow').value),
     hrv_high:intOrNull(document.getElementById('setHrvHigh').value),
     hr_z1_max:intOrNull(document.getElementById('hrz1').value),
@@ -1811,6 +2314,7 @@ async function saveSettings(){
   try{
     const d=await api('/api/profile',{method:'PUT',body:JSON.stringify(body)});
     profile=Object.assign(profile,d.profile||body);
+    profile.maxes=body.maxes;
     profile._weight=body.weight_kg; profile._height=body.height_cm;
     onHrvInput();
     if(coachAthleteHeaderName) coachAthleteHeaderName();
