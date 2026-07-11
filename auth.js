@@ -46,8 +46,7 @@ async function handleAuth(){
           body: JSON.stringify({ role:'coach', onboarded:true }) });
       }catch(e){}
     }
-    btn.disabled = false;
-    enterApp();
+    location.reload();   // hard reset — never reuse in-memory state across accounts
   }catch(e){
     errEl.textContent = 'Network error. Check your connection.';
     btn.disabled = false;
