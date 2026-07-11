@@ -1,5 +1,5 @@
 /* ================================================================
-   HYROX TRAINING DATA — v2 app.js
+   OCTA. — app.js
    Tabs: Log · Stats · Share · Settings
 ================================================================ */
 
@@ -24,6 +24,7 @@ const STATIONS = [
 
 /* ---------------- state ---------------- */
 let profile = null;
+let coachInfo = null;   // athlete's coach program info
 let selectedDate = todayStr();
 let weekStart = mondayOf(selectedDate);
 let daySessions = [];                 // session objects for selected date
@@ -69,14 +70,192 @@ async function enterApp(){
   try{
     const p = await api('/api/profile');
     profile = p.profile || {};
+    coachInfo = p.coach || null;
     if(p.body){ profile._weight=p.body.weight_kg; profile._height=p.body.height_cm; }
-    fillSettings();
   }catch(e){ profile = {}; }
+  if(profile.role === 'coach'){ enterCoach(); return; }
+  fillSettings();
+  renderCoachSection();
   await loadDay(selectedDate);
   await refreshWeekDots();
   checkStravaStatus();
   loadTrailing();          // streak + level (last 84 days)
   maybeStartWizard();
+}
+
+/* ================================================================
+   ATHLETE — COACH LINK
+================================================================ */
+function renderCoachSection(){
+  const linked=document.getElementById('coachLinked'), un=document.getElementById('coachUnlinked');
+  if(!linked) return;
+  if(coachInfo){
+    linked.style.display='block'; un.style.display='none';
+    document.getElementById('coachProgramName').textContent = coachInfo.program_name || 'Linked to your coach';
+  }else{
+    linked.style.display='none'; un.style.display='block';
+  }
+}
+async function joinCoach(){
+  const code=document.getElementById('coachCode').value.trim();
+  const msg=document.getElementById('coachMsg');
+  msg.textContent='Joining…';
+  try{
+    const d=await api('/api/coach',{method:'POST',body:JSON.stringify({action:'join',code})});
+    coachInfo=d.coach||null;
+    renderCoachSection();
+    msg.textContent='Welcome to '+((coachInfo&&coachInfo.program_name)||'the program');
+    setTimeout(()=>msg.textContent='',3000);
+  }catch(e){ msg.textContent=e.message; }
+}
+async function leaveCoach(){
+  const msg=document.getElementById('coachMsg');
+  try{
+    await api('/api/coach',{method:'POST',body:JSON.stringify({action:'leave'})});
+    coachInfo=null; renderCoachSection();
+    msg.textContent='You left the program';
+    setTimeout(()=>msg.textContent='',3000);
+  }catch(e){ msg.textContent=e.message; }
+}
+
+/* ================================================================
+   COACH WORKSPACE
+================================================================ */
+let coachAthletes=[], caCurrent=null, caPeriodDays=28;
+function enterCoach(){
+  document.body.classList.add('coach');
+  ['viewLog','viewStats','viewShare','viewSettings'].forEach(v=>document.getElementById(v).style.display='none');
+  document.getElementById('viewCoach').style.display='block';
+  document.getElementById('coachProgramTitle').textContent = profile.program_name || '';
+  document.getElementById('inviteCode').textContent = profile.invite_code || '——————';
+  fillCoachSettings();
+  loadAthletes();
+  if(!profile.invite_code) regenCode();
+}
+function coachTab(t){
+  document.getElementById('coachHome').style.display = t==='home'?'block':'none';
+  document.getElementById('coachAthleteView').style.display='none';
+  document.getElementById('coachSettings').style.display = t==='settings'?'block':'none';
+  document.getElementById('cnavHome').classList.toggle('active',t==='home');
+  document.getElementById('cnavSettings').classList.toggle('active',t==='settings');
+}
+async function regenCode(){
+  try{
+    const d=await api('/api/coach',{method:'POST',body:JSON.stringify({action:'code'})});
+    profile.invite_code=d.code;
+    document.getElementById('inviteCode').textContent=d.code;
+  }catch(e){}
+}
+async function loadAthletes(){
+  const list=document.getElementById('athleteList');
+  list.innerHTML='<div class="empty-state">Loading…</div>';
+  try{
+    const d=await api('/api/coach?action=athletes');
+    coachAthletes=d.athletes||[];
+  }catch(e){ list.innerHTML='<div class="empty-state">Could not load athletes.</div>'; return; }
+  if(!coachAthletes.length){
+    list.innerHTML=`<div class="empty-state">No athletes yet.<br>Share your invite code — they enter it in their Settings.</div>`;
+    return;
+  }
+  list.innerHTML=coachAthletes.map((a,i)=>{
+    const st=(a.crm&&a.crm.status)||'active';
+    return `<div class="athlete-card" onclick="openAthlete(${i})">
+      <div class="an">${esc(a.email)}</div>
+      <div class="am">${a.last_session?'Last session '+fmtShort(a.last_session):'No sessions yet'}
+        ${a.race_name?'<br>'+esc(a.race_name)+(a.race_date?' · '+fmtShort(a.race_date):''):''}</div>
+      <span class="as ${st}">${st}</span>
+    </div>`;
+  }).join('');
+}
+function backToRoster(){ coachTab('home'); loadAthletes(); }
+function openAthlete(i){
+  caCurrent=coachAthletes[i];
+  document.getElementById('coachHome').style.display='none';
+  document.getElementById('coachAthleteView').style.display='block';
+  document.getElementById('caHead').textContent=caCurrent.email;
+  const c=caCurrent.crm||{};
+  document.getElementById('crmStart').value=c.start_date||'';
+  document.getElementById('crmPrice').value=c.monthly_price??'';
+  document.getElementById('crmStatus').value=c.status||'active';
+  document.getElementById('crmNotes').value=c.notes||'';
+  loadCaStats();
+}
+async function saveCrm(){
+  const msg=document.getElementById('crmMsg');
+  msg.textContent='Saving…';
+  try{
+    await api('/api/coach',{method:'POST',body:JSON.stringify({
+      action:'crm', athlete_id:caCurrent.id,
+      start_date:document.getElementById('crmStart').value||null,
+      monthly_price:numOrNull(document.getElementById('crmPrice').value),
+      status:document.getElementById('crmStatus').value,
+      notes:document.getElementById('crmNotes').value||null
+    })});
+    caCurrent.crm={start_date:document.getElementById('crmStart').value,monthly_price:document.getElementById('crmPrice').value,status:document.getElementById('crmStatus').value,notes:document.getElementById('crmNotes').value};
+    msg.textContent='Saved'; setTimeout(()=>msg.textContent='',2000);
+  }catch(e){ msg.textContent=e.message; }
+}
+function setCaPeriod(d){
+  caPeriodDays=d;
+  document.querySelectorAll('.ca-period').forEach(b=>b.classList.toggle('active',+b.dataset.d===d));
+  loadCaStats();
+}
+async function loadCaStats(){
+  const wrap=document.getElementById('caStats');
+  wrap.innerHTML='<div class="empty-state">Loading…</div>';
+  const end=todayStr(), start=addDays(end,-(caPeriodDays-1));
+  let d;
+  try{ d=await api(`/api/coach?action=athlete-data&id=${caCurrent.id}&start=${start}&end=${end}`); }
+  catch(e){ wrap.innerHTML=`<div class="empty-state">${e.message}</div>`; return; }
+  const sessions=d.sessions||[], phys=d.physiology||[];
+  if(!sessions.length && !phys.length){ wrap.innerHTML='<div class="empty-state">Nothing logged in this period.</div>'; return; }
+  const st=computeStats(sessions,phys,start,end);
+  let html=`<div class="stat-hero">
+    <div class="stat-tile"><div class="v">${hm(st.totalMin)}</div><div class="l">Training time</div></div>
+    <div class="stat-tile"><div class="v">${st.sessionCount}</div><div class="l">Sessions</div></div>
+    <div class="stat-tile"><div class="v">${st.runKm.toFixed(1)}<small>km</small></div><div class="l">Run · ${st.compPct}% compromised</div></div>
+    ${st.avgSleep!=null?`<div class="stat-tile"><div class="v">${st.avgSleep.toFixed(1)}<small>h</small></div><div class="l">Avg sleep</div></div>`:''}
+  </div>`;
+  const spTot=st.splitMin.endurance+st.splitMin.hyrox+st.splitMin.strength;
+  if(spTot>0){
+    html+=`<div class="section-card"><div class="chart-title">Training split</div>`+
+      statStackedLine([
+        {label:'Endurance',value:st.splitMin.endurance,color:SPLIT_COLORS.endurance},
+        {label:'Hyrox',value:st.splitMin.hyrox,color:SPLIT_COLORS.hyrox},
+        {label:'Strength',value:st.splitMin.strength,color:SPLIT_COLORS.strength},
+      ])+`</div>`;
+  }
+  const zTot=st.zoneMin.reduce((a,b)=>a+b,0);
+  if(zTot>0){
+    html+=`<div class="section-card"><div class="chart-title">Time in zones</div>`+
+      statStackedLine(st.zoneMin.map((m,z)=>({label:'Z'+(z+1),value:m,color:ZONE_COLORS[z]})))+`</div>`;
+  }
+  html+=pulseChartHTML(sessions,phys,start,end);
+  wrap.innerHTML=html;
+}
+function fillCoachSettings(){
+  document.getElementById('csName').value=profile.program_name||'';
+  document.getElementById('csDesc').value=profile.program_desc||'';
+  document.getElementById('csUrl').value=profile.program_url||'';
+  if(profile.logo_url){
+    const img=document.getElementById('csLogoPreview');
+    img.src=profile.logo_url; img.style.display='block';
+  }
+}
+async function saveCoachSettings(){
+  const msg=document.getElementById('csMsg');
+  msg.textContent='Saving…';
+  try{
+    await api('/api/profile',{method:'PUT',body:JSON.stringify({
+      program_name:document.getElementById('csName').value||null,
+      program_desc:document.getElementById('csDesc').value||null,
+      program_url:document.getElementById('csUrl').value||null,
+      role:'coach'
+    })});
+    profile.program_name=document.getElementById('csName').value;
+    document.getElementById('coachProgramTitle').textContent=profile.program_name||'';
+    msg.textContent='Saved'; setTimeout(()=>msg.textContent='',2000);
+  }catch(e){ msg.textContent=e.message; }
 }
 if(getToken()) enterApp();
 
@@ -800,6 +979,13 @@ function renderStreakChip(){
 function levelTag(){
   return athleteLevel? `<span class="c-level">${athleteLevel}</span>` : '';
 }
+function cardBrand(){
+  if(coachInfo && coachInfo.program_name){
+    return `<div class="c-brand">${esc(coachInfo.program_name).toUpperCase()}${levelTag()}</div>
+      <div class="c-brand" style="margin-top:5px;font-size:6px;opacity:.7">OCTA.</div>`;
+  }
+  return `<div class="c-brand">OCTA.${levelTag()}</div>`;
+}
 
 /* ================================================================
    PASTE WORKOUT (Fitr / coach programs)
@@ -1237,7 +1423,8 @@ function metaLine(){
   return bits.join('<span class="sep">·</span>');
 }
 function logoImg(){
-  return profile.logo_url? `<img class="c-logo" src="${profile.logo_url}" crossorigin="anonymous">` : '';
+  const url = (coachInfo && coachInfo.logo_url) || profile.logo_url;
+  return url? `<img class="c-logo" src="${url}" crossorigin="anonymous">` : '';
 }
 /* single-line stacked zone bar */
 function zoneLineBar(zoneArr){
@@ -1272,7 +1459,7 @@ function renderDaySummaryCard(card,togWrap,sessions,dateStr){
       ${kcal>0?`<div class="c-metric"><div class="mv">${kcal}<small>kcal</small></div><div class="ml">Active</div></div>`:''}
     </div>
     ${zoneLineBar(dz)}
-    <div class="c-brand">HYROX TRAINING DATA${levelTag()}</div>`;
+    ${cardBrand()}`;
   card.innerHTML=inner;
 }
 
@@ -1313,7 +1500,7 @@ function renderSessionCard(card,togWrap,s,dateStr){
     ${mets.length?`<div class="c-metrics">${mets.map(m=>`<div class="c-metric"><div class="mv">${m.v}<small>${m.u}</small></div><div class="ml">${m.l}</div></div>`).join('')}</div>`:''}
     ${on('zones')?zoneLineBar(zones):''}
     ${on('rpe')&&s.rpe?`<div class="c-rpe"><span class="rl">RPE</span><span class="rv">${s.rpe}/10</span></div>`:''}
-    <div class="c-brand">HYROX TRAINING DATA${levelTag()}</div>`;
+    ${cardBrand()}`;
   card.innerHTML=inner;
 }
 
@@ -1365,7 +1552,7 @@ function renderPeriodCard(card,togWrap,sessions,phys,start,end){
     const lbls=items.map(x=>{const p=Math.round(x.value/spTot*100);return p>0?`<span style="color:${x.color}">${x.label} ${p}%</span>`:''}).join('');
     inner+=`<div class="c-chart-lbl">Training split</div><div class="c-zline">${segs}</div><div class="c-zline-lbls">${lbls}</div>`;
   }
-  inner+=`<div class="c-brand">HYROX TRAINING DATA${levelTag()}</div>`;
+  inner+=cardBrand();
   card.innerHTML=inner;
 }
 /* ---- EXPORT ---- */
@@ -1407,7 +1594,7 @@ async function downloadCard(){
 function triggerDownload(blob){
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='hyrox-training-'+sharePeriod+'-'+shareAnchor+'.png';
+  a.download='octa-'+sharePeriod+'-'+shareAnchor+'.png';
   a.click();
 }
 
@@ -1501,7 +1688,9 @@ async function uploadLogo(ev){
     const d=await api('/api/upload-logo',{method:'POST',body:JSON.stringify({image:b64,content_type:file.type||'image/png'})});
     profile.logo_url=d.logo_url;
     const img=document.getElementById('logoPreview');
-    img.src=d.logo_url; img.style.display='block';
+    if(img){ img.src=d.logo_url; img.style.display='block'; }
+    const cimg=document.getElementById('csLogoPreview');
+    if(cimg){ cimg.src=d.logo_url; cimg.style.display='block'; }
     msg.textContent='Logo saved';
     setTimeout(()=>msg.textContent='',2000);
   }catch(e){ msg.textContent='Upload failed — '+e.message; }
