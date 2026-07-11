@@ -324,3 +324,5 @@ body.coach .bottom-nav{display:none}
 
 /* ============ coach period row spacing fix ============ */
 .ca-period-row{margin-top:18px;margin-bottom:4px}
+.fin-period-row{margin-top:18px;margin-bottom:16px}
+.fin-period{padding:7px 13px;min-height:32px}
