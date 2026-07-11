@@ -9,11 +9,12 @@ module.exports = async function handler(req, res){
   const user = await getUser(token);
   if(!user) return res.status(401).json({error:'Session expired'});
 
-  const { image, content_type } = req.body || {};
+  const { image, content_type, kind } = req.body || {};
   if(!image) return res.status(400).json({error:'No image provided'});
 
   const ext = (content_type || 'image/png').split('/')[1].replace('jpeg','jpg');
-  const path = `${user.id}/logo.${ext}`;
+  const name = kind === 'photo' ? 'photo' : 'logo';
+  const path = `${user.id}/${name}.${ext}`;
   const buffer = Buffer.from(image, 'base64');
   if(buffer.length > 2 * 1024 * 1024) return res.status(400).json({error:'Logo must be under 2 MB'});
 
@@ -32,12 +33,13 @@ module.exports = async function handler(req, res){
     return res.status(500).json({error: err.message || 'Upload failed'});
   }
 
-  const logo_url = `${SUPABASE_URL}/storage/v1/object/public/logos/${path}?v=${Date.now()}`;
-  // save url on profile
-  await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}`, {
-    method:'PATCH',
-    headers:{ 'apikey': ANON, 'Authorization':'Bearer '+token, 'Content-Type':'application/json' },
-    body: JSON.stringify({ logo_url })
-  });
-  return res.status(200).json({ logo_url });
+  const url = `${SUPABASE_URL}/storage/v1/object/public/logos/${path}?v=${Date.now()}`;
+  if(kind !== 'photo'){
+    await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}`, {
+      method:'PATCH',
+      headers:{ 'apikey': ANON, 'Authorization':'Bearer '+token, 'Content-Type':'application/json' },
+      body: JSON.stringify({ logo_url: url })
+    });
+  }
+  return res.status(200).json({ logo_url: url, url });
 };
