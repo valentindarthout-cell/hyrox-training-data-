@@ -11,9 +11,16 @@ module.exports = async function handler(req, res){
   if(req.method === 'GET'){
     const p = await sb(`/rest/v1/profiles?id=eq.${user.id}`, token, {method:'GET'});
     const b = await sb(`/rest/v1/body_metrics?user_id=eq.${user.id}&order=recorded_at.desc&limit=1`, token, {method:'GET'});
+    const prof = (p.ok && p.data && p.data[0]) || {};
+    let coach = null;
+    if(prof.coach_id){
+      const c = await sb(`/rest/v1/profiles?id=eq.${prof.coach_id}&select=program_name,program_desc,program_url,logo_url`, token, {method:'GET'});
+      coach = (c.ok && c.data && c.data[0]) || null;
+    }
     return res.status(200).json({
-      profile: (p.ok && p.data && p.data[0]) || {},
-      body: (b.ok && b.data && b.data[0]) || null
+      profile: prof,
+      body: (b.ok && b.data && b.data[0]) || null,
+      coach
     });
   }
 
@@ -29,6 +36,10 @@ module.exports = async function handler(req, res){
     };
     if(body.onboarded !== undefined) profileFields.onboarded = body.onboarded;
     if(body.streak_target !== undefined) profileFields.streak_target = body.streak_target;
+    if(body.role !== undefined) profileFields.role = body.role;
+    if(body.program_name !== undefined) profileFields.program_name = body.program_name;
+    if(body.program_desc !== undefined) profileFields.program_desc = body.program_desc;
+    if(body.program_url !== undefined) profileFields.program_url = body.program_url;
     const up = await sb(`/rest/v1/profiles?id=eq.${user.id}`, token, {
       method:'PATCH',
       headers:{ 'Prefer':'return=representation' },
