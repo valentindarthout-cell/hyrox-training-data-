@@ -249,8 +249,7 @@ async function saveCoachSettings(){
     await api('/api/profile',{method:'PUT',body:JSON.stringify({
       program_name:document.getElementById('csName').value||null,
       program_desc:document.getElementById('csDesc').value||null,
-      program_url:document.getElementById('csUrl').value||null,
-      role:'coach'
+      program_url:document.getElementById('csUrl').value||null
     })});
     profile.program_name=document.getElementById('csName').value;
     document.getElementById('coachProgramTitle').textContent=profile.program_name||'';
