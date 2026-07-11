@@ -28,11 +28,13 @@ module.exports = async function handler(req, res){
     const body = req.body || {};
     const { weight_kg, height_cm } = body;
     const profileFields = {
-      age: body.age, hrv_low: body.hrv_low, hrv_high: body.hrv_high,
+      hrv_low: body.hrv_low, hrv_high: body.hrv_high,
       training_phase: body.training_phase, race_name: body.race_name,
       race_date: body.race_date, race_divisions: body.race_divisions,
       hr_z1_max: body.hr_z1_max, hr_z2_max: body.hr_z2_max,
-      hr_z3_max: body.hr_z3_max, hr_z4_max: body.hr_z4_max
+      hr_z3_max: body.hr_z3_max, hr_z4_max: body.hr_z4_max,
+      first_name: body.first_name, last_name: body.last_name,
+      dob: body.dob, city: body.city, country: body.country
     };
     if(body.onboarded !== undefined) profileFields.onboarded = body.onboarded;
     if(body.streak_target !== undefined) profileFields.streak_target = body.streak_target;
