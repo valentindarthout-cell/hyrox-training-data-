@@ -1,11 +1,19 @@
 /* ============ AUTH ============ */
 var authMode = 'login';
+var signupRole = 'athlete';
+
+function pickRole(r){
+  signupRole = r;
+  document.getElementById('roleAthlete').classList.toggle('active', r==='athlete');
+  document.getElementById('roleCoach').classList.toggle('active', r==='coach');
+}
 
 function showAuthTab(mode){
   authMode = mode;
   document.getElementById('tabLogin').classList.toggle('active', mode==='login');
   document.getElementById('tabSignup').classList.toggle('active', mode==='signup');
   document.getElementById('authBtn').textContent = mode==='login' ? 'Log in' : 'Sign up';
+  document.getElementById('rolePick').style.display = mode==='signup' ? 'flex' : 'none';
   document.getElementById('authError').textContent = '';
 }
 
@@ -31,6 +39,13 @@ async function handleAuth(){
     }
     localStorage.setItem('htd_token', data.access_token);
     localStorage.setItem('htd_user_id', data.user_id || '');
+    if(authMode === 'signup' && signupRole === 'coach'){
+      try{
+        await fetch('/api/profile', { method:'PUT',
+          headers:{'Content-Type':'application/json','Authorization':'Bearer '+data.access_token},
+          body: JSON.stringify({ role:'coach', onboarded:true }) });
+      }catch(e){}
+    }
     btn.disabled = false;
     enterApp();
   }catch(e){
