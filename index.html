@@ -307,12 +307,35 @@
       <div id="caStats"></div>
     </div>
 
+    <div id="coachFinance" style="display:none">
+      <div class="pill-row period-row">
+        <button class="pill fin-period active" data-p="l12m" onclick="setFinPeriod('l12m')">Last 12 months</button>
+        <button class="pill fin-period" data-p="ytd" onclick="setFinPeriod('ytd')">Year to date</button>
+        <button class="pill fin-period" data-p="custom" onclick="setFinPeriod('custom')">Custom</button>
+      </div>
+      <div id="finCustomRange" class="custom-range" style="display:none">
+        <input id="finRangeStart" type="month" onchange="loadFinance()">
+        <span>→</span>
+        <input id="finRangeEnd" type="month" onchange="loadFinance()">
+      </div>
+      <div id="finContent"></div>
+    </div>
+
     <div id="coachSettings" style="display:none">
       <div class="section-card">
         <div class="section-label">Program</div>
         <input id="csName" class="text-input" type="text" placeholder="Program name">
         <textarea id="csDesc" class="text-input" placeholder="Program description"></textarea>
         <input id="csUrl" class="text-input" type="url" placeholder="Website (https://…)">
+        <div class="section-sublabel">Currency</div>
+        <select id="csCurrency" class="text-input" style="margin:0 0 10px;padding:11px">
+          <option value="EUR">EUR — €</option>
+          <option value="USD">USD — $</option>
+          <option value="GBP">GBP — £</option>
+          <option value="CHF">CHF — Fr</option>
+          <option value="CAD">CAD — $</option>
+          <option value="AUD">AUD — $</option>
+        </select>
         <div class="section-sublabel">Program logo</div>
         <div class="logo-row">
           <img id="csLogoPreview" class="logo-preview" style="display:none">
@@ -326,6 +349,7 @@
 
     <nav class="coach-nav">
       <button id="cnavHome" class="nav-btn active" onclick="coachTab('home')"><span class="nav-lbl">Athletes</span></button>
+      <button id="cnavFinance" class="nav-btn" onclick="coachTab('finance')"><span class="nav-lbl">Finance</span></button>
       <button id="cnavSettings" class="nav-btn" onclick="coachTab('settings')"><span class="nav-lbl">Settings</span></button>
     </nav>
   </div>
