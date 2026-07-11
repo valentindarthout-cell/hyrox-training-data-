@@ -42,6 +42,7 @@ module.exports = async function handler(req, res){
     if(body.program_name !== undefined) profileFields.program_name = body.program_name;
     if(body.program_desc !== undefined) profileFields.program_desc = body.program_desc;
     if(body.program_url !== undefined) profileFields.program_url = body.program_url;
+    if(body.currency !== undefined) profileFields.currency = body.currency;
     const up = await sb(`/rest/v1/profiles?id=eq.${user.id}`, token, {
       method:'PATCH',
       headers:{ 'Prefer':'return=representation' },
