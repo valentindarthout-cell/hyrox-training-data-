@@ -34,8 +34,10 @@ module.exports = async function handler(req, res){
       hr_z1_max: body.hr_z1_max, hr_z2_max: body.hr_z2_max,
       hr_z3_max: body.hr_z3_max, hr_z4_max: body.hr_z4_max,
       first_name: body.first_name, last_name: body.last_name,
-      dob: body.dob, city: body.city, country: body.country
+      dob: body.dob, city: body.city, country: body.country,
+      vma: body.vma, fc_rest: body.fc_rest, fc_max: body.fc_max
     };
+    if(body.maxes !== undefined) profileFields.maxes = body.maxes;
     if(body.onboarded !== undefined) profileFields.onboarded = body.onboarded;
     if(body.streak_target !== undefined) profileFields.streak_target = body.streak_target;
     if(body.role !== undefined) profileFields.role = body.role;
