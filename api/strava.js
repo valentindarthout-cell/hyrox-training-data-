@@ -67,6 +67,19 @@ async function fetchZones(activityId, accessToken){
 module.exports = async function handler(req, res){
   cors(res);
   if(req.method === 'OPTIONS') return res.status(200).end();
+
+  // action=connect: browser redirect to Strava OAuth (token passed as query param)
+  if((req.query||{}).action === 'connect'){
+    const t = req.query.token;
+    if(!t) return res.status(401).json({error:'Not authenticated'});
+    const u = await getUser(t);
+    if(!u) return res.status(401).json({error:'Session expired'});
+    const state = Buffer.from(JSON.stringify({ uid: u.id, token: t })).toString('base64url');
+    const url = `https://www.strava.com/oauth/authorize?client_id=${process.env.STRAVA_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(process.env.STRAVA_REDIRECT_URI)}&approval_prompt=auto&scope=activity:read_all&state=${state}`;
+    res.writeHead(302, { Location: url });
+    return res.end();
+  }
+
   const token = userToken(req);
   if(!token) return res.status(401).json({error:'Not authenticated'});
   const user = await getUser(token);
