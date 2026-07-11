@@ -326,3 +326,40 @@ body.coach .bottom-nav{display:none}
 .ca-period-row{margin-top:18px;margin-bottom:4px}
 .fin-period-row{margin-top:18px;margin-bottom:16px}
 .fin-period{padding:7px 13px;min-height:32px}
+
+/* ============ WORKOUT BUILDER ============ */
+.wk-block{background:#fff;border:1px solid var(--hair);border-radius:var(--radius);padding:18px;margin:12px 0}
+.wk-block-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.wk-block-head input{flex:1;background:var(--input);border:1px solid var(--hair);border-radius:10px;padding:9px 12px;font-weight:600;outline:none}
+.wk-ex{display:grid;grid-template-columns:2fr 64px 76px 84px 110px 90px 34px;gap:8px;margin-bottom:8px;align-items:center}
+.wk-ex input,.wk-ex select{background:var(--input);border:1px solid var(--hair);border-radius:9px;padding:9px;font-size:13px;outline:none;width:100%}
+.wk-ex-del{width:34px;height:34px;border:1px solid var(--hair);border-radius:999px;color:var(--muted);font-size:14px}
+.wk-ex-labels{display:grid;grid-template-columns:2fr 64px 76px 84px 110px 90px 34px;gap:8px;margin-bottom:6px}
+.wk-ex-labels span{font-size:8px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#b7b7b0}
+@media (max-width:700px){
+  .wk-ex,.wk-ex-labels{grid-template-columns:1fr 1fr 1fr;}
+  .wk-ex-labels{display:none}
+}
+/* paces table */
+.paces-table{width:100%;border-collapse:collapse;margin-top:14px}
+.paces-table th{font-size:8px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#b7b7b0;text-align:left;padding:7px 6px;border-bottom:1px solid var(--hair)}
+.paces-table td{font-size:12px;padding:9px 6px;border-bottom:1px solid #f2f1ed}
+.paces-table td.pz{font-family:var(--font-display);font-weight:700}
+.paces-table td.pv{font-family:var(--font-display)}
+/* assigned workout card */
+.assigned-card{background:var(--ink);color:#fff;border-radius:var(--radius);padding:20px 18px;margin:14px 0}
+.assigned-card .aw-type{font-size:8px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:5px}
+.assigned-card .aw-title{font-family:var(--font-display);font-size:16px;font-weight:600;margin-bottom:10px}
+.assigned-card .aw-block{margin:10px 0 4px;font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.45)}
+.assigned-card .aw-ex{font-size:12px;color:rgba(255,255,255,.85);padding:4px 0;line-height:1.5}
+.assigned-card .aw-ex b{color:#fff}
+.assigned-card .aw-target{color:rgba(255,255,255,.5);font-size:11px}
+.assigned-card .cta{background:#fff;color:var(--ink);margin-top:14px}
+.assigned-done{display:flex;align-items:center;gap:10px;margin-top:14px}
+.assigned-done input[type=range]{flex:1;accent-color:#fff}
+.assigned-done .dv{font-family:var(--font-display);font-size:15px;font-weight:700;width:44px;text-align:center}
+.aw-done-tag{display:inline-block;font-size:8px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;background:rgba(255,255,255,.14);border-radius:999px;padding:4px 10px;margin-top:10px}
+/* week label chip on strip */
+.week-label-chip{text-align:center;font-family:var(--font-display);font-size:8px;font-weight:700;letter-spacing:.26em;text-transform:uppercase;color:var(--muted);padding:2px 0 6px}
+/* coach week label picker */
+.wl-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:14px 0}
