@@ -4,7 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>Hyrox Training Data</title>
+<title>OCTA.</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -15,10 +15,14 @@
 <!-- ================= AUTH ================= -->
 <div id="authScreen">
   <div class="auth-box">
-    <div class="brand-mark">HYROX TRAINING DATA</div>
+    <div class="brand-mark">OCTA.</div>
     <div class="auth-tabs">
       <button id="tabLogin" class="auth-tab active" onclick="showAuthTab('login')">Log in</button>
       <button id="tabSignup" class="auth-tab" onclick="showAuthTab('signup')">Sign up</button>
+    </div>
+    <div id="rolePick" class="pill-row" style="display:none;margin-bottom:14px;justify-content:center">
+      <button id="roleAthlete" class="pill active" onclick="pickRole('athlete')">I'm an athlete</button>
+      <button id="roleCoach" class="pill" onclick="pickRole('coach')">I'm a coach</button>
     </div>
     <input id="authEmail" type="email" placeholder="Email" autocomplete="email">
     <input id="authPassword" type="password" placeholder="Password" autocomplete="current-password">
@@ -200,6 +204,19 @@
     </div>
 
     <div class="section-card">
+      <div class="section-label">Coach</div>
+      <div id="coachLinked" style="display:none">
+        <div id="coachProgramName" class="hint" style="margin:0 0 10px;font-weight:600;color:var(--ink)"></div>
+        <button class="ghost-btn" onclick="leaveCoach()">Leave program</button>
+      </div>
+      <div id="coachUnlinked">
+        <input id="coachCode" class="text-input" type="text" placeholder="Coach code (e.g. K7M2XR)" maxlength="6" style="text-transform:uppercase">
+        <button class="ghost-btn" onclick="joinCoach()">Join program</button>
+      </div>
+      <div id="coachMsg" class="hint"></div>
+    </div>
+
+    <div class="section-card">
       <div class="section-label">Connections</div>
       <div class="logo-row">
         <div id="stravaStatus" class="hint" style="margin-top:0">Checking Strava…</div>
@@ -224,6 +241,76 @@
     <button class="cta" onclick="saveSettings()">Save settings</button>
     <div id="settingsMsg" class="save-msg"></div>
     <button class="ghost-btn logout-btn" onclick="logout()">Log out</button>
+  </div>
+
+  <!-- COACH VIEW -->
+  <div id="viewCoach" class="view" style="display:none">
+    <div class="coach-head">
+      <div class="brand-mark" style="margin:0">OCTA.</div>
+      <div id="coachProgramTitle" class="coach-program-title"></div>
+    </div>
+
+    <div id="coachHome">
+      <div class="coach-toolbar">
+        <div class="section-label" style="margin:0">Athletes</div>
+        <div class="invite-box">
+          <span class="hint" style="margin:0">Invite code</span>
+          <span id="inviteCode" class="invite-code">——————</span>
+          <button class="mini-btn" onclick="regenCode()">New</button>
+        </div>
+      </div>
+      <div id="athleteList" class="athlete-list"></div>
+    </div>
+
+    <div id="coachAthleteView" style="display:none">
+      <button class="mini-btn" onclick="backToRoster()">← All athletes</button>
+      <div id="caHead" class="ca-head"></div>
+      <div class="section-card">
+        <div class="section-label">CRM</div>
+        <div class="settings-grid">
+          <div class="macro-field"><label>Start date</label><input id="crmStart" type="date"></div>
+          <div class="macro-field"><label>€ / month</label><input id="crmPrice" type="number" inputmode="decimal"></div>
+          <div class="macro-field"><label>Status</label>
+            <select id="crmStatus" class="text-input" style="margin:0;padding:11px">
+              <option value="active">Active</option>
+              <option value="paused">Paused</option>
+              <option value="churned">Churned</option>
+            </select>
+          </div>
+        </div>
+        <textarea id="crmNotes" class="text-input" style="margin-top:10px" placeholder="Notes"></textarea>
+        <button class="cta" onclick="saveCrm()">Save</button>
+        <div id="crmMsg" class="save-msg"></div>
+      </div>
+      <div class="pill-row" style="margin-top:6px">
+        <button class="pill ca-period active" data-d="28" onclick="setCaPeriod(28)">4 weeks</button>
+        <button class="pill ca-period" data-d="7" onclick="setCaPeriod(7)">Week</button>
+        <button class="pill ca-period" data-d="90" onclick="setCaPeriod(90)">3 months</button>
+      </div>
+      <div id="caStats"></div>
+    </div>
+
+    <div id="coachSettings" style="display:none">
+      <div class="section-card">
+        <div class="section-label">Program</div>
+        <input id="csName" class="text-input" type="text" placeholder="Program name">
+        <textarea id="csDesc" class="text-input" placeholder="Program description"></textarea>
+        <input id="csUrl" class="text-input" type="url" placeholder="Website (https://…)">
+        <div class="section-sublabel">Program logo</div>
+        <div class="logo-row">
+          <img id="csLogoPreview" class="logo-preview" style="display:none">
+          <label class="ghost-btn file-btn">Upload logo<input type="file" accept="image/*" onchange="uploadLogo(event)" hidden></label>
+        </div>
+        <button class="cta" onclick="saveCoachSettings()">Save</button>
+        <div id="csMsg" class="save-msg"></div>
+      </div>
+      <button class="ghost-btn logout-btn" onclick="logout()">Log out</button>
+    </div>
+
+    <nav class="coach-nav">
+      <button id="cnavHome" class="nav-btn active" onclick="coachTab('home')"><span class="nav-lbl">Athletes</span></button>
+      <button id="cnavSettings" class="nav-btn" onclick="coachTab('settings')"><span class="nav-lbl">Settings</span></button>
+    </nav>
   </div>
 
   <!-- BOTTOM NAV -->
@@ -274,7 +361,7 @@
 <!-- Onboarding wizard -->
 <div id="wizard" class="wizard" style="display:none">
   <div class="wizard-inner">
-    <div class="brand-mark" style="margin-bottom:30px">HYROX TRAINING DATA</div>
+    <div class="brand-mark" style="margin-bottom:30px">OCTA.</div>
 
     <div id="wizStep1" class="wiz-step">
       <div class="wiz-title">Your training,<br>already in here.</div>
