@@ -47,6 +47,7 @@
     <div id="weekStrip" class="week-strip"></div>
     <div id="streakChip" class="streak-chip" style="display:none"></div>
 
+    <div id="assignedWrap"></div>
     <div id="sessionsWrap"></div>
     <button id="addSessionBtn" class="ghost-btn" onclick="addSession()">+ Add session</button>
 
@@ -205,6 +206,22 @@
     </div>
 
     <div class="section-card">
+      <div class="section-label">Run paces</div>
+      <div class="settings-grid">
+        <div class="macro-field"><label>VMA km/h</label><input id="setVma" type="number" inputmode="decimal" step="0.1" oninput="renderPaces()"></div>
+        <div class="macro-field"><label>Rest HR</label><input id="setFcRest" type="number" inputmode="numeric" oninput="renderPaces()"></div>
+        <div class="macro-field"><label>Max HR</label><input id="setFcMax" type="number" inputmode="numeric" oninput="renderPaces()"></div>
+      </div>
+      <div id="pacesTable"></div>
+    </div>
+
+    <div class="section-card">
+      <div class="section-label">Lift maxes (1RM kg)</div>
+      <div class="settings-grid" id="maxesGrid"></div>
+      <div class="hint">Used to resolve %1RM loads in assigned workouts.</div>
+    </div>
+
+    <div class="section-card">
       <div class="section-label">Training phase</div>
       <div class="pill-row wrap" id="phasePills"></div>
     </div>
@@ -288,6 +305,18 @@
         <button class="cta" onclick="saveCrm()">Save</button>
         <div id="crmMsg" class="save-msg"></div>
       </div>
+      <div class="section-card">
+        <div class="section-label">Programming</div>
+        <div class="wl-row">
+          <button class="strip-arrow" onclick="shiftWlWeek(-1)">‹</button>
+          <span id="wlWeekLabel" class="stats-period-label" style="font-size:11px">—</span>
+          <button class="strip-arrow" onclick="shiftWlWeek(1)">›</button>
+          <span style="flex:1"></span>
+        </div>
+        <div class="pill-row wrap" id="wlPills"></div>
+        <div id="caAssignments" style="margin-top:14px"></div>
+      </div>
+
       <div class="pill-row period-row ca-period-row">
         <button class="pill ca-period active" data-p="week" onclick="setCaStatsPeriod('week')">Week</button>
         <button class="pill ca-period" data-p="month" onclick="setCaStatsPeriod('month')">Month</button>
@@ -305,6 +334,50 @@
         <button class="strip-arrow" onclick="shiftCaPeriod(1)">›</button>
       </div>
       <div id="caStats"></div>
+    </div>
+
+    <div id="coachProg" style="display:none">
+      <div class="coach-toolbar">
+        <div class="section-label" style="margin:0">Workout library</div>
+        <button class="mini-btn" onclick="newWorkout()">+ New workout</button>
+      </div>
+      <div id="wkList" class="athlete-list"></div>
+
+      <div id="wkBuilder" style="display:none">
+        <button class="mini-btn" onclick="closeBuilder()">← Library</button>
+        <div class="section-card">
+          <input id="wkTitle" class="text-input" type="text" placeholder="Workout title">
+          <div class="pill-row" style="margin-bottom:12px">
+            <button class="pill wk-type active" data-t="hyrox" onclick="setWkType('hyrox')">Hyrox / Mix</button>
+            <button class="pill wk-type" data-t="endurance" onclick="setWkType('endurance')">Endurance</button>
+            <button class="pill wk-type" data-t="strength" onclick="setWkType('strength')">Strength</button>
+          </div>
+          <div class="metric-grid" style="grid-template-columns:120px 1fr">
+            <div class="metric-field"><label>Duration min</label><input id="wkDuration" type="number" inputmode="numeric" value="60"></div>
+            <div class="metric-field"><label>Objective</label>
+              <div style="display:flex;gap:8px">
+                <input id="wkObjective" type="text" placeholder="e.g. compromised running under fatigue, race pace" style="flex:1">
+                <button id="micBtn" class="mini-btn" onclick="toggleMic()" title="Dictate">🎙</button>
+              </div>
+            </div>
+          </div>
+          <button class="cta" style="margin-top:14px" onclick="generateWorkout()">Generate with AI</button>
+          <div id="wkGenMsg" class="save-msg"></div>
+        </div>
+
+        <div id="wkBlocks"></div>
+        <button class="ghost-btn" onclick="addBlock()">+ Add block</button>
+
+        <div class="section-card">
+          <div class="section-label">Station volumes (totals)</div>
+          <div class="hyrox-grid" id="wkStations"></div>
+          <button class="mini-btn" style="margin-top:10px" onclick="quantifyWorkout()">Re-quantify with AI</button>
+        </div>
+
+        <button class="cta" onclick="saveTemplate()">Save to library</button>
+        <button class="cta-secondary" onclick="openAssign()">Assign to athletes</button>
+        <div id="wkMsg" class="save-msg"></div>
+      </div>
     </div>
 
     <div id="coachFinance" style="display:none">
@@ -344,11 +417,28 @@
         <button class="cta" onclick="saveCoachSettings()">Save</button>
         <div id="csMsg" class="save-msg"></div>
       </div>
+      <div class="section-card">
+        <div class="section-label">Public page</div>
+        <input id="lpSlug" class="text-input" type="text" placeholder="URL name (e.g. team-darthout)">
+        <input id="lpHeadline" class="text-input" type="text" placeholder="Headline (e.g. Hyrox coaching that shows in your splits)">
+        <textarea id="lpBio" class="text-input" placeholder="Short pitch — what athletes get"></textarea>
+        <input id="lpIg" class="text-input" type="url" placeholder="Instagram URL">
+        <div class="section-sublabel">Background photo</div>
+        <div class="logo-row">
+          <img id="lpPhotoPreview" class="logo-preview" style="display:none">
+          <label class="ghost-btn file-btn">Upload photo<input type="file" accept="image/*" onchange="uploadLandingPhoto(event)" hidden></label>
+        </div>
+        <button class="cta" onclick="publishLanding()">Publish page</button>
+        <div id="lpMsg" class="save-msg"></div>
+        <div id="lpUrl" class="hint" style="text-align:center"></div>
+      </div>
+
       <button class="ghost-btn logout-btn" onclick="logout()">Log out</button>
     </div>
 
     <nav class="coach-nav">
       <button id="cnavHome" class="nav-btn active" onclick="coachTab('home')"><span class="nav-lbl">Athletes</span></button>
+      <button id="cnavProg" class="nav-btn" onclick="coachTab('prog')"><span class="nav-lbl">Programming</span></button>
       <button id="cnavFinance" class="nav-btn" onclick="coachTab('finance')"><span class="nav-lbl">Finance</span></button>
       <button id="cnavSettings" class="nav-btn" onclick="coachTab('settings')"><span class="nav-lbl">Settings</span></button>
     </nav>
@@ -396,6 +486,22 @@
     <textarea id="pasteText" class="text-input" style="min-height:140px" placeholder="e.g. 4 rounds: 250m ski, 50m sled push 102kg, 20 burpee broad jumps…"></textarea>
     <button class="cta" style="margin-top:12px" onclick="runPasteExtract()">Fill session</button>
     <div id="pasteMsg" class="hint"></div>
+  </div>
+</div>
+
+<!-- Assign workout modal -->
+<div id="assignModal" class="strava-modal" style="display:none">
+  <div class="strava-sheet">
+    <div class="strava-sheet-head">
+      <div class="section-label" style="margin:0">Assign workout</div>
+      <button class="mini-btn" onclick="closeAssign()">Close</button>
+    </div>
+    <div class="section-sublabel">Date</div>
+    <input id="assignDate" class="text-input" type="date">
+    <div class="section-sublabel">Athletes</div>
+    <div id="assignAthletes" class="pill-row wrap"></div>
+    <button class="cta" onclick="doAssign()">Assign</button>
+    <div id="assignMsg" class="save-msg"></div>
   </div>
 </div>
 
