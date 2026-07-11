@@ -1,0 +1,85 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OCTA.</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f3f0;--ink:#0f0f0e;--muted:#98958d;--hair:#e9e7e1;
+  --fd:'Space Grotesk','Inter',sans-serif;--fb:'Inter',sans-serif}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);font-family:var(--fb);color:var(--ink);-webkit-font-smoothing:antialiased}
+.hero{position:relative;min-height:52vh;display:flex;align-items:flex-end;
+  background-size:cover;background-position:center;background-color:#141412}
+.hero::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,10,9,.1) 30%,rgba(10,10,9,.75))}
+.hero-inner{position:relative;z-index:1;width:100%;max-width:640px;margin:0 auto;padding:0 24px 44px;color:#fff}
+.logo{max-height:44px;max-width:140px;object-fit:contain;margin-bottom:20px;filter:drop-shadow(0 2px 8px rgba(0,0,0,.3))}
+.pname{font-family:var(--fd);font-size:12px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:rgba(255,255,255,.75);margin-bottom:12px}
+h1{font-family:var(--fd);font-size:clamp(28px,6vw,42px);font-weight:600;letter-spacing:-.02em;line-height:1.1}
+.body{max-width:640px;margin:0 auto;padding:36px 24px 80px}
+.bio{font-size:15px;line-height:1.75;color:#3c3b37;white-space:pre-line;margin-bottom:34px}
+.cta{display:block;width:100%;background:var(--ink);color:#fff;border:none;border-radius:14px;
+  padding:17px;font-family:var(--fb);font-size:12px;font-weight:700;letter-spacing:.14em;
+  text-transform:uppercase;text-align:center;text-decoration:none;cursor:pointer}
+.links{display:flex;gap:10px;margin-top:12px}
+.link-btn{flex:1;background:#fff;border:1px solid var(--hair);border-radius:14px;padding:15px;
+  font-size:12px;font-weight:600;color:var(--ink);text-align:center;text-decoration:none}
+.code-note{text-align:center;font-size:11px;color:var(--muted);margin-top:18px;line-height:1.7}
+.code-note b{font-family:var(--fd);letter-spacing:.24em;color:var(--ink)}
+.octa{text-align:center;font-family:var(--fd);font-size:9px;font-weight:600;letter-spacing:.34em;
+  color:#c5c2ba;margin-top:60px;text-transform:uppercase}
+.err{max-width:640px;margin:30vh auto 0;text-align:center;color:var(--muted);padding:0 24px}
+</style>
+</head>
+<body>
+<div id="page" style="display:none">
+  <div class="hero" id="hero">
+    <div class="hero-inner">
+      <img id="logo" class="logo" style="display:none">
+      <div id="pname" class="pname"></div>
+      <h1 id="headline"></h1>
+    </div>
+  </div>
+  <div class="body">
+    <div id="bio" class="bio"></div>
+    <a id="joinBtn" class="cta">Join the program</a>
+    <div class="links">
+      <a id="igBtn" class="link-btn" style="display:none" target="_blank" rel="noopener">Instagram</a>
+      <a id="webBtn" class="link-btn" style="display:none" target="_blank" rel="noopener">Website</a>
+    </div>
+    <div id="codeNote" class="code-note"></div>
+    <div class="octa">OCTA.</div>
+  </div>
+</div>
+<div id="notFound" class="err" style="display:none">This page doesn't exist or isn't published.</div>
+<script>
+(async function(){
+  const slug=location.pathname.split('/').filter(Boolean).pop();
+  try{
+    const r=await fetch('/api/public?slug='+encodeURIComponent(slug));
+    if(!r.ok) throw new Error();
+    const {landing:L}=await r.json();
+    if(L.photo_url) document.getElementById('hero').style.backgroundImage='url('+L.photo_url+')';
+    if(L.logo_url){ const l=document.getElementById('logo'); l.src=L.logo_url; l.style.display='block'; }
+    document.getElementById('pname').textContent=(L.program_name||'').toUpperCase();
+    document.getElementById('headline').textContent=L.headline||L.program_name||'Coaching';
+    document.getElementById('bio').textContent=L.bio||'';
+    document.title=(L.program_name||'OCTA.')+' — OCTA.';
+    const join=document.getElementById('joinBtn');
+    join.href='/'+(L.invite_code?('?code='+encodeURIComponent(L.invite_code)):'');
+    if(L.invite_code) document.getElementById('codeNote').innerHTML=
+      'Create your athlete account and you\'ll join automatically — or enter code <b>'+L.invite_code+'</b> in Settings.';
+    if(L.ig_url){ const b=document.getElementById('igBtn'); b.href=L.ig_url; b.style.display='block'; }
+    if(L.website){ const b=document.getElementById('webBtn'); b.href=L.website; b.style.display='block'; }
+    document.getElementById('page').style.display='block';
+  }catch(e){
+    document.getElementById('notFound').style.display='block';
+  }
+})();
+</script>
+</body>
+</html>
