@@ -48,6 +48,14 @@ function mondayOf(s){ const d=parseDate(s); const dow=(d.getDay()+6)%7; d.setDat
 function fmtDay(s){ const d=parseDate(s); return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}).toUpperCase(); }
 function fmtShort(s){ const d=parseDate(s); return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'}); }
 function daysUntil(s){ const ms=parseDate(s)-parseDate(todayStr()); return Math.round(ms/86400000); }
+function ageFromDob(dob){
+  if(!dob) return null;
+  const d=parseDate(dob), t=new Date();
+  let age=t.getFullYear()-d.getFullYear();
+  const m=t.getMonth()-d.getMonth();
+  if(m<0 || (m===0 && t.getDate()<d.getDate())) age--;
+  return age;
+}
 
 /* ---------------- api helper ---------------- */
 async function api(path, opts){
@@ -121,7 +129,7 @@ async function leaveCoach(){
 /* ================================================================
    COACH WORKSPACE
 ================================================================ */
-let coachAthletes=[], caCurrent=null, caPeriodDays=28;
+let coachAthletes=[], caCurrent=null;
 function enterCoach(){
   document.body.classList.add('coach');
   ['viewLog','viewStats','viewShare','viewSettings'].forEach(v=>document.getElementById(v).style.display='none');
@@ -159,8 +167,9 @@ async function loadAthletes(){
   }
   list.innerHTML=coachAthletes.map((a,i)=>{
     const st=(a.crm&&a.crm.status)||'active';
+    const fullName=[a.first_name,a.last_name].filter(Boolean).join(' ') || a.email;
     return `<div class="athlete-card" onclick="openAthlete(${i})">
-      <div class="an">${esc(a.email)}</div>
+      <div class="an">${esc(fullName)}</div>
       <div class="am">${a.last_session?'Last session '+fmtShort(a.last_session):'No sessions yet'}
         ${a.race_name?'<br>'+esc(a.race_name)+(a.race_date?' · '+fmtShort(a.race_date):''):''}</div>
       <span class="as ${st}">${st}</span>
@@ -172,12 +181,16 @@ function openAthlete(i){
   caCurrent=coachAthletes[i];
   document.getElementById('coachHome').style.display='none';
   document.getElementById('coachAthleteView').style.display='block';
-  document.getElementById('caHead').textContent=caCurrent.email;
+  document.getElementById('caHead').textContent=[caCurrent.first_name,caCurrent.last_name].filter(Boolean).join(' ') || caCurrent.email;
   const c=caCurrent.crm||{};
   document.getElementById('crmStart').value=c.start_date||'';
   document.getElementById('crmPrice').value=c.monthly_price??'';
   document.getElementById('crmStatus').value=c.status||'active';
   document.getElementById('crmNotes').value=c.notes||'';
+  caPeriod='week'; caAnchor=todayStr();
+  document.querySelectorAll('.ca-period').forEach(b=>b.classList.toggle('active',b.dataset.p==='week'));
+  document.getElementById('caCustomRange').style.display='none';
+  document.getElementById('caPeriodNav').style.display='flex';
   loadCaStats();
 }
 async function saveCrm(){
@@ -195,43 +208,37 @@ async function saveCrm(){
     msg.textContent='Saved'; setTimeout(()=>msg.textContent='',2000);
   }catch(e){ msg.textContent=e.message; }
 }
-function setCaPeriod(d){
-  caPeriodDays=d;
-  document.querySelectorAll('.ca-period').forEach(b=>b.classList.toggle('active',+b.dataset.d===d));
-  loadCaStats();
+let caPeriod='week', caAnchor=todayStr();
+function setCaStatsPeriod(p){
+  caPeriod=p;
+  document.querySelectorAll('.ca-period').forEach(b=>b.classList.toggle('active',b.dataset.p===p));
+  document.getElementById('caCustomRange').style.display = p==='custom'?'flex':'none';
+  document.getElementById('caPeriodNav').style.display = p==='custom'?'none':'flex';
+  if(p!=='custom') loadCaStats();
 }
+function shiftCaPeriod(n){ caAnchor=shiftAnchor(caPeriod,caAnchor,n); loadCaStats(); }
 async function loadCaStats(){
+  const [start,end] = caPeriod==='custom'
+    ? [document.getElementById('caRangeStart').value||todayStr(), document.getElementById('caRangeEnd').value||todayStr()]
+    : periodRange(caPeriod,caAnchor);
+  document.getElementById('caPeriodLabel').textContent=periodLabel(caPeriod,start,end);
   const wrap=document.getElementById('caStats');
   wrap.innerHTML='<div class="empty-state">Loading…</div>';
-  const end=todayStr(), start=addDays(end,-(caPeriodDays-1));
   let d;
   try{ d=await api(`/api/coach?action=athlete-data&id=${caCurrent.id}&start=${start}&end=${end}`); }
   catch(e){ wrap.innerHTML=`<div class="empty-state">${e.message}</div>`; return; }
   const sessions=d.sessions||[], phys=d.physiology||[];
   if(!sessions.length && !phys.length){ wrap.innerHTML='<div class="empty-state">Nothing logged in this period.</div>'; return; }
-  const st=computeStats(sessions,phys,start,end);
-  let html=`<div class="stat-hero">
-    <div class="stat-tile"><div class="v">${hm(st.totalMin)}</div><div class="l">Training time</div></div>
-    <div class="stat-tile"><div class="v">${st.sessionCount}</div><div class="l">Sessions</div></div>
-    <div class="stat-tile"><div class="v">${st.runKm.toFixed(1)}<small>km</small></div><div class="l">Run · ${st.compPct}% compromised</div></div>
-    ${st.avgSleep!=null?`<div class="stat-tile"><div class="v">${st.avgSleep.toFixed(1)}<small>h</small></div><div class="l">Avg sleep</div></div>`:''}
-  </div>`;
-  const spTot=st.splitMin.endurance+st.splitMin.hyrox+st.splitMin.strength;
-  if(spTot>0){
-    html+=`<div class="section-card"><div class="chart-title">Training split</div>`+
-      statStackedLine([
-        {label:'Endurance',value:st.splitMin.endurance,color:SPLIT_COLORS.endurance},
-        {label:'Hyrox',value:st.splitMin.hyrox,color:SPLIT_COLORS.hyrox},
-        {label:'Strength',value:st.splitMin.strength,color:SPLIT_COLORS.strength},
-      ])+`</div>`;
+  let prev=null;
+  if(caPeriod!=='custom'){
+    const spanDays=Math.round((parseDate(end)-parseDate(start))/86400000)+1;
+    const pStart=addDays(start,-spanDays), pEnd=addDays(start,-1);
+    try{
+      const pd=await api(`/api/coach?action=athlete-data&id=${caCurrent.id}&start=${pStart}&end=${pEnd}`);
+      if((pd.sessions||[]).length) prev=computeStats(pd.sessions||[],pd.physiology||[],pStart,pEnd);
+    }catch(e){}
   }
-  const zTot=st.zoneMin.reduce((a,b)=>a+b,0);
-  if(zTot>0){
-    html+=`<div class="section-card"><div class="chart-title">Time in zones</div>`+
-      statStackedLine(st.zoneMin.map((m,z)=>({label:'Z'+(z+1),value:m,color:ZONE_COLORS[z]})))+`</div>`;
-  }
-  html+=pulseChartHTML(sessions,phys,start,end);
-  wrap.innerHTML=html;
+  wrap.innerHTML=statsBlockHTML(sessions,phys,start,end,prev);
 }
 function fillCoachSettings(){
   document.getElementById('csName').value=profile.program_name||'';
@@ -873,6 +880,10 @@ function wizPickTarget(n){
   wizTarget=n;
   document.querySelectorAll('#wizTargetPills .pill').forEach(b=>b.classList.toggle('active',+b.dataset.n===n));
 }
+function updateWizAge(){
+  const a=ageFromDob(document.getElementById('wizDob').value);
+  document.getElementById('wizAgeDisplay').textContent = a!=null? a+' years old' : '';
+}
 function wizGoto(n){
   [1,2,3].forEach(i=>document.getElementById('wizStep'+i).style.display=i===n?'block':'none');
 }
@@ -909,17 +920,26 @@ async function wizRunImport(){
 async function finishWizard(){
   const raceName=document.getElementById('wizRaceName').value.trim();
   const raceDate=document.getElementById('wizRaceDate').value;
+  const firstName=document.getElementById('wizFirstName').value.trim();
+  const lastName=document.getElementById('wizLastName').value.trim();
+  const dob=document.getElementById('wizDob').value;
+  const city=document.getElementById('wizCity').value.trim();
+  const country=document.getElementById('wizCountry').value.trim();
   try{
     await api('/api/profile',{method:'PUT',body:JSON.stringify({
       onboarded:true, streak_target:wizTarget,
       race_name:raceName||null, race_date:raceDate||null,
       training_phase:profile.training_phase||null,
-      race_divisions:profile.race_divisions||[]
+      race_divisions:profile.race_divisions||[],
+      first_name:firstName||null, last_name:lastName||null,
+      dob:dob||null, city:city||null, country:country||null
     })});
   }catch(e){}
   profile.onboarded=true; profile.streak_target=wizTarget;
   if(raceName) profile.race_name=raceName;
   if(raceDate) profile.race_date=raceDate;
+  profile.first_name=firstName||null; profile.last_name=lastName||null;
+  profile.dob=dob||null; profile.city=city||null; profile.country=country||null;
   localStorage.removeItem('htd_wiz');
   document.getElementById('wizard').style.display='none';
   datesWithData.clear();
@@ -1138,37 +1158,15 @@ function statStackedLine(items){
   return `<div class="s-zline">${segs}</div><div class="s-zline-lbls">${lbls}</div>`;
 }
 
-async function loadStats(){
-  const [start,end]=periodRange(statsPeriod,statsAnchor);
-  document.getElementById('statsPeriodLabel').textContent=periodLabel(statsPeriod,start,end);
-  const wrap=document.getElementById('statsContent');
-  wrap.innerHTML='<div class="empty-state">Loading…</div>';
-  let d;
-  try{ d=await api(`/api/get-data?start=${start}&end=${end}`); }
-  catch(e){ wrap.innerHTML='<div class="empty-state">Could not load data.</div>'; return; }
-  const sessions=d.sessions||[], phys=d.physiology||[];
-  if(sessions.length===0 && phys.length===0){
-    wrap.innerHTML='<div class="empty-state">No training logged in this period yet.</div>'; return;
-  }
+/* Builds the full stats HTML (hero tiles + all charts) — shared by athlete Stats tab and coach athlete view. */
+function statsBlockHTML(sessions, phys, start, end, prev){
   const st=computeStats(sessions,phys,start,end);
-
-  // previous equivalent period for comparison deltas
-  let prev=null;
-  if(statsPeriod!=='custom'){
-    const spanDays=Math.round((parseDate(end)-parseDate(start))/86400000)+1;
-    const pStart=addDays(start,-spanDays), pEnd=addDays(start,-1);
-    try{
-      const pd=await api(`/api/get-data?start=${pStart}&end=${pEnd}`);
-      if((pd.sessions||[]).length) prev=computeStats(pd.sessions||[],pd.physiology||[],pStart,pEnd);
-    }catch(e){}
-  }
   const delta=(cur,pv)=>{
     if(prev==null||pv==null||pv===0||cur==null) return '';
     const pct=Math.round((cur-pv)/pv*100);
     if(pct===0) return '';
     return `<span class="stat-delta ${pct>0?'up':'down'}">${pct>0?'↑':'↓'} ${Math.abs(pct)}%</span>`;
   };
-
   const tiles=[
     {v:hm(st.totalMin)+delta(st.totalMin,prev&&prev.totalMin), l:'Total training time'},
     {v:st.sessionCount+delta(st.sessionCount,prev&&prev.sessionCount), l:'Sessions'},
@@ -1180,7 +1178,6 @@ async function loadStats(){
 
   let html=`<div class="stat-hero">${tiles.map(t=>`<div class="stat-tile"><div class="v">${t.v}</div><div class="l">${t.l}</div></div>`).join('')}</div>`;
 
-  // 1 — training split (stacked line)
   const spTot=st.splitMin.endurance+st.splitMin.hyrox+st.splitMin.strength;
   if(spTot>0){
     html+=`<div class="section-card"><div class="chart-title">Training split</div>`+
@@ -1191,21 +1188,18 @@ async function loadStats(){
       ])+`</div>`;
   }
 
-  // 2 — overall time in zones (stacked line)
   const zTot=st.zoneMin.reduce((a,b)=>a+b,0);
   if(zTot>0){
     html+=`<div class="section-card"><div class="chart-title">Time in zones</div>`+
       statStackedLine(st.zoneMin.map((m,z)=>({label:'Z'+(z+1),value:m,color:ZONE_COLORS[z]})))+`</div>`;
   }
 
-  // 3 — run zones (stacked line)
   const rzTot=st.runZoneMin.reduce((a,b)=>a+b,0);
   if(rzTot>0){
     html+=`<div class="section-card"><div class="chart-title">Run — time in zones</div>`+
       statStackedLine(st.runZoneMin.map((m,z)=>({label:'Z'+(z+1),value:m,color:ZONE_COLORS[z]})))+`</div>`;
   }
 
-  // 4 — hyrox stations: all 8, race order, ranked bars
   {
     const maxSt=Math.max(...STATIONS.map(x=>st.stations[x.k]),1);
     const anySt=STATIONS.some(x=>st.stations[x.k]>0);
@@ -1222,10 +1216,32 @@ async function loadStats(){
     }
   }
 
-  // 6 — daily pulse (load + physiology per day)
   html+=pulseChartHTML(sessions,phys,start,end);
+  return html;
+}
 
-  wrap.innerHTML=html;
+async function loadStats(){
+  const [start,end]=periodRange(statsPeriod,statsAnchor);
+  document.getElementById('statsPeriodLabel').textContent=periodLabel(statsPeriod,start,end);
+  const wrap=document.getElementById('statsContent');
+  wrap.innerHTML='<div class="empty-state">Loading…</div>';
+  let d;
+  try{ d=await api(`/api/get-data?start=${start}&end=${end}`); }
+  catch(e){ wrap.innerHTML='<div class="empty-state">Could not load data.</div>'; return; }
+  const sessions=d.sessions||[], phys=d.physiology||[];
+  if(sessions.length===0 && phys.length===0){
+    wrap.innerHTML='<div class="empty-state">No training logged in this period yet.</div>'; return;
+  }
+  let prev=null;
+  if(statsPeriod!=='custom'){
+    const spanDays=Math.round((parseDate(end)-parseDate(start))/86400000)+1;
+    const pStart=addDays(start,-spanDays), pEnd=addDays(start,-1);
+    try{
+      const pd=await api(`/api/get-data?start=${pStart}&end=${pEnd}`);
+      if((pd.sessions||[]).length) prev=computeStats(pd.sessions||[],pd.physiology||[],pStart,pEnd);
+    }catch(e){}
+  }
+  wrap.innerHTML=statsBlockHTML(sessions,phys,start,end,prev);
 }
 
 /* ---- daily pulse chart: bars = min/day, RPE max on top, dots = HRV / readiness / resting HR ---- */
@@ -1609,6 +1625,10 @@ function triggerDownload(blob){
 ================================================================ */
 let phaseSel=null, divisionSel=[];
 let targetSel=4;
+function updateSetAge(){
+  const a=ageFromDob(document.getElementById('setDob').value);
+  document.getElementById('setAgeDisplay').textContent = a!=null? a+' years old' : '';
+}
 function pickTarget(n){
   targetSel=n;
   document.querySelectorAll('#targetPills .pill').forEach(b=>b.classList.toggle('active',+b.dataset.n===n));
@@ -1632,7 +1652,12 @@ function pickDivision(d){
   document.querySelectorAll('#divisionPills .pill').forEach(b=>b.classList.toggle('active',divisionSel.includes(b.dataset.v)));
 }
 function fillSettings(){
-  document.getElementById('setAge').value=profile.age??'';
+  document.getElementById('setFirstName').value=profile.first_name??'';
+  document.getElementById('setLastName').value=profile.last_name??'';
+  document.getElementById('setDob').value=profile.dob??'';
+  document.getElementById('setCity').value=profile.city??'';
+  document.getElementById('setCountry').value=profile.country??'';
+  updateSetAge();
   document.getElementById('setHeight').value=profile._height??'';
   document.getElementById('setWeight').value=profile._weight??'';
   document.getElementById('setHrvLow').value=profile.hrv_low??'';
@@ -1651,14 +1676,18 @@ function fillSettings(){
   document.querySelectorAll('#divisionPills .pill').forEach(b=>b.classList.toggle('active',divisionSel.includes(b.dataset.v)));
   if(profile.logo_url){
     const img=document.getElementById('logoPreview');
-    img.src=profile.logo_url; img.style.display='block';
+    if(img){ img.src=profile.logo_url; img.style.display='block'; }
   }
 }
 async function saveSettings(){
   const msg=document.getElementById('settingsMsg');
   msg.textContent='Saving…';
   const body={
-    age:intOrNull(document.getElementById('setAge').value),
+    first_name:document.getElementById('setFirstName').value||null,
+    last_name:document.getElementById('setLastName').value||null,
+    dob:document.getElementById('setDob').value||null,
+    city:document.getElementById('setCity').value||null,
+    country:document.getElementById('setCountry').value||null,
     hrv_low:intOrNull(document.getElementById('setHrvLow').value),
     hrv_high:intOrNull(document.getElementById('setHrvHigh').value),
     hr_z1_max:intOrNull(document.getElementById('hrz1').value),
@@ -1678,6 +1707,7 @@ async function saveSettings(){
     profile=Object.assign(profile,d.profile||body);
     profile._weight=body.weight_kg; profile._height=body.height_cm;
     onHrvInput();
+    if(coachAthleteHeaderName) coachAthleteHeaderName();
     msg.textContent='Saved';
     setTimeout(()=>msg.textContent='',2000);
   }catch(e){ msg.textContent='Could not save — '+e.message; }
