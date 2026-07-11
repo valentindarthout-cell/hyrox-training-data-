@@ -143,9 +143,12 @@ function enterCoach(){
 function coachTab(t){
   document.getElementById('coachHome').style.display = t==='home'?'block':'none';
   document.getElementById('coachAthleteView').style.display='none';
+  document.getElementById('coachFinance').style.display = t==='finance'?'block':'none';
   document.getElementById('coachSettings').style.display = t==='settings'?'block':'none';
   document.getElementById('cnavHome').classList.toggle('active',t==='home');
+  document.getElementById('cnavFinance').classList.toggle('active',t==='finance');
   document.getElementById('cnavSettings').classList.toggle('active',t==='settings');
+  if(t==='finance') loadFinance();
 }
 async function regenCode(){
   try{
@@ -187,6 +190,8 @@ function openAthlete(i){
   document.getElementById('crmPrice').value=c.monthly_price??'';
   document.getElementById('crmStatus').value=c.status||'active';
   document.getElementById('crmNotes').value=c.notes||'';
+  const priceLbl=document.querySelector('#crmPrice').closest('.macro-field').querySelector('label');
+  if(priceLbl) priceLbl.textContent=(CURRENCY_SYMBOLS[profile.currency]||profile.currency||'€')+' / month';
   caPeriod='week'; caAnchor=todayStr();
   document.querySelectorAll('.ca-period').forEach(b=>b.classList.toggle('active',b.dataset.p==='week'));
   document.getElementById('caCustomRange').style.display='none';
@@ -244,6 +249,7 @@ function fillCoachSettings(){
   document.getElementById('csName').value=profile.program_name||'';
   document.getElementById('csDesc').value=profile.program_desc||'';
   document.getElementById('csUrl').value=profile.program_url||'';
+  document.getElementById('csCurrency').value=profile.currency||'EUR';
   if(profile.logo_url){
     const img=document.getElementById('csLogoPreview');
     img.src=profile.logo_url; img.style.display='block';
@@ -256,9 +262,11 @@ async function saveCoachSettings(){
     await api('/api/profile',{method:'PUT',body:JSON.stringify({
       program_name:document.getElementById('csName').value||null,
       program_desc:document.getElementById('csDesc').value||null,
-      program_url:document.getElementById('csUrl').value||null
+      program_url:document.getElementById('csUrl').value||null,
+      currency:document.getElementById('csCurrency').value||'EUR'
     })});
     profile.program_name=document.getElementById('csName').value;
+    profile.currency=document.getElementById('csCurrency').value;
     document.getElementById('coachProgramTitle').textContent=profile.program_name||'';
     msg.textContent='Saved'; setTimeout(()=>msg.textContent='',2000);
   }catch(e){ msg.textContent=e.message; }
@@ -853,6 +861,104 @@ async function extractFromText(i){
     renderSessions();
     msg.textContent='Stations filled — review and adjust'; setTimeout(()=>msg.textContent='',2500);
   }catch(e){ msg.textContent='Could not read the text — '+e.message; }
+}
+
+/* ================================================================
+   COACH — FINANCE
+================================================================ */
+const CURRENCY_SYMBOLS={EUR:'€',USD:'$',GBP:'£',CHF:'Fr ',CAD:'$',AUD:'$'};
+function fmtMoney(amount){
+  const cur=profile.currency||'EUR';
+  const sym=CURRENCY_SYMBOLS[cur]||(cur+' ');
+  const rounded=Math.round(amount);
+  return (cur==='CHF'?sym:sym)+rounded.toLocaleString();
+}
+function monthKey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function monthLabel(key){
+  const [y,m]=key.split('-').map(Number);
+  return new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'short',year:'2-digit'});
+}
+let finPeriod='l12m';
+function setFinPeriod(p){
+  finPeriod=p;
+  document.querySelectorAll('.fin-period').forEach(b=>b.classList.toggle('active',b.dataset.p===p));
+  document.getElementById('finCustomRange').style.display = p==='custom'?'flex':'none';
+  if(p!=='custom') loadFinance();
+}
+function financeMonthRange(){
+  const now=new Date();
+  if(finPeriod==='ytd'){
+    const months=[];
+    for(let m=0;m<=now.getMonth();m++) months.push(monthKey(new Date(now.getFullYear(),m,1)));
+    return months;
+  }
+  if(finPeriod==='custom'){
+    const s=document.getElementById('finRangeStart').value, e=document.getElementById('finRangeEnd').value;
+    if(!s||!e) return [monthKey(now)];
+    const months=[]; let [y,m]=s.split('-').map(Number);
+    const [ey,em]=e.split('-').map(Number);
+    while(y<ey || (y===ey && m<=em)){
+      months.push(y+'-'+String(m).padStart(2,'0'));
+      m++; if(m>12){ m=1; y++; }
+    }
+    return months;
+  }
+  // l12m default
+  const months=[];
+  for(let i=11;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); months.push(monthKey(d)); }
+  return months;
+}
+/* Estimated revenue: each athlete contributes their current monthly_price to every
+   month from their start_date onward. For months before the current one we assume
+   they were active (we don't track a status-change date); the current month only
+   counts if status is still 'active'. This is an estimate, not an invoicing ledger. */
+function financeTrend(months){
+  const curMonthKey=monthKey(new Date());
+  return months.map(mk=>{
+    let revenue=0;
+    coachAthletes.forEach(a=>{
+      const c=a.crm; if(!c || !c.start_date || !c.monthly_price) return;
+      const startKey=c.start_date.slice(0,7);
+      if(startKey > mk) return;
+      if(mk === curMonthKey && c.status !== 'active') return;
+      revenue += Number(c.monthly_price)||0;
+    });
+    return { month:mk, revenue };
+  });
+}
+async function loadFinance(){
+  const wrap=document.getElementById('finContent');
+  wrap.innerHTML='<div class="empty-state">Loading…</div>';
+  if(!coachAthletes.length){
+    try{ const d=await api('/api/coach?action=athletes'); coachAthletes=d.athletes||[]; }catch(e){}
+  }
+  if(!coachAthletes.length){
+    wrap.innerHTML='<div class="empty-state">No athletes yet — revenue tracks once athletes join and you set their price in CRM.</div>';
+    return;
+  }
+  const months=financeMonthRange();
+  const trend=financeTrend(months);
+  const curMonthKey=monthKey(new Date());
+  const mrr=trend.find(t=>t.month===curMonthKey)?.revenue ?? financeTrend([curMonthKey])[0].revenue;
+  const activeCount=coachAthletes.filter(a=>a.crm && a.crm.status==='active').length;
+  const churnedCount=coachAthletes.filter(a=>a.crm && a.crm.status==='churned').length;
+  const avgPerAthlete=activeCount? mrr/activeCount : 0;
+  const totalInPeriod=trend.reduce((a,t)=>a+t.revenue,0);
+
+  let html=`<div class="stat-hero">
+    <div class="stat-tile"><div class="v">${fmtMoney(mrr)}</div><div class="l">Monthly revenue (est.)</div></div>
+    <div class="stat-tile"><div class="v">${activeCount}</div><div class="l">Active athletes</div></div>
+    <div class="stat-tile"><div class="v">${fmtMoney(avgPerAthlete)}</div><div class="l">Avg / athlete</div></div>
+    <div class="stat-tile"><div class="v">${churnedCount}</div><div class="l">Currently churned</div></div>
+  </div>`;
+
+  const max=Math.max(...trend.map(t=>t.revenue),1);
+  html+=`<div class="section-card"><div class="chart-title">Revenue trend</div><div class="vbars">`+
+    trend.map(t=>`<div class="vbar-col"><div class="vbar" style="height:${Math.max(2,Math.round(t.revenue/max*100))}%"></div><div class="vbar-lbl">${monthLabel(t.month)}</div></div>`).join('')+
+    `</div></div>
+    <div class="hint">Total over period: ${fmtMoney(totalInPeriod)}. Estimated from each athlete's start date, current price, and status — not a payment ledger.</div>`;
+
+  wrap.innerHTML=html;
 }
 
 /* ================================================================
