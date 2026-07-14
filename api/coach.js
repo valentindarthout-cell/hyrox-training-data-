@@ -58,7 +58,7 @@ module.exports = async function handler(req, res){
   }
 
   if(action === 'athletes'){
-    const ath = await sb(`/rest/v1/profiles?coach_id=eq.${user.id}&select=id,email,first_name,last_name,race_name,race_date,training_phase`, token, {method:'GET'});
+    const ath = await sb(`/rest/v1/profiles?coach_id=eq.${user.id}&select=id,email,first_name,last_name,race_name,race_date,race_divisions,training_phase`, token, {method:'GET'});
     if(!ath.ok) return res.status(500).json({error:'Could not load athletes'});
     const crm = await sb(`/rest/v1/coach_crm?coach_id=eq.${user.id}`, token, {method:'GET'});
     const crmByAthlete = {};
