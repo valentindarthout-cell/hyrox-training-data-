@@ -98,6 +98,12 @@ async function enterApp(){
 function renderCoachSection(){
   const linked=document.getElementById('coachLinked'), un=document.getElementById('coachUnlinked');
   if(!linked) return;
+  // coached athletes: phase is set by the coach via week labels
+  const phaseCard=document.getElementById('phasePills');
+  if(phaseCard){
+    const card=phaseCard.closest('.section-card');
+    if(card) card.style.display = coachInfo ? 'none' : 'block';
+  }
   if(coachInfo){
     linked.style.display='block'; un.style.display='none';
     document.getElementById('coachProgramName').textContent = coachInfo.program_name || 'Linked to your coach';
@@ -890,12 +896,33 @@ async function extractFromText(i){
 /* ================================================================
    COACH — PROGRAMMING (builder, library, assignment)
 ================================================================ */
-const EX_UNITS=['reps','m','km','min','s'];
-let wkTemplates=[], wk=null, wkMode='template';   // wk = current builder state
+const BLOCK_NAMES=['Warm-up','Main','Finisher','Cool-down'];
+const BLOCK_LIGHTEN={'Main':0,'Finisher':0.32,'Warm-up':0.55,'Cool-down':0.72};
+function lighten(hex,t){
+  const h=hex.replace('#','');
+  const c=[0,2,4].map(i=>parseInt(h.substr(i,2),16));
+  return 'rgb('+c.map(v=>Math.round(v+(255-v)*t)).join(',')+')';
+}
+function blockColor(type,blockName){
+  const base=SPLIT_COLORS[type]||SPLIT_COLORS.hyrox;
+  return lighten(base, BLOCK_LIGHTEN[blockName] ?? 0.4);
+}
+function normalizeBlocks(blocks){
+  const byName={};
+  (blocks||[]).forEach(b=>{
+    let text=b.text;
+    if(text==null && Array.isArray(b.exercises))
+      text=b.exercises.map(exToPlainText).join('\n');
+    const name=BLOCK_NAMES.includes(b.name)?b.name:(b.name==='Warm-up'?'Warm-up':'Main');
+    byName[name]=(byName[name]?byName[name]+'\n':'')+(text||'');
+  });
+  return BLOCK_NAMES.map(n=>({name:n,text:byName[n]||''}));
+}
+let wkTemplates=[], wk=null, wkMode='template', wkIsNew=false, wkIntensity='race weight';
 
 function newWorkout(){
-  wk={id:null,title:'',workout_type:'hyrox',duration_min:60,objective:'',blocks:[{name:'Warm-up',exercises:[]},{name:'Main',exercises:[]}],stations:{}};
-  wkMode='template';
+  wk={id:null,title:'',workout_type:'hyrox',duration_min:60,objective:'',blocks:normalizeBlocks([]),stations:{}};
+  wkMode='template'; wkIsNew=true;
   openBuilder();
 }
 function openBuilder(){
@@ -917,6 +944,7 @@ function closeBuilder(){
 function setWkType(t){
   wk.workout_type=t;
   document.querySelectorAll('.wk-type').forEach(b=>b.classList.toggle('active',b.dataset.t===t));
+  renderBlocks();
 }
 async function loadTemplates(){
   const list=document.getElementById('wkList');
@@ -926,61 +954,30 @@ async function loadTemplates(){
     wkTemplates=d.templates||[];
   }catch(e){ list.innerHTML='<div class="empty-state">Could not load.</div>'; return; }
   if(!wkTemplates.length){ list.innerHTML='<div class="empty-state">No workouts yet — create your first or generate one with AI.</div>'; return; }
-  list.innerHTML=wkTemplates.map((t,i)=>`<div class="athlete-card" onclick="editTemplate(${i})">
-    <div class="an">${esc(t.title||'Untitled')}</div>
-    <div class="am">${t.workout_type==='hyrox'?'Hyrox / Mix':cap(t.workout_type||'')} · ${t.duration_min||'—'} min</div>
-    <span class="as active">${(t.blocks||[]).reduce((a,b)=>a+(b.exercises||[]).length,0)} exercises</span>
-  </div>`).join('');
+  list.innerHTML=wkTemplates.map((t,i)=>{
+    const col=SPLIT_COLORS[t.workout_type]||'#999';
+    return `<div class="athlete-card wk-card" style="border-left-color:${col}" onclick="editTemplate(${i})">
+      <div class="an"><span class="type-dot" style="background:${col}"></span>${esc(t.title||'Untitled')}</div>
+      <div class="am">${t.workout_type==='hyrox'?'Hyrox / Mix':cap(t.workout_type||'')} · ${t.duration_min||'—'} min</div>
+    </div>`;
+  }).join('');
 }
 function editTemplate(i){
   const t=wkTemplates[i];
-  wk=JSON.parse(JSON.stringify({id:t.id,title:t.title,workout_type:t.workout_type,duration_min:t.duration_min,objective:t.objective,blocks:t.blocks||[],stations:t.stations||{}}));
-  wkMode='template';
+  wk={id:t.id,title:t.title,workout_type:t.workout_type,duration_min:t.duration_min,objective:t.objective||'',blocks:normalizeBlocks(t.blocks),stations:t.stations||{}};
+  wkMode='template'; wkIsNew=false;
   openBuilder();
 }
-function addBlock(){ wk.blocks.push({name:'Block '+(wk.blocks.length+1),exercises:[]}); renderBlocks(); }
-function delBlock(bi){ wk.blocks.splice(bi,1); renderBlocks(); }
-function addEx(bi){ wk.blocks[bi].exercises.push({name:'',sets:null,qty:null,unit:'reps',load_pct:null,load_ref:null,zone:null,notes:null}); renderBlocks(); }
-function delEx(bi,ei){ wk.blocks[bi].exercises.splice(ei,1); renderBlocks(); }
-function updBlockName(bi,v){ wk.blocks[bi].name=v; }
-function updExLoad(bi,ei,v){
-  const ex=wk.blocks[bi].exercises[ei];
-  if(v===''){ ex.load_pct=null; ex.zone=null; }
-  else if(v.startsWith('I')){ ex.zone=v; ex.load_pct=null; }
-  else { ex.load_pct=parseInt(v); ex.zone=null; }
-}
-function updEx(bi,ei,k,v){
-  const ex=wk.blocks[bi].exercises[ei];
-  if(['sets','load_pct'].includes(k)) ex[k]=v===''?null:parseInt(v);
-  else if(k==='qty') ex[k]=v===''?null:parseFloat(v);
-  else ex[k]=v||null;
-}
+function updBlockText(i,v){ wk.blocks[i].text=v; }
 function renderBlocks(){
   const wrap=document.getElementById('wkBlocks');
-  wrap.innerHTML=wk.blocks.map((b,bi)=>`<div class="wk-block">
-    <div class="wk-block-head">
-      <input value="${esc(b.name)}" oninput="updBlockName(${bi},this.value)">
-      <button class="mini-btn" onclick="delBlock(${bi})">Remove</button>
-    </div>
-    <div class="wk-ex-labels"><span>Exercise</span><span>Sets</span><span>Qty</span><span>Unit</span><span>Load / Zone</span><span>Ref lift</span><span></span></div>
-    ${b.exercises.map((ex,ei)=>`<div class="wk-ex">
-      <input placeholder="e.g. Back squat / Run / Ski erg" value="${esc(ex.name)}" oninput="updEx(${bi},${ei},'name',this.value)">
-      <input type="number" placeholder="—" value="${ex.sets??''}" oninput="updEx(${bi},${ei},'sets',this.value)">
-      <input type="number" step="0.1" placeholder="—" value="${ex.qty??''}" oninput="updEx(${bi},${ei},'qty',this.value)">
-      <select onchange="updEx(${bi},${ei},'unit',this.value)">${EX_UNITS.map(u=>`<option ${ex.unit===u?'selected':''}>${u}</option>`).join('')}</select>
-      <select onchange="updExLoad(${bi},${ei},this.value)">
-        <option value="">—</option>
-        <optgroup label="%1RM">${[60,65,70,75,80,85,90,95].map(p=>`<option value="${p}" ${ex.load_pct===p?'selected':''}>${p}%</option>`).join('')}</optgroup>
-        <optgroup label="Zone">${PACE_ZONES.map(z=>`<option value="${z.z}" ${ex.zone===z.z?'selected':''}>${z.z}</option>`).join('')}</optgroup>
-      </select>
-      <select onchange="updEx(${bi},${ei},'load_ref',this.value)">
-        <option value="">—</option>
-        ${LIFTS.map(l=>`<option value="${l.k}" ${ex.load_ref===l.k?'selected':''}>${l.label}</option>`).join('')}
-      </select>
-      <button class="wk-ex-del" onclick="delEx(${bi},${ei})">×</button>
-    </div>`).join('')}
-    <button class="mini-btn" onclick="addEx(${bi})">+ Exercise</button>
-  </div>`).join('');
+  wrap.innerHTML=wk.blocks.map((b,i)=>{
+    const c=blockColor(wk.workout_type,b.name);
+    return `<div class="blk" style="background:${lighten(SPLIT_COLORS[wk.workout_type]||'#888',0.92)};border-color:${c}">
+      <label style="color:${blockColor(wk.workout_type,'Main')}">${b.name}</label>
+      <textarea placeholder="${b.name==='Main'?'The session…':'Optional'}" oninput="updBlockText(${i},this.value)">${esc(b.text)}</textarea>
+    </div>`;
+  }).join('');
 }
 function renderWkStations(){
   const g=document.getElementById('wkStations');
@@ -988,6 +985,10 @@ function renderWkStations(){
     .concat(STATIONS.map(s=>({k:s.k,label:s.label+' '+s.unit})));
   g.innerHTML=fields.map(f=>`<div class="metric-field"><label>${f.label}</label>
     <input type="number" step="0.1" value="${wk.stations[f.k]??''}" oninput="wk.stations['${f.k}']=this.value===''?null:parseFloat(this.value)"></div>`).join('');
+}
+function setWkIntensity(v){
+  wkIntensity=v;
+  document.querySelectorAll('.wk-int').forEach(b=>b.classList.toggle('active',b.dataset.v===v));
 }
 function collectBuilder(){
   wk.title=document.getElementById('wkTitle').value;
@@ -1001,26 +1002,26 @@ async function generateWorkout(){
   msg.textContent='Generating…';
   try{
     const d=await api('/api/ai',{method:'POST',body:JSON.stringify({
-      mode:'workout', duration_min:wk.duration_min, objective:wk.objective, workout_type:wk.workout_type
+      mode:'workout', duration_min:wk.duration_min, objective:wk.objective,
+      workout_type:wk.workout_type, intensity:wkIntensity
     })});
     const g=d.workout||{};
-    if(g.title && !wk.title) wk.title=g.title;
-    if(Array.isArray(g.blocks)) wk.blocks=g.blocks.map(b=>({name:b.name||'Block',exercises:(b.exercises||[]).map(e=>({
-      name:e.name||'',sets:e.sets??null,qty:e.qty??null,unit:e.unit||'reps',
-      load_pct:e.load_pct??null,load_ref:e.load_ref||null,zone:e.zone||null,notes:e.notes||null
-    }))}));
+    if(g.title && !wk.title){ wk.title=g.title; document.getElementById('wkTitle').value=g.title; }
+    if(Array.isArray(g.blocks)) wk.blocks=normalizeBlocks(g.blocks);
     if(g.stations) wk.stations=g.stations;
-    document.getElementById('wkTitle').value=wk.title;
     renderBlocks(); renderWkStations();
     msg.textContent='Generated — edit anything, then save';
     setTimeout(()=>msg.textContent='',3000);
   }catch(e){ msg.textContent=e.message; }
 }
+function workoutText(){
+  return wk.blocks.filter(b=>b.text&&b.text.trim()).map(b=>b.name+':\n'+b.text.trim()).join('\n\n');
+}
 async function quantifyWorkout(){
   collectBuilder();
   const msg=document.getElementById('wkMsg');
-  const text=wk.blocks.map(b=>b.name+':\n'+b.exercises.map(exToPlainText).join('\n')).join('\n\n');
-  if(!text.trim()){ msg.textContent='Add exercises first.'; return; }
+  const text=workoutText();
+  if(!text.trim()){ msg.textContent='Write the workout first.'; return; }
   msg.textContent='Quantifying…';
   try{
     const d=await api('/api/ai',{method:'POST',body:JSON.stringify({mode:'text',text,workout_type:'hyrox'})});
@@ -1054,6 +1055,11 @@ async function saveTemplate(){
       msg.textContent='Athlete copy updated';
     }else{
       const d=await api('/api/workouts',{method:'POST',body:JSON.stringify({action:'save-template',workout:wk})});
+      if(wkIsNew){
+        msg.textContent='Saved ✓ — ready for the next one';
+        setTimeout(()=>{ msg.textContent=''; newWorkout(); },1200);
+        return;
+      }
       if(d.workout) wk.id=d.workout.id;
       msg.textContent='Saved to library';
     }
@@ -1109,31 +1115,49 @@ function toggleMic(){
   recognition.start(); micActive=true; btn.style.background='#e7f7ef';
 }
 
-/* ---- coach: week labels + assignments in athlete view ---- */
-const WEEK_LABELS=['Power','Volume','Deload','Taper'];
-let wlWeek=mondayOf(todayStr());
+/* ---- coach: race banner, week phases, weekly calendar, side panel ---- */
+let wlWeek=mondayOf(todayStr()), caWlCache={}, caWeekAssignments=[];
 function shiftWlWeek(n){ wlWeek=addDays(wlWeek,7*n); renderWlSection(); }
+function renderRaceBanner(){
+  const el=document.getElementById('caRaceBanner');
+  if(!caCurrent.race_name){ el.innerHTML=''; return; }
+  const du=caCurrent.race_date? daysUntil(caCurrent.race_date) : null;
+  el.innerHTML=`<div class="race-banner">
+    <span class="rb-name">${esc(caCurrent.race_name)}</span>
+    <span class="rb-meta">${caCurrent.race_date?fmtDay(caCurrent.race_date):''}${(caCurrent.race_divisions||[]).length?' · '+caCurrent.race_divisions.join(' · '):''}</span>
+    ${du!=null&&du>=0?`<span class="rb-days">${du} days out</span>`:''}
+  </div>`;
+}
 async function renderWlSection(){
   document.getElementById('wlWeekLabel').textContent=fmtShort(wlWeek)+' – '+fmtShort(addDays(wlWeek,6));
-  let assignments=[], label=null;
+  renderRaceBanner();
   try{
     const d=await api(`/api/workouts?action=assignments&athlete_id=${caCurrent.id}&start=${wlWeek}&end=${addDays(wlWeek,6)}`);
-    assignments=d.assignments||[];
-  }catch(e){}
-  // current label: fetch via week_labels through assignments endpoint? simplest: keep local cache set on click
+    caWeekAssignments=d.assignments||[];
+  }catch(e){ caWeekAssignments=[]; }
   const pills=document.getElementById('wlPills');
-  pills.innerHTML=WEEK_LABELS.map(l=>`<button class="pill ${caWlCache[caCurrent.id+wlWeek]===l?'active':''}" onclick="setWeekLabel('${l}')">${l}</button>`).join('')+
+  pills.innerHTML=PHASES.map(l=>`<button class="pill ${caWlCache[caCurrent.id+wlWeek]===l?'active':''}" onclick="setWeekLabel('${l}')">${l}</button>`).join('')+
     `<button class="pill" onclick="setWeekLabel(null)">Clear</button>`;
-  const wrap=document.getElementById('caAssignments');
-  wrap.innerHTML = assignments.length
-    ? assignments.map(a=>`<div class="hbar-row" style="align-items:center">
-        <div style="flex:1;font-size:12px"><b>${esc(a.title||'Workout')}</b> · ${fmtShort(a.date)} · ${a.status==='done'?'Done'+(a.difficulty?' '+a.difficulty+'/10':''):'Assigned'}</div>
-        <button class="mini-btn" onclick='editAssignment(${JSON.stringify(JSON.stringify(a))})'>Edit</button>
-        <button class="mini-btn" onclick="deleteAssignment('${a.id}')">Remove</button>
-      </div>`).join('')
-    : '<div class="hint">No workouts assigned this week.</div>';
+  renderCaCalendar();
 }
-let caWlCache={};
+function renderCaCalendar(){
+  const grid=document.getElementById('caCalendar');
+  const dows=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  grid.innerHTML=[0,1,2,3,4,5,6].map(i=>{
+    const ds=addDays(wlWeek,i);
+    const todays=caWeekAssignments.filter(a=>a.date===ds);
+    return `<div class="cal-day ${ds===todayStr()?'today':''}" onclick="openDayPanel('${ds}')">
+      <div class="cd-head">${dows[i]} ${parseDate(ds).getDate()}</div>
+      ${todays.map(a=>{
+        const col=SPLIT_COLORS[a.workout_type]||'#888';
+        return `<div class="cal-wk" style="background:${col}" onclick="event.stopPropagation();openAssignmentPanel('${a.id}')">
+          ${esc(a.title||'Workout')}
+          <span class="cw-status">${a.status==='done'?'✓ Done'+(a.difficulty?' · '+a.difficulty+'/10':''):'Assigned'}${a.duration_min?' · '+a.duration_min+"'":''}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+}
 async function setWeekLabel(l){
   try{
     await api('/api/workouts',{method:'POST',body:JSON.stringify({action:'week-label',athlete_id:caCurrent.id,week_start:wlWeek,label:l})});
@@ -1141,18 +1165,113 @@ async function setWeekLabel(l){
     renderWlSection();
   }catch(e){}
 }
-function editAssignment(json){
-  const a=JSON.parse(json);
-  wk={id:a.workout_id,assignment_id:a.id,title:a.title,workout_type:a.workout_type,duration_min:a.duration_min,objective:a.objective||'',blocks:a.blocks||[],stations:a.stations||{}};
-  wkMode='assignment';
-  coachTab('prog');
-  openBuilder();
-  document.getElementById('wkMsg').textContent='Editing '+([caCurrent.first_name,caCurrent.last_name].filter(Boolean).join(' ')||caCurrent.email)+"'s copy — saving updates only their workout";
+
+/* ---- side panel ---- */
+let sp={mode:null,assignment:null,date:null};
+function openSidePanel(){ document.getElementById('sidePanel').classList.add('open'); }
+function closeSidePanel(){ document.getElementById('sidePanel').classList.remove('open'); }
+function openDayPanel(date){
+  sp={mode:'pick',date};
+  document.getElementById('spTitle').textContent=fmtDay(date);
+  document.getElementById('spBody').innerHTML=`
+    <button class="cta" onclick="spBlank()">New workout for this day</button>
+    <div class="section-sublabel" style="margin-top:18px">Or pick from library</div>
+    <div class="sp-lib" id="spLib"><div class="empty-state">Loading…</div></div>`;
+  openSidePanel();
+  api('/api/workouts?action=templates').then(d=>{
+    wkTemplates=d.templates||[];
+    document.getElementById('spLib').innerHTML = wkTemplates.length
+      ? wkTemplates.map((t,i)=>{
+          const col=SPLIT_COLORS[t.workout_type]||'#999';
+          return `<div class="athlete-card wk-card" style="border-left-color:${col}" onclick="spFromTemplate(${i})">
+            <div class="an"><span class="type-dot" style="background:${col}"></span>${esc(t.title||'Untitled')}</div>
+            <div class="am">${t.duration_min||'—'} min</div></div>`;
+        }).join('')
+      : '<div class="hint">Library is empty.</div>';
+  }).catch(()=>{});
 }
-async function deleteAssignment(id){
+function spBlank(){
+  spEdit({title:'',workout_type:'hyrox',duration_min:60,blocks:normalizeBlocks([]),stations:{},date:sp.date,status:'assigned'},true);
+}
+function spFromTemplate(i){
+  const t=wkTemplates[i];
+  spEdit({workout_id:t.id,title:t.title,workout_type:t.workout_type,duration_min:t.duration_min,
+    blocks:normalizeBlocks(t.blocks),stations:t.stations||{},date:sp.date,status:'assigned'},true);
+}
+function openAssignmentPanel(id){
+  const a=caWeekAssignments.find(x=>x.id===id); if(!a) return;
+  spEdit({...a, blocks:normalizeBlocks(a.blocks)}, false);
+}
+function spEdit(a,isNew){
+  sp={mode:isNew?'create':'edit',assignment:a,date:a.date};
+  document.getElementById('spTitle').textContent=(isNew?'New — ':'')+fmtDay(a.date);
+  const body=document.getElementById('spBody');
+  body.innerHTML=`
+    <input id="spWkTitle" class="text-input" type="text" placeholder="Workout title" value="${esc(a.title||'')}">
+    <div class="pill-row" style="margin-bottom:12px">
+      ${['hyrox','endurance','strength'].map(t=>`<button class="pill sp-type ${a.workout_type===t?'active':''}" data-t="${t}" onclick="spSetType('${t}')">${t==='hyrox'?'Hyrox / Mix':cap(t)}</button>`).join('')}
+    </div>
+    <div class="metric-field" style="max-width:140px;margin-bottom:12px"><label>Duration min</label>
+      <input id="spDuration" type="number" inputmode="numeric" value="${a.duration_min??60}"></div>
+    <div id="spBlocks"></div>
+    <div class="section-card"><div class="section-label">Station volumes</div>
+      <div class="hyrox-grid" id="spStations"></div></div>
+    <button class="cta" onclick="spSave()">${sp.mode==='create'?'Assign to this day':'Save changes'}</button>
+    ${sp.mode==='edit'?'<button class="cta-secondary" onclick="spDelete()">Remove workout</button>':''}
+    <div id="spMsg" class="save-msg"></div>`;
+  spRenderBlocks(); spRenderStations();
+  openSidePanel();
+}
+function spSetType(t){
+  sp.assignment.workout_type=t;
+  document.querySelectorAll('.sp-type').forEach(b=>b.classList.toggle('active',b.dataset.t===t));
+  spRenderBlocks();
+}
+function spRenderBlocks(){
+  const a=sp.assignment;
+  document.getElementById('spBlocks').innerHTML=a.blocks.map((b,i)=>{
+    const c=blockColor(a.workout_type,b.name);
+    return `<div class="blk" style="background:${lighten(SPLIT_COLORS[a.workout_type]||'#888',0.92)};border-color:${c}">
+      <label style="color:${blockColor(a.workout_type,'Main')}">${b.name}</label>
+      <textarea oninput="sp.assignment.blocks[${i}].text=this.value">${esc(b.text)}</textarea>
+    </div>`;
+  }).join('');
+}
+function spRenderStations(){
+  const a=sp.assignment;
+  const fields=[{k:'run_km',label:'Run km'},{k:'compromised_run_km',label:'Compromised run km'}]
+    .concat(STATIONS.map(s=>({k:s.k,label:s.label+' '+s.unit})));
+  document.getElementById('spStations').innerHTML=fields.map(f=>`<div class="metric-field"><label>${f.label}</label>
+    <input type="number" step="0.1" value="${a.stations[f.k]??''}" oninput="sp.assignment.stations['${f.k}']=this.value===''?null:parseFloat(this.value)"></div>`).join('');
+}
+async function spSave(){
+  const a=sp.assignment;
+  a.title=document.getElementById('spWkTitle').value;
+  a.duration_min=intOrNull(document.getElementById('spDuration').value);
+  const msg=document.getElementById('spMsg');
+  msg.textContent='Saving…';
   try{
-    await api('/api/workouts',{method:'POST',body:JSON.stringify({action:'delete-assignment',id})});
-    renderWlSection();
+    if(sp.mode==='create'){
+      await api('/api/workouts',{method:'POST',body:JSON.stringify({
+        action:'create-assignment', athlete_id:caCurrent.id, date:a.date, workout_id:a.workout_id||null,
+        title:a.title, workout_type:a.workout_type, duration_min:a.duration_min,
+        blocks:a.blocks, stations:a.stations
+      })});
+    }else{
+      await api('/api/workouts',{method:'POST',body:JSON.stringify({
+        action:'update-assignment', id:a.id,
+        title:a.title, workout_type:a.workout_type, duration_min:a.duration_min,
+        blocks:a.blocks, stations:a.stations
+      })});
+    }
+    msg.textContent='Saved';
+    closeSidePanel(); renderWlSection();
+  }catch(e){ msg.textContent=e.message; }
+}
+async function spDelete(){
+  try{
+    await api('/api/workouts',{method:'POST',body:JSON.stringify({action:'delete-assignment',id:sp.assignment.id})});
+    closeSidePanel(); renderWlSection();
   }catch(e){}
 }
 
@@ -1590,20 +1709,34 @@ function resolveExText(ex){
   const parts=[];
   if(ex.sets&&ex.qty!=null) parts.push(ex.sets+'×'+ex.qty+(ex.unit&&ex.unit!=='reps'?ex.unit:''));
   else if(ex.qty!=null) parts.push(ex.qty+(ex.unit&&ex.unit!=='reps'?ex.unit:' reps'));
-  let target='';
-  if(ex.load_pct){
-    target='@'+ex.load_pct+'%';
-    const maxes=profile.maxes||{};
-    if(ex.load_ref && maxes[ex.load_ref]){
-      target+=' <span class="aw-target">('+(Math.round(maxes[ex.load_ref]*ex.load_pct/100/2.5)*2.5)+'kg)</span>';
-    }
-  }else if(ex.zone){
-    target='@'+ex.zone;
-    const pr=profile.vma? zonePaceRange(ex.zone, profile.vma) : null;
-    if(pr) target+=' <span class="aw-target">('+pr+')</span>';
+  if(ex.load_pct) parts.push('@'+ex.load_pct+'%');
+  if(ex.zone) parts.push('@'+ex.zone);
+  return main+(parts.length?' — '+parts.join(' · '):'');
+}
+function assignedBlocksHTML(a){
+  const blocks=normalizeBlocks(a.blocks).filter(b=>b.text&&b.text.trim());
+  return blocks.map(b=>{
+    const c=blockColor(a.workout_type||'hyrox',b.name);
+    return `<div style="border-left:3px solid ${c};padding-left:10px;margin:10px 0">
+      <div class="aw-block" style="margin-top:0">${esc(b.name)}</div>
+      <div class="aw-ex" style="white-space:pre-line">${esc(b.text.trim())}</div>
+    </div>`;
+  }).join('');
+}
+function athleteRefFooter(){
+  const bits=[];
+  if(profile.vma){
+    const zs=['I3','I4','I5'].map(z=>{
+      const pr=zonePaceRange(z,profile.vma);
+      return pr? z+' '+pr : null;
+    }).filter(Boolean).join(' · ');
+    if(zs) bits.push('Your paces: '+zs);
   }
-  if(ex.notes) parts.push(esc(ex.notes));
-  return main+(parts.length?' — '+parts.join(' · '):'')+(target?' '+target:'');
+  const mx=profile.maxes||{};
+  const lifts=LIFTS.filter(l=>mx[l.k]).map(l=>l.label+' '+mx[l.k]+'kg').join(' · ');
+  if(lifts) bits.push('1RM: '+lifts);
+  if(!bits.length) return '';
+  return `<div style="margin-top:12px;font-size:10px;line-height:1.7;color:rgba(255,255,255,.45)">${bits.join('<br>')}</div>`;
 }
 function renderAssigned(){
   const wrap=document.getElementById('assignedWrap'); if(!wrap) return;
@@ -1611,11 +1744,12 @@ function renderAssigned(){
   if(!todays.length){ wrap.innerHTML=''; return; }
   wrap.innerHTML=todays.map((a,i)=>{
     const done=a.status==='done';
-    return `<div class="assigned-card">
+    const col=SPLIT_COLORS[a.workout_type]||'#888';
+    return `<div class="assigned-card" style="border-top:3px solid ${col}">
       <div class="aw-type">${coachInfo&&coachInfo.program_name?esc(coachInfo.program_name):'Assigned workout'} · ${a.workout_type==='hyrox'?'Hyrox / Mix':cap(a.workout_type||'')}${a.duration_min?' · '+a.duration_min+' min':''}</div>
       <div class="aw-title">${esc(a.title||'Workout')}</div>
-      ${(a.blocks||[]).map(b=>`<div class="aw-block">${esc(b.name)}</div>`+
-        (b.exercises||[]).map(ex=>`<div class="aw-ex">${resolveExText(ex)}</div>`).join('')).join('')}
+      ${assignedBlocksHTML(a)}
+      ${athleteRefFooter()}
       ${done
         ? `<span class="aw-done-tag">Done${a.difficulty?' · '+a.difficulty+'/10':''}</span>`
         : `<div class="assigned-done">
@@ -1637,7 +1771,7 @@ async function markDone(id, idx){
     const s=blankSession();
     s.name=a.title||''; s.workout_type=a.workout_type||'hyrox';
     s.duration_min=a.duration_min??''; s.rpe=diff??''; s._rpeAuto=false;
-    s.workout_desc=(a.blocks||[]).map(b=>b.name+':\n'+(b.exercises||[]).map(exToPlainText).join('\n')).join('\n\n');
+    s.workout_desc=normalizeBlocks(a.blocks).filter(b=>b.text&&b.text.trim()).map(b=>b.name+':\n'+b.text.trim()).join('\n\n');
     const st=a.stations||{};
     ['ski_erg_m','sled_push_m','sled_pull_m','burpees_reps','row_erg_m','farmers_m','lunges_m','wallballs_reps'].forEach(k=>{ if(st[k]!=null) s.stations[k]=st[k]; });
     if(st.compromised_run_km!=null) s.compromised_run_km=st.compromised_run_km;
@@ -2037,7 +2171,9 @@ function pickDayCard(v){ shareDayCard=v; shareToggles={}; renderShareCard(); }
 
 function metaLine(){
   const bits=[];
-  if(profile.training_phase && profile.training_phase!=='Race') bits.push(profile.training_phase);
+  const wkPhase = coachInfo ? weekLabelMap[mondayOf(todayStr())] : null;
+  const phase = wkPhase || profile.training_phase;
+  if(phase && phase!=='Race') bits.push(phase);
   if(profile.race_name){
     bits.push(profile.race_name);
     if(profile.race_divisions&&profile.race_divisions.length) bits.push(profile.race_divisions.join(' · '));
@@ -2160,8 +2296,12 @@ function renderPeriodCard(card,togWrap,sessions,phys,start,end){
     const buckets=bucketize(sharePeriod,start,end,st.perDayMin);
     if(buckets.some(b=>b.v>0)){
       const max=Math.max(...buckets.map(b=>b.v));
-      inner+=`<div class="c-chart-lbl">Training time</div><div class="c-vbars">`+
-        buckets.map(b=>`<div class="c-vbar-col"><div class="c-vbar" style="height:${max?Math.max(3,Math.round(b.v/max*100)):3}%"></div><div class="c-vbar-lbl">${b.l}</div></div>`).join('')+`</div>`;
+      const hoursLbl = sharePeriod==='week';
+      inner+=`<div class="c-chart-lbl">Training time</div><div class="c-vbars" style="${hoursLbl?'height:66px':''}">`+
+        buckets.map(b=>`<div class="c-vbar-col">
+          ${hoursLbl?`<div class="c-vbar-lbl" style="margin-bottom:3px">${b.v>0?(b.v/60).toFixed(1):''}</div>`:''}
+          <div class="c-vbar" style="height:${max?Math.max(3,Math.round(b.v/max*100)):3}%"></div>
+          <div class="c-vbar-lbl">${b.l}</div></div>`).join('')+`</div>`;
     }
   }
   const spTot=st.splitMin.endurance+st.splitMin.hyrox+st.splitMin.strength;
