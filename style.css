@@ -363,3 +363,36 @@ body.coach .bottom-nav{display:none}
 .week-label-chip{text-align:center;font-family:var(--font-display);font-size:8px;font-weight:700;letter-spacing:.26em;text-transform:uppercase;color:var(--muted);padding:2px 0 6px}
 /* coach week label picker */
 .wl-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:14px 0}
+
+/* ============ WEEK 2.5 — text-block builder, calendar, side panel ============ */
+body.coach{max-width:1100px}
+/* block textareas, tinted by session type via CSS vars set inline */
+.blk{border-radius:16px;padding:14px 16px;margin:10px 0;border:1px solid transparent}
+.blk label{display:block;font-size:8px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;margin-bottom:8px}
+.blk textarea{width:100%;background:rgba(255,255,255,.72);border:1px solid rgba(0,0,0,.05);border-radius:10px;padding:11px;font-size:13px;line-height:1.6;resize:vertical;min-height:64px;outline:none;font-family:var(--font-body)}
+/* library / calendar type accent */
+.type-dot{display:inline-block;width:8px;height:8px;border-radius:999px;margin-right:7px;vertical-align:1px}
+.athlete-card.wk-card{border-left:3px solid var(--hair)}
+/* races banner */
+.race-banner{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid var(--hair);border-radius:16px;padding:14px 18px;margin-bottom:14px}
+.race-banner .rb-name{font-family:var(--font-display);font-weight:600;font-size:14px}
+.race-banner .rb-meta{font-size:11px;color:var(--muted)}
+.race-banner .rb-days{margin-left:auto;font-family:var(--font-display);font-weight:700;font-size:13px}
+/* weekly calendar */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:10px}
+.cal-day{background:#fff;border:1px solid var(--hair);border-radius:14px;min-height:120px;padding:8px;cursor:pointer}
+.cal-day:hover{border-color:#c9c6bf}
+.cal-day .cd-head{font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:7px}
+.cal-day.today .cd-head{color:var(--ink)}
+.cal-wk{border-radius:10px;padding:7px 8px;margin-bottom:6px;font-size:11px;font-weight:600;color:#fff;line-height:1.35;cursor:pointer}
+.cal-wk .cw-status{display:block;font-size:9px;font-weight:600;opacity:.75;margin-top:2px}
+/* side panel */
+.side-panel{position:fixed;top:0;right:0;bottom:0;width:66%;max-width:760px;background:var(--bg);
+  border-left:1px solid var(--hair);box-shadow:-16px 0 44px rgba(0,0,0,.09);z-index:60;
+  overflow-y:auto;padding:22px 24px 60px;transform:translateX(102%);transition:transform .22s ease}
+.side-panel.open{transform:none}
+.sp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sp-title{font-family:var(--font-display);font-size:15px;font-weight:600}
+@media (max-width:700px){.side-panel{width:100%;max-width:none}}
+/* library picker inside panel */
+.sp-lib .athlete-card{margin-bottom:8px}
