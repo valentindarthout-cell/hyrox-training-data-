@@ -90,6 +90,22 @@ module.exports = async function handler(req, res){
     return res.status(200).json({ assignments: r.data||[] });
   }
 
+  if(action === 'create-assignment'){
+    const b = req.body||{};
+    if(!b.athlete_id || !b.date) return res.status(400).json({error:'athlete_id and date required'});
+    const row = {
+      workout_id: b.workout_id||null, coach_id: user.id, athlete_id: b.athlete_id, date: b.date,
+      title: b.title||'Workout', workout_type: b.workout_type||'hyrox',
+      duration_min: b.duration_min??null, objective: b.objective||null,
+      blocks: b.blocks||[], stations: b.stations||{}
+    };
+    const r = await sb('/rest/v1/assignments', token, {
+      method:'POST', headers:{'Prefer':'return=representation'}, body: JSON.stringify([row])
+    });
+    if(!r.ok) return res.status(500).json({error:'Could not create'});
+    return res.status(200).json({ assignment: Array.isArray(r.data)? r.data[0] : null });
+  }
+
   if(action === 'update-assignment'){
     const b = req.body||{};
     if(!b.id) return res.status(400).json({error:'id required'});
