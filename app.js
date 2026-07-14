@@ -920,8 +920,22 @@ function normalizeBlocks(blocks){
 }
 let wkTemplates=[], wk=null, wkMode='template', wkIsNew=false, wkIntensity='race weight';
 
+function modalityOptions(type){
+  return type==='endurance'?ENDURANCE_MODS : type==='strength'?STRENGTH_FOCUSES : HYROX_FOCUSES;
+}
+function renderWkModalities(){
+  const el=document.getElementById('wkModalities'); if(!el) return;
+  el.innerHTML=modalityOptions(wk.workout_type).map(m=>
+    `<button class="pill ${(wk.subtypes||[]).includes(m)?'active':''}" onclick="toggleWkModality('${m.replace(/'/g,"\\'")}')">${m}</button>`).join('');
+}
+function toggleWkModality(m){
+  wk.subtypes=wk.subtypes||[];
+  const i=wk.subtypes.indexOf(m);
+  if(i>-1) wk.subtypes.splice(i,1); else wk.subtypes.push(m);
+  renderWkModalities();
+}
 function newWorkout(){
-  wk={id:null,title:'',workout_type:'hyrox',duration_min:60,objective:'',blocks:normalizeBlocks([]),stations:{}};
+  wk={id:null,title:'',workout_type:'hyrox',duration_min:60,objective:'',blocks:normalizeBlocks([]),stations:{},subtypes:[]};
   wkMode='template'; wkIsNew=true;
   openBuilder();
 }
@@ -933,7 +947,7 @@ function openBuilder(){
   document.getElementById('wkDuration').value=wk.duration_min||60;
   document.getElementById('wkObjective').value=wk.objective||'';
   document.querySelectorAll('.wk-type').forEach(b=>b.classList.toggle('active',b.dataset.t===wk.workout_type));
-  renderBlocks(); renderWkStations();
+  renderBlocks(); renderWkStations(); renderWkModalities();
 }
 function closeBuilder(){
   document.getElementById('wkBuilder').style.display='none';
@@ -942,10 +956,12 @@ function closeBuilder(){
   loadTemplates();
 }
 function setWkType(t){
-  wk.workout_type=t;
+  wk.workout_type=t; wk.subtypes=[];
   document.querySelectorAll('.wk-type').forEach(b=>b.classList.toggle('active',b.dataset.t===t));
-  renderBlocks();
+  renderBlocks(); renderWkModalities();
 }
+const DUR_RANGES=[[1,10],[10,20],[20,30],[30,45],[45,60],[60,75],[75,90],[90,999]];
+let libFilters={type:null,dur:null,mods:[]};
 async function loadTemplates(){
   const list=document.getElementById('wkList');
   list.innerHTML='<div class="empty-state">Loading…</div>';
@@ -953,18 +969,56 @@ async function loadTemplates(){
     const d=await api('/api/workouts?action=templates');
     wkTemplates=d.templates||[];
   }catch(e){ list.innerHTML='<div class="empty-state">Could not load.</div>'; return; }
+  renderLibFilters(); renderLibrary();
+}
+function renderLibFilters(){
+  document.getElementById('libTypePills').innerHTML=['hyrox','endurance','strength'].map(t=>
+    `<button class="pill ${libFilters.type===t?'active':''}" onclick="libSetType('${t}')">${t==='hyrox'?'Hyrox / Mix':cap(t)}</button>`).join('');
+  document.getElementById('libDurPills').innerHTML=DUR_RANGES.map((r,i)=>
+    `<button class="pill ${libFilters.dur===i?'active':''}" onclick="libSetDur(${i})">${r[1]===999?r[0]+'min+':r[0]+'–'+r[1]+'min'}</button>`).join('');
+  const modEl=document.getElementById('libModPills');
+  modEl.innerHTML = libFilters.type
+    ? modalityOptions(libFilters.type).map(m=>`<button class="pill ${libFilters.mods.includes(m)?'active':''}" onclick="libToggleMod('${m.replace(/'/g,"\\'")}')">${m}</button>`).join('')
+    : '';
+}
+function libSetType(t){ libFilters.type=libFilters.type===t?null:t; libFilters.mods=[]; renderLibFilters(); renderLibrary(); }
+function libSetDur(i){ libFilters.dur=libFilters.dur===i?null:i; renderLibFilters(); renderLibrary(); }
+function libToggleMod(m){
+  const i=libFilters.mods.indexOf(m);
+  if(i>-1) libFilters.mods.splice(i,1); else libFilters.mods.push(m);
+  renderLibFilters(); renderLibrary();
+}
+function renderLibrary(){
+  const list=document.getElementById('wkList');
+  const q=(document.getElementById('libSearch').value||'').toLowerCase().trim();
+  const filtered=wkTemplates.filter(t=>{
+    if(libFilters.type && t.workout_type!==libFilters.type) return false;
+    if(libFilters.dur!=null){
+      const [lo,hi]=DUR_RANGES[libFilters.dur];
+      const d=t.duration_min||0;
+      if(!(d>=lo && (hi===999? true : d<=hi))) return false;
+    }
+    if(libFilters.mods.length && !libFilters.mods.every(m=>(t.subtypes||[]).includes(m))) return false;
+    if(q){
+      const hay=((t.title||'')+' '+normalizeBlocks(t.blocks).map(b=>b.text).join(' ')).toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
   if(!wkTemplates.length){ list.innerHTML='<div class="empty-state">No workouts yet — create your first or generate one with AI.</div>'; return; }
-  list.innerHTML=wkTemplates.map((t,i)=>{
+  if(!filtered.length){ list.innerHTML='<div class="empty-state">Nothing matches these filters.</div>'; return; }
+  list.innerHTML=filtered.map(t=>{
+    const i=wkTemplates.indexOf(t);
     const col=SPLIT_COLORS[t.workout_type]||'#999';
     return `<div class="athlete-card wk-card" style="border-left-color:${col}" onclick="editTemplate(${i})">
       <div class="an"><span class="type-dot" style="background:${col}"></span>${esc(t.title||'Untitled')}</div>
-      <div class="am">${t.workout_type==='hyrox'?'Hyrox / Mix':cap(t.workout_type||'')} · ${t.duration_min||'—'} min</div>
+      <div class="am">${t.workout_type==='hyrox'?'Hyrox / Mix':cap(t.workout_type||'')} · ${t.duration_min||'—'} min${(t.subtypes||[]).length?'<br>'+t.subtypes.slice(0,3).join(' · '):''}</div>
     </div>`;
   }).join('');
 }
 function editTemplate(i){
   const t=wkTemplates[i];
-  wk={id:t.id,title:t.title,workout_type:t.workout_type,duration_min:t.duration_min,objective:t.objective||'',blocks:normalizeBlocks(t.blocks),stations:t.stations||{}};
+  wk={id:t.id,title:t.title,workout_type:t.workout_type,duration_min:t.duration_min,objective:t.objective||'',blocks:normalizeBlocks(t.blocks),stations:t.stations||{},subtypes:t.subtypes||[]};
   wkMode='template'; wkIsNew=false;
   openBuilder();
 }
@@ -973,8 +1027,8 @@ function renderBlocks(){
   const wrap=document.getElementById('wkBlocks');
   wrap.innerHTML=wk.blocks.map((b,i)=>{
     const c=blockColor(wk.workout_type,b.name);
-    return `<div class="blk" style="background:${lighten(SPLIT_COLORS[wk.workout_type]||'#888',0.92)};border-color:${c}">
-      <label style="color:${blockColor(wk.workout_type,'Main')}">${b.name}</label>
+    return `<div class="blk" style="background:${lighten(SPLIT_COLORS[wk.workout_type]||'#888',0.92)};border-color:var(--hair)">
+      <label style="color:${c}">${b.name}</label>
       <textarea placeholder="${b.name==='Main'?'The session…':'Optional'}" oninput="updBlockText(${i},this.value)">${esc(b.text)}</textarea>
     </div>`;
   }).join('');
@@ -1009,7 +1063,8 @@ async function generateWorkout(){
     if(g.title && !wk.title){ wk.title=g.title; document.getElementById('wkTitle').value=g.title; }
     if(Array.isArray(g.blocks)) wk.blocks=normalizeBlocks(g.blocks);
     if(g.stations) wk.stations=g.stations;
-    renderBlocks(); renderWkStations();
+    if(Array.isArray(g.modalities)) wk.subtypes=g.modalities.filter(m=>modalityOptions(wk.workout_type).includes(m));
+    renderBlocks(); renderWkStations(); renderWkModalities();
     msg.textContent='Generated — edit anything, then save';
     setTimeout(()=>msg.textContent='',3000);
   }catch(e){ msg.textContent=e.message; }
@@ -1215,10 +1270,13 @@ function spEdit(a,isNew){
       <input id="spDuration" type="number" inputmode="numeric" value="${a.duration_min??60}"></div>
     <div id="spBlocks"></div>
     <div class="section-card"><div class="section-label">Station volumes</div>
-      <div class="hyrox-grid" id="spStations"></div></div>
-    <button class="cta" onclick="spSave()">${sp.mode==='create'?'Assign to this day':'Save changes'}</button>
-    ${sp.mode==='edit'?'<button class="cta-secondary" onclick="spDelete()">Remove workout</button>':''}
-    <div id="spMsg" class="save-msg"></div>`;
+      <div class="hyrox-grid" id="spStations"></div>
+      <button class="mini-btn" style="margin-top:10px" onclick="spQuantify()">Re-quantify with AI</button></div>
+    <div class="sp-actions">
+      <button class="btn-slim" onclick="spSave()">${sp.mode==='create'?'Assign':'Save'}</button>
+      ${sp.mode==='edit'?'<button class="btn-slim danger" onclick="spDelete()">Remove</button>':''}
+      <div id="spMsg" class="save-msg" style="margin:0;text-align:left"></div>
+    </div>`;
   spRenderBlocks(); spRenderStations();
   openSidePanel();
 }
@@ -1231,8 +1289,8 @@ function spRenderBlocks(){
   const a=sp.assignment;
   document.getElementById('spBlocks').innerHTML=a.blocks.map((b,i)=>{
     const c=blockColor(a.workout_type,b.name);
-    return `<div class="blk" style="background:${lighten(SPLIT_COLORS[a.workout_type]||'#888',0.92)};border-color:${c}">
-      <label style="color:${blockColor(a.workout_type,'Main')}">${b.name}</label>
+    return `<div class="blk" style="background:${lighten(SPLIT_COLORS[a.workout_type]||'#888',0.92)};border-color:var(--hair)">
+      <label style="color:${c}">${b.name}</label>
       <textarea oninput="sp.assignment.blocks[${i}].text=this.value">${esc(b.text)}</textarea>
     </div>`;
   }).join('');
@@ -1243,6 +1301,22 @@ function spRenderStations(){
     .concat(STATIONS.map(s=>({k:s.k,label:s.label+' '+s.unit})));
   document.getElementById('spStations').innerHTML=fields.map(f=>`<div class="metric-field"><label>${f.label}</label>
     <input type="number" step="0.1" value="${a.stations[f.k]??''}" oninput="sp.assignment.stations['${f.k}']=this.value===''?null:parseFloat(this.value)"></div>`).join('');
+}
+async function spQuantify(){
+  const a=sp.assignment;
+  const text=a.blocks.filter(b=>b.text&&b.text.trim()).map(b=>b.name+':\n'+b.text.trim()).join('\n\n');
+  const msg=document.getElementById('spMsg');
+  if(!text.trim()){ msg.textContent='Write the workout first.'; return; }
+  msg.textContent='Quantifying…';
+  try{
+    const d=await api('/api/ai',{method:'POST',body:JSON.stringify({mode:'text',text,workout_type:'hyrox'})});
+    const x=d.extracted||{};
+    ['ski_erg_m','sled_push_m','sled_pull_m','burpees_reps','row_erg_m','farmers_m','lunges_m','wallballs_reps','compromised_run_km'].forEach(k=>{
+      if(x[k]!=null) a.stations[k]=x[k];
+    });
+    spRenderStations();
+    msg.textContent='Volumes updated'; setTimeout(()=>msg.textContent='',2500);
+  }catch(e){ msg.textContent=e.message; }
 }
 async function spSave(){
   const a=sp.assignment;
@@ -1255,18 +1329,27 @@ async function spSave(){
       await api('/api/workouts',{method:'POST',body:JSON.stringify({
         action:'create-assignment', athlete_id:caCurrent.id, date:a.date, workout_id:a.workout_id||null,
         title:a.title, workout_type:a.workout_type, duration_min:a.duration_min,
-        blocks:a.blocks, stations:a.stations
+        blocks:a.blocks, stations:a.stations, subtypes:a.subtypes||[]
       })});
     }else{
       await api('/api/workouts',{method:'POST',body:JSON.stringify({
         action:'update-assignment', id:a.id,
         title:a.title, workout_type:a.workout_type, duration_min:a.duration_min,
-        blocks:a.blocks, stations:a.stations
+        blocks:a.blocks, stations:a.stations, subtypes:a.subtypes||[]
       })});
     }
+    // every workout created or edited here is also captured in the coach's library
+    saveToLibraryFromPanel(a).catch(()=>{});
     msg.textContent='Saved';
     closeSidePanel(); renderWlSection();
   }catch(e){ msg.textContent=e.message; }
+}
+async function saveToLibraryFromPanel(a){
+  const payload={ id: a.workout_id||undefined, title:a.title, workout_type:a.workout_type,
+    duration_min:a.duration_min, objective:a.objective||null,
+    blocks:a.blocks, stations:a.stations, subtypes:a.subtypes||[] };
+  const d=await api('/api/workouts',{method:'POST',body:JSON.stringify({action:'save-template',workout:payload})});
+  if(d.workout && !a.workout_id) a.workout_id=d.workout.id;
 }
 async function spDelete(){
   try{
@@ -1770,6 +1853,7 @@ async function markDone(id, idx){
     // prefill a session from the assignment
     const s=blankSession();
     s.name=a.title||''; s.workout_type=a.workout_type||'hyrox';
+    if(Array.isArray(a.subtypes)&&a.subtypes.length) s.subtypes=a.subtypes.slice();
     s.duration_min=a.duration_min??''; s.rpe=diff??''; s._rpeAuto=false;
     s.workout_desc=normalizeBlocks(a.blocks).filter(b=>b.text&&b.text.trim()).map(b=>b.name+':\n'+b.text.trim()).join('\n\n');
     const st=a.stations||{};
@@ -1782,6 +1866,16 @@ async function markDone(id, idx){
     renderSessions(); renderAssigned();
     document.getElementById('saveMsg').textContent='Session pre-filled from the workout — review and save your day';
     setTimeout(()=>document.getElementById('saveMsg').textContent='',3500);
+    // AI fallback: infer modalities from the main text when the workout has none
+    if(!s.subtypes.length && s.workout_desc){
+      api('/api/ai',{method:'POST',body:JSON.stringify({mode:'modalities',text:s.workout_desc,workout_type:s.workout_type})})
+        .then(d=>{
+          if(Array.isArray(d.modalities)&&d.modalities.length){
+            const idx=daySessions.indexOf(s);
+            if(idx>-1){ daySessions[idx].subtypes=d.modalities; renderSessions(); }
+          }
+        }).catch(()=>{});
+    }
   }catch(e){
     document.getElementById('saveMsg').textContent=e.message;
   }
