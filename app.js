@@ -198,7 +198,8 @@ function openAthlete(i){
   const c=caCurrent.crm||{};
   document.getElementById('crmStart').value=c.start_date||'';
   document.getElementById('crmPrice').value=c.monthly_price??'';
-  document.getElementById('crmStatus').value=c.status||'active';
+  crmStatusVal=c.status||'active';
+  renderCrmStatusPills();
   document.getElementById('crmNotes').value=c.notes||'';
   const priceLbl=document.querySelector('#crmPrice').closest('.macro-field').querySelector('label');
   if(priceLbl) priceLbl.textContent=(CURRENCY_SYMBOLS[profile.currency]||profile.currency||'€')+' / month';
@@ -210,6 +211,15 @@ function openAthlete(i){
   renderWlSection();
   loadCaStats();
 }
+let crmStatusVal='active';
+const CRM_STATUS_STYLES={active:['#e7f7ef','#0e9f6e'],paused:['#fdf6e3','#b7860b'],churned:['#f1f1ee','#8a8880']};
+function renderCrmStatusPills(){
+  const el=document.getElementById('crmStatusPills'); if(!el) return;
+  el.innerHTML=['active','paused','churned'].map(s=>{
+    const on=crmStatusVal===s, [bg,fg]=CRM_STATUS_STYLES[s];
+    return `<button class="pill" style="${on?`background:${bg};color:${fg};border-color:${fg}33;`:''}" onclick="crmStatusVal='${s}';renderCrmStatusPills()">${cap(s)}</button>`;
+  }).join('');
+}
 async function saveCrm(){
   const msg=document.getElementById('crmMsg');
   msg.textContent='Saving…';
@@ -218,10 +228,10 @@ async function saveCrm(){
       action:'crm', athlete_id:caCurrent.id,
       start_date:document.getElementById('crmStart').value||null,
       monthly_price:numOrNull(document.getElementById('crmPrice').value),
-      status:document.getElementById('crmStatus').value,
+      status:crmStatusVal,
       notes:document.getElementById('crmNotes').value||null
     })});
-    caCurrent.crm={start_date:document.getElementById('crmStart').value,monthly_price:document.getElementById('crmPrice').value,status:document.getElementById('crmStatus').value,notes:document.getElementById('crmNotes').value};
+    caCurrent.crm={start_date:document.getElementById('crmStart').value,monthly_price:document.getElementById('crmPrice').value,status:crmStatusVal,notes:document.getElementById('crmNotes').value};
     msg.textContent='Saved'; setTimeout(()=>msg.textContent='',2000);
   }catch(e){ msg.textContent=e.message; }
 }
@@ -1028,7 +1038,7 @@ function renderBlocks(){
   wrap.innerHTML=wk.blocks.map((b,i)=>{
     const c=blockColor(wk.workout_type,b.name);
     return `<div class="blk" style="background:${lighten(SPLIT_COLORS[wk.workout_type]||'#888',0.92)};border-color:var(--hair)">
-      <label style="color:${c}">${b.name}</label>
+      <label style="color:${blockColor(wk.workout_type,'Main')}">${b.name}</label>
       <textarea placeholder="${b.name==='Main'?'The session…':'Optional'}" oninput="updBlockText(${i},this.value)">${esc(b.text)}</textarea>
     </div>`;
   }).join('');
@@ -1225,25 +1235,65 @@ async function setWeekLabel(l){
 let sp={mode:null,assignment:null,date:null};
 function openSidePanel(){ document.getElementById('sidePanel').classList.add('open'); }
 function closeSidePanel(){ document.getElementById('sidePanel').classList.remove('open'); }
+let spLibFilters={type:null,dur:null,mods:[],q:''};
 function openDayPanel(date){
   sp={mode:'pick',date};
+  spLibFilters={type:null,dur:null,mods:[],q:''};
   document.getElementById('spTitle').textContent=fmtDay(date);
   document.getElementById('spBody').innerHTML=`
-    <button class="cta" onclick="spBlank()">New workout for this day</button>
+    <button class="btn-slim" onclick="spBlank()">New workout for this day</button>
     <div class="section-sublabel" style="margin-top:18px">Or pick from library</div>
+    <div class="lib-filters">
+      <input class="text-input lib-search" type="text" placeholder="Search…" oninput="spLibFilters.q=this.value;renderSpLib()">
+      <div class="pill-row wrap" id="spLibType"></div>
+      <div class="pill-row wrap" id="spLibDur"></div>
+      <div class="pill-row wrap" id="spLibMods"></div>
+    </div>
     <div class="sp-lib" id="spLib"><div class="empty-state">Loading…</div></div>`;
   openSidePanel();
   api('/api/workouts?action=templates').then(d=>{
     wkTemplates=d.templates||[];
-    document.getElementById('spLib').innerHTML = wkTemplates.length
-      ? wkTemplates.map((t,i)=>{
-          const col=SPLIT_COLORS[t.workout_type]||'#999';
-          return `<div class="athlete-card wk-card" style="border-left-color:${col}" onclick="spFromTemplate(${i})">
-            <div class="an"><span class="type-dot" style="background:${col}"></span>${esc(t.title||'Untitled')}</div>
-            <div class="am">${t.duration_min||'—'} min</div></div>`;
-        }).join('')
-      : '<div class="hint">Library is empty.</div>';
-  }).catch(()=>{});
+    renderSpLibFilters(); renderSpLib();
+  }).catch(()=>{ document.getElementById('spLib').innerHTML='<div class="hint">Could not load library.</div>'; });
+}
+function renderSpLibFilters(){
+  document.getElementById('spLibType').innerHTML=['hyrox','endurance','strength'].map(t=>
+    `<button class="pill ${spLibFilters.type===t?'active':''}" onclick="spLibFilters.type=spLibFilters.type==='${t}'?null:'${t}';spLibFilters.mods=[];renderSpLibFilters();renderSpLib()">${t==='hyrox'?'Hyrox / Mix':cap(t)}</button>`).join('');
+  document.getElementById('spLibDur').innerHTML=DUR_RANGES.map((r,i)=>
+    `<button class="pill ${spLibFilters.dur===i?'active':''}" onclick="spLibFilters.dur=spLibFilters.dur===${i}?null:${i};renderSpLibFilters();renderSpLib()">${r[1]===999?r[0]+"'+":r[0]+'–'+r[1]+"'"}</button>`).join('');
+  document.getElementById('spLibMods').innerHTML = spLibFilters.type
+    ? modalityOptions(spLibFilters.type).map(m=>`<button class="pill ${spLibFilters.mods.includes(m)?'active':''}" onclick="spLibToggleMod('${m.replace(/'/g,"\\'")}')">${m}</button>`).join('')
+    : '';
+}
+function spLibToggleMod(m){
+  const i=spLibFilters.mods.indexOf(m);
+  if(i>-1) spLibFilters.mods.splice(i,1); else spLibFilters.mods.push(m);
+  renderSpLibFilters(); renderSpLib();
+}
+function renderSpLib(){
+  const q=spLibFilters.q.toLowerCase().trim();
+  const filtered=wkTemplates.filter(t=>{
+    if(spLibFilters.type && t.workout_type!==spLibFilters.type) return false;
+    if(spLibFilters.dur!=null){
+      const [lo,hi]=DUR_RANGES[spLibFilters.dur]; const d=t.duration_min||0;
+      if(!(d>=lo && (hi===999? true : d<=hi))) return false;
+    }
+    if(spLibFilters.mods.length && !spLibFilters.mods.every(m=>(t.subtypes||[]).includes(m))) return false;
+    if(q){
+      const hay=((t.title||'')+' '+normalizeBlocks(t.blocks).map(b=>b.text).join(' ')).toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  document.getElementById('spLib').innerHTML = filtered.length
+    ? filtered.map(t=>{
+        const i=wkTemplates.indexOf(t);
+        const col=SPLIT_COLORS[t.workout_type]||'#999';
+        return `<div class="athlete-card wk-card" style="border-left-color:${col}" onclick="spFromTemplate(${i})">
+          <div class="an"><span class="type-dot" style="background:${col}"></span>${esc(t.title||'Untitled')}</div>
+          <div class="am">${t.duration_min||'—'} min</div></div>`;
+      }).join('')
+    : '<div class="hint">Nothing matches.</div>';
 }
 function spBlank(){
   spEdit({title:'',workout_type:'hyrox',duration_min:60,blocks:normalizeBlocks([]),stations:{},date:sp.date,status:'assigned'},true);
@@ -1273,7 +1323,10 @@ function spEdit(a,isNew){
       <div class="hyrox-grid" id="spStations"></div>
       <button class="mini-btn" style="margin-top:10px" onclick="spQuantify()">Re-quantify with AI</button></div>
     <div class="sp-actions">
-      <button class="btn-slim" onclick="spSave()">${sp.mode==='create'?'Assign':'Save'}</button>
+      ${a.workout_id
+        ? `<button class="btn-slim" onclick="spSave('replace')">${sp.mode==='create'?'Assign':'Save'} & replace in library</button>
+           <button class="btn-slim secondary" onclick="spSave('new')">${sp.mode==='create'?'Assign':'Save'} as new version</button>`
+        : `<button class="btn-slim" onclick="spSave('new')">${sp.mode==='create'?'Assign':'Save'}</button>`}
       ${sp.mode==='edit'?'<button class="btn-slim danger" onclick="spDelete()">Remove</button>':''}
       <div id="spMsg" class="save-msg" style="margin:0;text-align:left"></div>
     </div>`;
@@ -1290,7 +1343,7 @@ function spRenderBlocks(){
   document.getElementById('spBlocks').innerHTML=a.blocks.map((b,i)=>{
     const c=blockColor(a.workout_type,b.name);
     return `<div class="blk" style="background:${lighten(SPLIT_COLORS[a.workout_type]||'#888',0.92)};border-color:var(--hair)">
-      <label style="color:${c}">${b.name}</label>
+      <label style="color:${blockColor(a.workout_type,'Main')}">${b.name}</label>
       <textarea oninput="sp.assignment.blocks[${i}].text=this.value">${esc(b.text)}</textarea>
     </div>`;
   }).join('');
@@ -1318,8 +1371,9 @@ async function spQuantify(){
     msg.textContent='Volumes updated'; setTimeout(()=>msg.textContent='',2500);
   }catch(e){ msg.textContent=e.message; }
 }
-async function spSave(){
+async function spSave(libraryMode){
   const a=sp.assignment;
+  if(libraryMode==='new') a.workout_id=null;   // force a fresh library entry
   a.title=document.getElementById('spWkTitle').value;
   a.duration_min=intOrNull(document.getElementById('spDuration').value);
   const msg=document.getElementById('spMsg');
@@ -1501,8 +1555,11 @@ async function loadFinance(){
   </div>`;
 
   const max=Math.max(...trend.map(t=>t.revenue),1);
-  html+=`<div class="section-card"><div class="chart-title">Revenue trend</div><div class="vbars">`+
-    trend.map(t=>`<div class="vbar-col"><div class="vbar" style="height:${Math.max(2,Math.round(t.revenue/max*100))}%"></div><div class="vbar-lbl">${monthLabel(t.month)}</div></div>`).join('')+
+  html+=`<div class="section-card"><div class="chart-title">Revenue trend</div><div class="vbars" style="height:112px">`+
+    trend.map(t=>`<div class="vbar-col">
+      <div class="vbar-lbl" style="margin-bottom:3px;color:var(--muted)">${t.revenue>0?fmtMoney(t.revenue):''}</div>
+      <div class="vbar" style="height:${Math.max(2,Math.round(t.revenue/max*100))}%"></div>
+      <div class="vbar-lbl">${monthLabel(t.month)}</div></div>`).join('')+
     `</div></div>
     <div class="hint">Total over period: ${fmtMoney(totalInPeriod)}. Estimated from each athlete's start date, current price, and status — not a payment ledger.</div>`;
 
