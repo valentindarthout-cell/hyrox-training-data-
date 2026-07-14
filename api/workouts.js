@@ -41,7 +41,7 @@ module.exports = async function handler(req, res){
     const row = {
       coach_id: user.id, title: w.title||'Untitled', workout_type: w.workout_type||'hyrox',
       duration_min: w.duration_min??null, objective: w.objective||null,
-      blocks: w.blocks||[], stations: w.stations||{}
+      blocks: w.blocks||[], stations: w.stations||{}, modalities: w.modalities||[]
     };
     let r;
     if(w.id){
@@ -75,7 +75,7 @@ module.exports = async function handler(req, res){
     const rows = athlete_ids.map(aid=>({
       workout_id: w.id, coach_id: user.id, athlete_id: aid, date,
       title: w.title, workout_type: w.workout_type, duration_min: w.duration_min,
-      objective: w.objective, blocks: w.blocks, stations: w.stations
+      objective: w.objective, blocks: w.blocks, stations: w.stations, modalities: w.modalities||[]
     }));
     const r = await sb('/rest/v1/assignments', token, {method:'POST', body: JSON.stringify(rows)});
     if(!r.ok) return res.status(500).json({error:'Could not assign'});
@@ -97,7 +97,7 @@ module.exports = async function handler(req, res){
       workout_id: b.workout_id||null, coach_id: user.id, athlete_id: b.athlete_id, date: b.date,
       title: b.title||'Workout', workout_type: b.workout_type||'hyrox',
       duration_min: b.duration_min??null, objective: b.objective||null,
-      blocks: b.blocks||[], stations: b.stations||{}
+      blocks: b.blocks||[], stations: b.stations||{}, modalities: b.modalities||[]
     };
     const r = await sb('/rest/v1/assignments', token, {
       method:'POST', headers:{'Prefer':'return=representation'}, body: JSON.stringify([row])
@@ -110,7 +110,7 @@ module.exports = async function handler(req, res){
     const b = req.body||{};
     if(!b.id) return res.status(400).json({error:'id required'});
     const patch = {};
-    ['title','workout_type','duration_min','objective','blocks','stations','date'].forEach(k=>{
+    ['title','workout_type','duration_min','objective','blocks','stations','date','modalities'].forEach(k=>{
       if(b[k] !== undefined) patch[k]=b[k];
     });
     const r = await sb(`/rest/v1/assignments?id=eq.${b.id}&coach_id=eq.${user.id}`, token, {
