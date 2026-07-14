@@ -42,32 +42,34 @@ async function callClaude(body){
   return JSON.parse(clean);
 }
 
-const WORKOUT_LIBRARY = `Classic Hyrox session patterns (adapt loads/volumes to the objective):
+const WORKOUT_LIBRARY = `Classic Hyrox session patterns (adapt to the objective):
 - Hyrox simulation: 8x(1km run + station) in race order, full or half distances
-- Compromised running: alternate 400-800m runs with stations at race pace
-- Station EMOM/intervals: e.g. 5 rounds of 250m ski / 25m sled push / 15 wall balls, rest 2min
-- Sled block: 8-12x25m push heavy + 8-12x25m pull, run 200m between
-- Erg intervals: 6-10x250-500m ski or row @ target /500m pace, short rest
-- Wall ball density: max reps sets of 20-30 with 1km run between
-Classic running sessions:
-- Zone base run: 40-90min @ I1-I2
-- Threshold: 3-5x8-10min @ I4, 2min jog recovery
-- VMA intervals: 8-12x400m or 4-6x1000m @ I5, equal recovery
-- Progressive run: thirds I2 -> I3 -> I4
-- Long run with race-pace blocks
-Classic strength sessions:
-- Lower: back squat 5x5 @75-85%, RDL 4x8, lunges 3x12/leg, core
-- Upper: bench 5x5, strict press 4x6, rows 4x10, farmers carry
-- Full body power: deadlift 5x3 @85%, push press 4x5, sled work
-- Strength endurance: circuits 3-4 rounds of 10-15 reps compound moves, minimal rest`;
+- Compromised running: alternate runs with stations at race pace
+- Station intervals: rounds of ski / sled / wall balls with controlled rest
+- Sled block: repeats of push + pull with short runs between
+- Erg intervals: ski or row repeats at target /500m pace
+- Wall ball density: sets with runs between
+Classic running: zone base runs, threshold blocks (I4), VMA intervals (I5), progressive runs, long runs with race-pace blocks.
+Classic strength: squat/deadlift/bench/press strength work at %1RM, strength-endurance circuits, sled and carry work.`;
 
-const WORKOUT_PROMPT = (duration, objective, type) => `You are an elite Hyrox coach. Create ONE ${type} workout of about ${duration} minutes for this objective: "${objective}".
-Use these classic patterns as inspiration:
+const HYROX_STANDARDS = `STRICT programming standards — always use these values:
+- Run / Ski erg / Row erg interval distances: only 200m, 250m, 400m, 500m, 800m, 1km, 1 mile, 1.5km, 2km, 3km, 4km, 5km (never below 200m).
+- Wall balls: rep sets only from 10, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100. Ball weight expressed relative to race: "race weight ball", "lighter than race weight", "heavier than race weight".
+- Sled push / sled pull: lengths only in multiples of 10m, 12.5m or 15m (e.g. 2x12.5m, 25m, 50m). Load expressed relative to race weight: "lighter than race weight", "race weight", "heavier than race weight".
+- Sandbag lunges: load relative to race weight (lighter / race weight / heavier).
+- Rest periods: only 30s, 45s, 60s, 90s, 2min, 3min or 5min.
+- Barbell lifts: sets x reps @%1RM (e.g. 5x5 @75%).
+- Run/erg pacing: reference zones I1-I6 when pacing matters (e.g. "4x1km @ I4").`;
+
+const WORKOUT_PROMPT = (duration, objective, type, intensity) => `You are an elite Hyrox coach. Create ONE ${type} workout of about ${duration} minutes for this objective: "${objective}".
+Overall station-load intent: ${intensity||'race weight'}.
+${HYROX_STANDARDS}
+Inspiration patterns:
 ${WORKOUT_LIBRARY}
 
 Respond ONLY with a JSON object, no markdown, no preamble:
-{"title": string, "blocks": [{"name": string, "exercises": [{"name": string, "sets": int|null, "qty": number|null, "unit": "reps"|"m"|"km"|"min"|"s"|null, "load_pct": int|null, "load_ref": "deadlift"|"back_squat"|"front_squat"|"bench"|"strict_press"|null, "zone": "I1"|"I2"|"I3"|"I4"|"I5"|"I6"|null, "notes": string|null}]}], "stations": {"run_km": number|null, "compromised_run_km": number|null, "ski_erg_m": int|null, "sled_push_m": int|null, "sled_pull_m": int|null, "burpees_reps": int|null, "row_erg_m": int|null, "farmers_m": int|null, "lunges_m": int|null, "wallballs_reps": int|null}}
-Rules: blocks are usually Warm-up / Main / Finisher (finisher optional). Use load_pct+load_ref for barbell lifts (percent of 1RM). Use zone for runs/ergs when pacing matters. In stations, sum TOTAL volumes across the whole workout; use compromised_run_km for running mixed with stations, run_km for pure running. Use null for anything not applicable. Keep exercise names short and standard.`;
+{"title": string, "blocks": [{"name": "Warm-up"|"Main"|"Finisher"|"Cool-down", "text": string}], "stations": {"run_km": number|null, "compromised_run_km": number|null, "ski_erg_m": int|null, "sled_push_m": int|null, "sled_pull_m": int|null, "burpees_reps": int|null, "row_erg_m": int|null, "farmers_m": int|null, "lunges_m": int|null, "wallballs_reps": int|null}}
+Rules: "text" is the written workout for that block, formatted with line breaks, concise and coach-professional (French or English matching the objective language). Always include Warm-up and Main; Finisher and Cool-down only when relevant. In stations, sum TOTAL volumes across the whole workout; compromised_run_km = running mixed with stations, run_km = pure running. Use null when not applicable.`;
 
 module.exports = async function handler(req, res){
   cors(res);
@@ -93,12 +95,12 @@ module.exports = async function handler(req, res){
   }
 
   if(mode === 'workout'){
-    const { duration_min, objective, workout_type } = req.body || {};
+    const { duration_min, objective, workout_type, intensity } = req.body || {};
     if(!objective || !objective.trim()) return res.status(400).json({error:'Describe the objective first'});
     try{
       const extracted = await callClaude({
         model:'claude-sonnet-4-6', max_tokens: 2000,
-        messages:[{ role:'user', content: WORKOUT_PROMPT(duration_min||60, objective.trim(), workout_type||'hyrox') }]
+        messages:[{ role:'user', content: WORKOUT_PROMPT(duration_min||60, objective.trim(), workout_type||'hyrox', intensity) }]
       });
       return res.status(200).json({ workout: extracted });
     }catch(e){ return res.status(500).json({error: e.message || 'Generation failed'}); }
