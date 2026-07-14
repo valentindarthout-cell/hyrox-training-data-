@@ -61,6 +61,11 @@ const HYROX_STANDARDS = `STRICT programming standards — always use these value
 - Barbell lifts: sets x reps @%1RM (e.g. 5x5 @75%).
 - Run/erg pacing: reference zones I1-I6 when pacing matters (e.g. "4x1km @ I4").`;
 
+const MODALITIES = {
+  endurance: ['Run','Echo bike','Bike outdoor','Bike indoor','Ski erg','Row erg','Stair Stepper','Treadmill','Elliptical'],
+  hyrox: ['Simulation','Station work','Compromised run','Sled work','Erg work','Technique','Strength endurance'],
+  strength: ['Full body','Lower body','Upper body','Strength endurance','Wall balls','Sled push','Sled pull','Grip work','Farmers carry','Core','Burpees']
+};
 const WORKOUT_PROMPT = (duration, objective, type, intensity) => `You are an elite Hyrox coach. Create ONE ${type} workout of about ${duration} minutes for this objective: "${objective}".
 Overall station-load intent: ${intensity||'race weight'}.
 ${HYROX_STANDARDS}
@@ -68,7 +73,7 @@ Inspiration patterns:
 ${WORKOUT_LIBRARY}
 
 Respond ONLY with a JSON object, no markdown, no preamble:
-{"title": string, "blocks": [{"name": "Warm-up"|"Main"|"Finisher"|"Cool-down", "text": string}], "stations": {"run_km": number|null, "compromised_run_km": number|null, "ski_erg_m": int|null, "sled_push_m": int|null, "sled_pull_m": int|null, "burpees_reps": int|null, "row_erg_m": int|null, "farmers_m": int|null, "lunges_m": int|null, "wallballs_reps": int|null}}
+{"title": string, "modalities": array of strings chosen ONLY from ${JSON.stringify(MODALITIES[type]||MODALITIES.hyrox)}, "blocks": [{"name": "Warm-up"|"Main"|"Finisher"|"Cool-down", "text": string}], "stations": {"run_km": number|null, "compromised_run_km": number|null, "ski_erg_m": int|null, "sled_push_m": int|null, "sled_pull_m": int|null, "burpees_reps": int|null, "row_erg_m": int|null, "farmers_m": int|null, "lunges_m": int|null, "wallballs_reps": int|null}}
 Rules: "text" is the written workout for that block, formatted with line breaks, concise and coach-professional (French or English matching the objective language). Always include Warm-up and Main; Finisher and Cool-down only when relevant. In stations, sum TOTAL volumes across the whole workout; compromised_run_km = running mixed with stations, run_km = pure running. Use null when not applicable.`;
 
 module.exports = async function handler(req, res){
@@ -104,6 +109,34 @@ module.exports = async function handler(req, res){
       });
       return res.status(200).json({ workout: extracted });
     }catch(e){ return res.status(500).json({error: e.message || 'Generation failed'}); }
+  }
+
+  if(mode === 'classify'){
+    const { text, workout_type, options } = req.body || {};
+    if(!text || !text.trim() || !options || !options.length) return res.status(400).json({error:'text and options required'});
+    try{
+      const extracted = await callClaude({
+        model:'claude-sonnet-4-6', max_tokens: 200,
+        messages:[{ role:'user', content: `Given this ${workout_type||''} workout, pick which of these modalities/focuses apply (only from the list, 1-3 picks): ${options.join(', ')}.
+Workout:
+${text}
+Respond ONLY with a JSON object: {"modalities": [string]}` }]
+      });
+      return res.status(200).json({ modalities: (extracted.modalities||[]).filter(m=>options.includes(m)) });
+    }catch(e){ return res.status(500).json({error:'Classification failed'}); }
+  }
+
+  if(mode === 'modalities'){
+    const { text, workout_type } = req.body || {};
+    if(!text || !text.trim()) return res.status(400).json({error:'No text'});
+    const allowed = MODALITIES[workout_type] || MODALITIES.hyrox;
+    try{
+      const extracted = await callClaude({
+        model:'claude-sonnet-4-6', max_tokens: 200,
+        messages:[{ role:'user', content: `Given this training session, return ONLY a JSON array (no markdown) of the modalities it involves, chosen strictly from: ${JSON.stringify(allowed)}. Session:\n${text}` }]
+      });
+      return res.status(200).json({ modalities: Array.isArray(extracted)? extracted.filter(m=>allowed.includes(m)) : [] });
+    }catch(e){ return res.status(500).json({error:'Failed'}); }
   }
 
   if(mode === 'text'){
