@@ -343,6 +343,12 @@
         <div class="section-label" style="margin:0">Workout library</div>
         <button class="mini-btn" onclick="newWorkout()">+ New workout</button>
       </div>
+      <div class="lib-filters">
+        <input id="libSearch" class="text-input lib-search" type="text" placeholder="Search workouts…" oninput="renderLibrary()">
+        <div class="pill-row wrap" id="libTypePills"></div>
+        <div class="pill-row wrap" id="libDurPills"></div>
+        <div class="pill-row wrap" id="libModPills"></div>
+      </div>
       <div id="wkList" class="athlete-list"></div>
 
       <div id="wkBuilder" style="display:none">
@@ -354,6 +360,8 @@
             <button class="pill wk-type" data-t="endurance" onclick="setWkType('endurance')">Endurance</button>
             <button class="pill wk-type" data-t="strength" onclick="setWkType('strength')">Strength</button>
           </div>
+          <div class="section-sublabel">Modalities</div>
+          <div class="pill-row wrap" id="wkModalities" style="margin-bottom:12px"></div>
           <div class="metric-grid" style="grid-template-columns:120px 1fr">
             <div class="metric-field"><label>Duration min</label><input id="wkDuration" type="number" inputmode="numeric" value="60"></div>
             <div class="metric-field"><label>Objective</label>
