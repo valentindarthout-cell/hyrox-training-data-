@@ -294,16 +294,14 @@
           <div class="macro-field"><label>Start date</label><input id="crmStart" type="date"></div>
           <div class="macro-field"><label>€ / month</label><input id="crmPrice" type="number" inputmode="decimal"></div>
           <div class="macro-field"><label>Status</label>
-            <select id="crmStatus" class="text-input" style="margin:0;padding:11px">
-              <option value="active">Active</option>
-              <option value="paused">Paused</option>
-              <option value="churned">Churned</option>
-            </select>
+            <div class="pill-row" id="crmStatusPills" style="margin-top:2px"></div>
           </div>
         </div>
         <textarea id="crmNotes" class="text-input" style="margin-top:10px" placeholder="Notes"></textarea>
-        <button class="cta" onclick="saveCrm()">Save</button>
-        <div id="crmMsg" class="save-msg"></div>
+        <div class="sp-actions" style="margin-top:10px">
+          <button class="btn-slim" onclick="saveCrm()">Save</button>
+          <div id="crmMsg" class="save-msg" style="margin:0;text-align:left"></div>
+        </div>
       </div>
       <div id="caRaceBanner"></div>
       <div class="section-card">
