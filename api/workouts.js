@@ -14,6 +14,11 @@
 //   POST {action:'complete', id, difficulty}     -> mark done
 const { cors, userToken, sb, getUser } = require('./_supabase.js');
 
+function dbErr(r, fallback){
+  const d = r && r.data;
+  const detail = d && (d.message || d.hint || d.details || (typeof d==='string'? d : null));
+  return fallback + (detail? ' — ' + detail : ' (HTTP '+(r?r.status:'?')+')');
+}
 function slugify(s){
   return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
     .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40) || 'coach';
@@ -53,7 +58,7 @@ module.exports = async function handler(req, res){
         method:'POST', headers:{'Prefer':'return=representation'}, body: JSON.stringify([row])
       });
     }
-    if(!r.ok) return res.status(500).json({error:'Could not save workout'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not save workout')});
     return res.status(200).json({ workout: Array.isArray(r.data)? r.data[0] : r.data });
   }
 
@@ -78,7 +83,7 @@ module.exports = async function handler(req, res){
       objective: w.objective, blocks: w.blocks, stations: w.stations, modalities: w.modalities||[]
     }));
     const r = await sb('/rest/v1/assignments', token, {method:'POST', body: JSON.stringify(rows)});
-    if(!r.ok) return res.status(500).json({error:'Could not assign'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not assign')});
     return res.status(200).json({ assigned: rows.length });
   }
 
@@ -102,7 +107,7 @@ module.exports = async function handler(req, res){
     const r = await sb('/rest/v1/assignments', token, {
       method:'POST', headers:{'Prefer':'return=representation'}, body: JSON.stringify([row])
     });
-    if(!r.ok) return res.status(500).json({error:'Could not create'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not create')});
     return res.status(200).json({ assignment: Array.isArray(r.data)? r.data[0] : null });
   }
 
@@ -116,7 +121,7 @@ module.exports = async function handler(req, res){
     const r = await sb(`/rest/v1/assignments?id=eq.${b.id}&coach_id=eq.${user.id}`, token, {
       method:'PATCH', body: JSON.stringify(patch)
     });
-    if(!r.ok) return res.status(500).json({error:'Could not update'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not update')});
     return res.status(200).json({ ok:true });
   }
 
@@ -194,7 +199,7 @@ module.exports = async function handler(req, res){
     const r = await sb(`/rest/v1/assignments?id=eq.${id}&athlete_id=eq.${user.id}`, token, {
       method:'PATCH', body: JSON.stringify({ status:'done', difficulty: difficulty??null })
     });
-    if(!r.ok) return res.status(500).json({error:'Could not update'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not update')});
     return res.status(200).json({ ok:true });
   }
 
