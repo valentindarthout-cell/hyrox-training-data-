@@ -305,6 +305,7 @@
         <button class="cta" onclick="saveCrm()">Save</button>
         <div id="crmMsg" class="save-msg"></div>
       </div>
+      <div id="caRaceBanner"></div>
       <div class="section-card">
         <div class="section-label">Programming</div>
         <div class="wl-row">
@@ -313,8 +314,9 @@
           <button class="strip-arrow" onclick="shiftWlWeek(1)">›</button>
           <span style="flex:1"></span>
         </div>
+        <div class="section-sublabel">Week phase</div>
         <div class="pill-row wrap" id="wlPills"></div>
-        <div id="caAssignments" style="margin-top:14px"></div>
+        <div id="caCalendar" class="cal-grid"></div>
       </div>
 
       <div class="pill-row period-row ca-period-row">
@@ -361,12 +363,17 @@
               </div>
             </div>
           </div>
+          <div class="section-sublabel">Station load</div>
+          <div class="pill-row">
+            <button class="pill wk-int" data-v="lighter than race weight" onclick="setWkIntensity('lighter than race weight')">Lighter</button>
+            <button class="pill wk-int active" data-v="race weight" onclick="setWkIntensity('race weight')">Race weight</button>
+            <button class="pill wk-int" data-v="heavier than race weight" onclick="setWkIntensity('heavier than race weight')">Heavier</button>
+          </div>
           <button class="cta" style="margin-top:14px" onclick="generateWorkout()">Generate with AI</button>
           <div id="wkGenMsg" class="save-msg"></div>
         </div>
 
         <div id="wkBlocks"></div>
-        <button class="ghost-btn" onclick="addBlock()">+ Add block</button>
 
         <div class="section-card">
           <div class="section-label">Station volumes (totals)</div>
@@ -539,6 +546,14 @@
       <button class="cta" onclick="finishWizard()">Start training</button>
     </div>
   </div>
+</div>
+
+<div id="sidePanel" class="side-panel">
+  <div class="sp-head">
+    <div id="spTitle" class="sp-title">Workout</div>
+    <button class="mini-btn" onclick="closeSidePanel()">Close</button>
+  </div>
+  <div id="spBody"></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
