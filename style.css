@@ -405,3 +405,17 @@ body.coach{max-width:1100px}
 .btn-slim{background:var(--ink);color:#fff;border-radius:10px;padding:10px 18px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
 .btn-slim.secondary{background:#fff;color:var(--ink);border:1px solid var(--hair)}
 .btn-slim.danger{background:#fff;color:#ef4444;border:1px solid #f3d4d4}
+/* ============ AI generate — subtle icon button ============ */
+.ai-gen-row{display:flex;gap:8px;margin-top:14px}
+.ai-gen-row input{flex:1}
+.btn-ai{
+  width:40px;height:40px;flex-shrink:0;border-radius:10px;
+  background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;
+  transition:opacity .15s;
+}
+.btn-ai:active{opacity:.8}
+.btn-ai svg{width:17px;height:17px}
+
+/* ============ Finance YTD projection bars ============ */
+.vbar.projected{background:#d8d6d0}
+.vbar-lbl.projected-val{color:#b7b4ac}
