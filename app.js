@@ -1330,13 +1330,25 @@ function spEdit(a,isNew){
       ${sp.mode==='edit'?'<button class="btn-slim danger" onclick="spDelete()">Remove</button>':''}
       <div id="spMsg" class="save-msg" style="margin:0;text-align:left"></div>
     </div>`;
-  spRenderBlocks(); spRenderStations();
+  spRenderBlocks(); spRenderStations(); spRenderModalities();
   openSidePanel();
 }
 function spSetType(t){
-  sp.assignment.workout_type=t;
+  sp.assignment.workout_type=t; sp.assignment.subtypes=[];
   document.querySelectorAll('.sp-type').forEach(b=>b.classList.toggle('active',b.dataset.t===t));
-  spRenderBlocks();
+  spRenderBlocks(); spRenderModalities();
+}
+function spRenderModalities(){
+  const el=document.getElementById('spModalities'); if(!el) return;
+  const a=sp.assignment;
+  el.innerHTML=modalityOptions(a.workout_type).map(m=>
+    `<button class="pill ${(a.subtypes||[]).includes(m)?'active':''}" onclick="spToggleModality('${m.replace(/'/g,"\\\\'")}')">${m}</button>`).join('');
+}
+function spToggleModality(m){
+  const a=sp.assignment; a.subtypes=a.subtypes||[];
+  const i=a.subtypes.indexOf(m);
+  if(i>-1) a.subtypes.splice(i,1); else a.subtypes.push(m);
+  spRenderModalities();
 }
 function spRenderBlocks(){
   const a=sp.assignment;
@@ -1491,7 +1503,7 @@ function financeMonthRange(){
   const now=new Date();
   if(finPeriod==='ytd'){
     const months=[];
-    for(let m=0;m<=now.getMonth();m++) months.push(monthKey(new Date(now.getFullYear(),m,1)));
+    for(let m=0;m<12;m++) months.push(monthKey(new Date(now.getFullYear(),m,1)));
     return months;
   }
   if(finPeriod==='custom'){
@@ -1516,7 +1528,12 @@ function financeMonthRange(){
    counts if status is still 'active'. This is an estimate, not an invoicing ledger. */
 function financeTrend(months){
   const curMonthKey=monthKey(new Date());
+  const activeSum = coachAthletes.reduce((sum,a)=>{
+    const c=a.crm;
+    return (c && c.status==='active' && c.monthly_price) ? sum + (Number(c.monthly_price)||0) : sum;
+  },0);
   return months.map(mk=>{
+    if(mk > curMonthKey) return { month:mk, revenue:activeSum, projected:true };
     let revenue=0;
     coachAthletes.forEach(a=>{
       const c=a.crm; if(!c || !c.start_date || !c.monthly_price) return;
@@ -1525,7 +1542,7 @@ function financeTrend(months){
       if(mk === curMonthKey && c.status !== 'active') return;
       revenue += Number(c.monthly_price)||0;
     });
-    return { month:mk, revenue };
+    return { month:mk, revenue, projected:false };
   });
 }
 async function loadFinance(){
@@ -1557,11 +1574,11 @@ async function loadFinance(){
   const max=Math.max(...trend.map(t=>t.revenue),1);
   html+=`<div class="section-card"><div class="chart-title">Revenue trend</div><div class="vbars" style="height:112px">`+
     trend.map(t=>`<div class="vbar-col">
-      <div class="vbar-lbl" style="margin-bottom:3px;color:var(--muted)">${t.revenue>0?fmtMoney(t.revenue):''}</div>
-      <div class="vbar" style="height:${Math.max(2,Math.round(t.revenue/max*100))}%"></div>
+      <div class="vbar-lbl ${t.projected?'projected-val':''}" style="margin-bottom:3px;color:var(--muted)">${t.revenue>0?(t.projected?'est. ':'')+fmtMoney(t.revenue):''}</div>
+      <div class="vbar ${t.projected?'projected':''}" style="height:${Math.max(2,Math.round(t.revenue/max*100))}%"></div>
       <div class="vbar-lbl">${monthLabel(t.month)}</div></div>`).join('')+
     `</div></div>
-    <div class="hint">Total over period: ${fmtMoney(totalInPeriod)}. Estimated from each athlete's start date, current price, and status — not a payment ledger.</div>`;
+    <div class="hint">Total over period: ${fmtMoney(totalInPeriod)}. Estimated from each athlete's start date, current price, and status${finPeriod==='ytd'?' — remaining months project current active revenue with no churn':''}. Not a payment ledger.</div>`;
 
   wrap.innerHTML=html;
 }
