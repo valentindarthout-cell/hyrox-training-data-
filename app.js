@@ -2632,7 +2632,6 @@ async function saveSettings(){
     profile.maxes=body.maxes;
     profile._weight=body.weight_kg; profile._height=body.height_cm;
     onHrvInput();
-    if(coachAthleteHeaderName) coachAthleteHeaderName();
     msg.textContent='Saved';
     setTimeout(()=>msg.textContent='',2000);
   }catch(e){ msg.textContent='Could not save — '+e.message; }
