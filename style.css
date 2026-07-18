@@ -469,3 +469,15 @@ body.coach{max-width:1100px}
 #setCountryMount select:focus,#wizCountryMount select:focus{border-color:#ccc}
 #setCountryMount select,#wizCountryMount select{width:100%}
 .strava-connected{color:#0e9f6e;font-weight:600}
+/* ============ Week 3 — race calendar ============ */
+.race-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #f2f1ed}
+.race-row:last-of-type{border-bottom:none}
+.race-row.past{opacity:.45}
+.race-row-main{flex:1;min-width:0}
+.race-row-name{font-family:var(--font-display);font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px}
+.race-row-meta{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.5}
+.race-prio{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:6px;font-size:9px;font-weight:800;font-family:var(--font-display)}
+.race-prio.pA{background:var(--ink);color:#fff}
+.race-prio.pB{background:#e4e2dc;color:var(--ink)}
+.race-prio.pC{background:#f1efe9;color:var(--muted)}
+.race-form{margin-top:14px;padding-top:14px;border-top:1px solid var(--hair)}
