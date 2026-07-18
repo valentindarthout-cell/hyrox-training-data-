@@ -2605,6 +2605,7 @@ function fillSettings(){
   document.getElementById('setFcMax').value=profile.fc_max??'';
   renderPaces(); renderMaxesGrid();
   if(window.renderPerformanceCard) renderPerformanceCard();
+  if(window.initRaces) initRaces();
   document.getElementById('setHrvLow').value=profile.hrv_low??'';
   document.getElementById('setHrvHigh').value=profile.hrv_high??'';
   document.getElementById('hrz1').value=profile.hr_z1_max??'';
