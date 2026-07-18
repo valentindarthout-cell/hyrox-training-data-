@@ -1697,6 +1697,10 @@ function updateWizAge(){
   const a=ageFromDob(dobRead('wizDob'));
   document.getElementById('wizAgeDisplay').textContent = a!=null? a+' years old' : '';
 }
+function mountWizPickers(){
+  document.getElementById('wizDobMount').innerHTML=dobSelects('wizDob',null,'updateWizAge()');
+  document.getElementById('wizCountryMount').innerHTML=countrySelect('wizCountry',null);
+}
 function wizGoto(n){
   [1,2,3].forEach(i=>document.getElementById('wizStep'+i).style.display=i===n?'block':'none');
 }
@@ -1736,8 +1740,7 @@ async function finishWizard(){
   const firstName=document.getElementById('wizFirstName').value.trim();
   const lastName=document.getElementById('wizLastName').value.trim();
   const dob=dobRead('wizDob');
-  const city=document.getElementById('wizCity').value.trim();
-  const country=document.getElementById('wizCountry').value.trim();
+  const country=document.getElementById('wizCountry').value;
   try{
     await api('/api/profile',{method:'PUT',body:JSON.stringify({
       onboarded:true, streak_target:wizTarget,
