@@ -444,8 +444,28 @@ body.coach{max-width:1100px}
 .vbar.projected{background:#d8d6d0}
 .vbar-lbl.projected-val{color:#b7b4ac}
 
-/* ============ dob/country selects, strava connected ============ */
+/* ============ dob/country selects — premium custom-styled ============ */
 .dob-selects{display:flex;gap:8px}
-.dob-selects select{flex:1;background:var(--input);border:1px solid var(--hair);border-radius:10px;padding:11px 8px;font-size:13px;outline:none}
-#setCountryMount select,#wizCountryMount select{width:100%;background:var(--input);border:1px solid var(--hair);border-radius:10px;padding:11px;font-size:13px;outline:none}
+.dob-selects select,
+#setCountryMount select,#wizCountryMount select{
+  -webkit-appearance:none; -moz-appearance:none; appearance:none;
+  background-color:var(--input);
+  background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3e%3cpath d='M1 1l4 4 4-4' stroke='%2398958d' stroke-width='1.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3e%3c/svg%3e");
+  background-repeat:no-repeat;
+  background-position:right 12px center;
+  border:1px solid var(--hair);
+  border-radius:10px;
+  padding:11px 30px 11px 13px;
+  font-family:var(--font-body);
+  font-size:13px;
+  font-weight:500;
+  color:var(--ink);
+  outline:none;
+  cursor:pointer;
+  transition:border-color .15s;
+}
+.dob-selects select{flex:1;text-align:center;padding-left:8px;padding-right:26px;background-position:right 8px center}
+.dob-selects select:focus,
+#setCountryMount select:focus,#wizCountryMount select:focus{border-color:#ccc}
+#setCountryMount select,#wizCountryMount select{width:100%}
 .strava-connected{color:#0e9f6e;font-weight:600}
