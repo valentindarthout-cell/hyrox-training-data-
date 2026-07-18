@@ -790,8 +790,8 @@ async function checkStravaStatus(){
   if(!el) return;
   try{
     const d=await api('/api/strava?action=status');
-    if(d.connected){ el.textContent='Strava connected'; btn.textContent='Reconnect Strava'; }
-    else { el.textContent='Not connected'; btn.textContent='Connect Strava'; }
+    if(d.connected){ el.textContent='Strava connected'; el.classList.add('strava-connected'); btn.textContent='Reconnect Strava'; }
+    else { el.textContent='Not connected'; el.classList.remove('strava-connected'); btn.textContent='Connect Strava'; }
   }catch(e){ el.textContent=''; }
 }
 function connectStrava(){
