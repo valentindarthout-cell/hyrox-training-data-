@@ -1,27 +1,17 @@
 // OCTA. workouts endpoint — templates, assignments, week labels, landing publish
-// Coach:
-//   GET  ?action=templates                       -> coach's workout library
-//   POST {action:'save-template', workout}       -> create/update template
-//   POST {action:'delete-template', id}
-//   POST {action:'assign', workout_id, athlete_ids[], date}   -> copy to athletes
-//   GET  ?action=assignments&athlete_id=&start=&end=          -> athlete's assignments (coach view)
-//   POST {action:'update-assignment', id, ...fields}          -> edit one athlete's copy
-//   POST {action:'delete-assignment', id}
-//   POST {action:'week-label', athlete_id, week_start, label}
-//   POST {action:'publish-landing', ...fields}   -> upsert coach_public
-// Athlete:
-//   GET  ?action=my-assignments&start=&end=      -> own assignments + week labels
-//   POST {action:'complete', id, difficulty}     -> mark done
+// Field name note: the taxonomy column is ALWAYS "subtypes" (matches sessions/workouts/
+// assignments tables). Never send "modalities" — that name only exists in the AI JSON
+// output shape (api/ai.js) and must be mapped to subtypes before reaching this file.
 const { cors, userToken, sb, getUser } = require('./_supabase.js');
 
+function slugify(s){
+  return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40) || 'coach';
+}
 function dbErr(r, fallback){
   const d = r && r.data;
   const detail = d && (d.message || d.hint || d.details || (typeof d==='string'? d : null));
   return fallback + (detail? ' — ' + detail : ' (HTTP '+(r?r.status:'?')+')');
-}
-function slugify(s){
-  return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40) || 'coach';
 }
 
 module.exports = async function handler(req, res){
@@ -37,16 +27,21 @@ module.exports = async function handler(req, res){
   /* ---------------- coach: templates ---------------- */
   if(action === 'templates'){
     const r = await sb(`/rest/v1/workouts?coach_id=eq.${user.id}&order=created_at.desc`, token, {method:'GET'});
-    if(!r.ok) return res.status(500).json({error:'Could not load library'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not load library')});
     return res.status(200).json({ templates: r.data||[] });
   }
 
   if(action === 'save-template'){
     const w = (req.body||{}).workout || {};
     const row = {
-      coach_id: user.id, title: w.title||'Untitled', workout_type: w.workout_type||'hyrox',
-      duration_min: w.duration_min??null, objective: w.objective||null,
-      blocks: w.blocks||[], stations: w.stations||{}, modalities: w.modalities||[]
+      coach_id: user.id,
+      title: w.title || 'Untitled',
+      workout_type: w.workout_type || 'hyrox',
+      duration_min: w.duration_min ?? null,
+      objective: w.objective || null,
+      blocks: w.blocks || [],
+      stations: w.stations || {},
+      subtypes: w.subtypes || []
     };
     let r;
     if(w.id){
@@ -65,7 +60,7 @@ module.exports = async function handler(req, res){
   if(action === 'delete-template'){
     const { id } = req.body||{};
     const r = await sb(`/rest/v1/workouts?id=eq.${id}&coach_id=eq.${user.id}`, token, {method:'DELETE'});
-    if(!r.ok) return res.status(500).json({error:'Could not delete'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not delete')});
     return res.status(200).json({ ok:true });
   }
 
@@ -77,32 +72,26 @@ module.exports = async function handler(req, res){
     const wr = await sb(`/rest/v1/workouts?id=eq.${workout_id}&coach_id=eq.${user.id}`, token, {method:'GET'});
     const w = wr.ok && wr.data && wr.data[0];
     if(!w) return res.status(404).json({error:'Workout not found'});
-    const rows = athlete_ids.map(aid=>({
+    const rows = athlete_ids.map(aid => ({
       workout_id: w.id, coach_id: user.id, athlete_id: aid, date,
       title: w.title, workout_type: w.workout_type, duration_min: w.duration_min,
-      objective: w.objective, blocks: w.blocks, stations: w.stations, modalities: w.modalities||[]
+      objective: w.objective, blocks: w.blocks, stations: w.stations,
+      subtypes: w.subtypes || []
     }));
     const r = await sb('/rest/v1/assignments', token, {method:'POST', body: JSON.stringify(rows)});
     if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not assign')});
     return res.status(200).json({ assigned: rows.length });
   }
 
-  if(action === 'assignments'){
-    const { athlete_id, start, end } = req.query||{};
-    if(!athlete_id || !start || !end) return res.status(400).json({error:'athlete_id, start, end required'});
-    const r = await sb(`/rest/v1/assignments?coach_id=eq.${user.id}&athlete_id=eq.${athlete_id}&date=gte.${start}&date=lte.${end}&order=date.asc`, token, {method:'GET'});
-    if(!r.ok) return res.status(500).json({error:'Could not load'});
-    return res.status(200).json({ assignments: r.data||[] });
-  }
-
   if(action === 'create-assignment'){
     const b = req.body||{};
     if(!b.athlete_id || !b.date) return res.status(400).json({error:'athlete_id and date required'});
     const row = {
-      workout_id: b.workout_id||null, coach_id: user.id, athlete_id: b.athlete_id, date: b.date,
-      title: b.title||'Workout', workout_type: b.workout_type||'hyrox',
-      duration_min: b.duration_min??null, objective: b.objective||null,
-      blocks: b.blocks||[], stations: b.stations||{}, modalities: b.modalities||[]
+      workout_id: b.workout_id || null, coach_id: user.id, athlete_id: b.athlete_id, date: b.date,
+      title: b.title || 'Workout', workout_type: b.workout_type || 'hyrox',
+      duration_min: b.duration_min ?? null, objective: b.objective || null,
+      blocks: b.blocks || [], stations: b.stations || {},
+      subtypes: b.subtypes || []
     };
     const r = await sb('/rest/v1/assignments', token, {
       method:'POST', headers:{'Prefer':'return=representation'}, body: JSON.stringify([row])
@@ -111,12 +100,20 @@ module.exports = async function handler(req, res){
     return res.status(200).json({ assignment: Array.isArray(r.data)? r.data[0] : null });
   }
 
+  if(action === 'assignments'){
+    const { athlete_id, start, end } = req.query||{};
+    if(!athlete_id || !start || !end) return res.status(400).json({error:'athlete_id, start, end required'});
+    const r = await sb(`/rest/v1/assignments?coach_id=eq.${user.id}&athlete_id=eq.${athlete_id}&date=gte.${start}&date=lte.${end}&order=date.asc`, token, {method:'GET'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not load')});
+    return res.status(200).json({ assignments: r.data||[] });
+  }
+
   if(action === 'update-assignment'){
     const b = req.body||{};
     if(!b.id) return res.status(400).json({error:'id required'});
     const patch = {};
-    ['title','workout_type','duration_min','objective','blocks','stations','date','modalities'].forEach(k=>{
-      if(b[k] !== undefined) patch[k]=b[k];
+    ['title','workout_type','duration_min','objective','blocks','stations','date','subtypes'].forEach(k=>{
+      if(b[k] !== undefined) patch[k] = b[k];
     });
     const r = await sb(`/rest/v1/assignments?id=eq.${b.id}&coach_id=eq.${user.id}`, token, {
       method:'PATCH', body: JSON.stringify(patch)
@@ -128,7 +125,7 @@ module.exports = async function handler(req, res){
   if(action === 'delete-assignment'){
     const { id } = req.body||{};
     const r = await sb(`/rest/v1/assignments?id=eq.${id}&coach_id=eq.${user.id}`, token, {method:'DELETE'});
-    if(!r.ok) return res.status(500).json({error:'Could not delete'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not delete')});
     return res.status(200).json({ ok:true });
   }
 
@@ -143,14 +140,13 @@ module.exports = async function handler(req, res){
       method:'POST', headers:{'Prefer':'resolution=merge-duplicates'},
       body: JSON.stringify([{ athlete_id, coach_id: user.id, week_start, label }])
     });
-    if(!r.ok) return res.status(500).json({error:'Could not save label'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not save label')});
     return res.status(200).json({ ok:true });
   }
 
   /* ---------------- coach: landing publish ---------------- */
   if(action === 'publish-landing'){
     const b = req.body||{};
-    // fetch profile for defaults + invite code
     const pr = await sb(`/rest/v1/profiles?id=eq.${user.id}`, token, {method:'GET'});
     const prof = (pr.ok && pr.data && pr.data[0]) || {};
     let slug = b.slug ? slugify(b.slug) : slugify(prof.program_name || prof.email);
@@ -167,14 +163,13 @@ module.exports = async function handler(req, res){
       body: JSON.stringify([row])
     });
     if(!r.ok && r.status === 409){
-      // slug collision with another coach — suffix and retry once
       row.slug = slug + '-' + Math.floor(Math.random()*900+100);
       r = await sb('/rest/v1/coach_public?on_conflict=coach_id', token, {
         method:'POST', headers:{'Prefer':'resolution=merge-duplicates,return=representation'},
         body: JSON.stringify([row])
       });
     }
-    if(!r.ok) return res.status(500).json({error:'Could not publish'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not publish')});
     return res.status(200).json({ landing: Array.isArray(r.data)? r.data[0] : row });
   }
 
@@ -189,7 +184,7 @@ module.exports = async function handler(req, res){
     if(!start || !end) return res.status(400).json({error:'start and end required'});
     const a = await sb(`/rest/v1/assignments?athlete_id=eq.${user.id}&date=gte.${start}&date=lte.${end}&order=date.asc`, token, {method:'GET'});
     const l = await sb(`/rest/v1/week_labels?athlete_id=eq.${user.id}&week_start=gte.${start}&week_start=lte.${end}`, token, {method:'GET'});
-    if(!a.ok) return res.status(500).json({error:'Could not load'});
+    if(!a.ok) return res.status(500).json({error: dbErr(a,'Could not load')});
     return res.status(200).json({ assignments: a.data||[], labels: (l.ok && l.data)||[] });
   }
 
@@ -197,7 +192,7 @@ module.exports = async function handler(req, res){
     const { id, difficulty } = req.body||{};
     if(!id) return res.status(400).json({error:'id required'});
     const r = await sb(`/rest/v1/assignments?id=eq.${id}&athlete_id=eq.${user.id}`, token, {
-      method:'PATCH', body: JSON.stringify({ status:'done', difficulty: difficulty??null })
+      method:'PATCH', body: JSON.stringify({ status:'done', difficulty: difficulty ?? null })
     });
     if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not update')});
     return res.status(200).json({ ok:true });
