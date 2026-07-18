@@ -1748,7 +1748,7 @@ async function finishWizard(){
       training_phase:profile.training_phase||null,
       race_divisions:profile.race_divisions||[],
       first_name:firstName||null, last_name:lastName||null,
-      dob:dob||null, city:city||null, country:country||null
+      dob:dob||null, country:country||null
     })});
   }catch(e){}
   profile.onboarded=true; profile.streak_target=wizTarget;
