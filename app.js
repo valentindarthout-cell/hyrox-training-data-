@@ -2579,18 +2579,10 @@ function buildSettingsPills(){
     `<button class="pill" data-n="${n}" onclick="pickTarget(${n})">${n} days</button>`).join('');
   document.getElementById('phasePills').innerHTML=PHASES.map(p=>
     `<button class="pill" data-v="${p}" onclick="pickPhase('${p}')">${p}</button>`).join('');
-  document.getElementById('divisionPills').innerHTML=DIVISIONS.map(d=>
-    `<button class="pill" data-v="${d}" onclick="pickDivision('${d}')">${d}</button>`).join('');
 }
 function pickPhase(p){
   phaseSel = phaseSel===p? null : p;
   document.querySelectorAll('#phasePills .pill').forEach(b=>b.classList.toggle('active',b.dataset.v===phaseSel));
-}
-function pickDivision(d){
-  const i=divisionSel.indexOf(d);
-  if(i>-1) divisionSel.splice(i,1);
-  else if(divisionSel.length<3) divisionSel.push(d);
-  document.querySelectorAll('#divisionPills .pill').forEach(b=>b.classList.toggle('active',divisionSel.includes(b.dataset.v)));
 }
 function fillSettings(){
   document.getElementById('setFirstName').value=profile.first_name??'';
@@ -2612,11 +2604,8 @@ function fillSettings(){
   document.getElementById('hrz2').value=profile.hr_z2_max??'';
   document.getElementById('hrz3').value=profile.hr_z3_max??'';
   document.getElementById('hrz4').value=profile.hr_z4_max??'';
-  document.getElementById('setRaceName').value=profile.race_name??'';
-  document.getElementById('setRaceDate').value=profile.race_date??'';
   targetSel=profile.streak_target||4;
   document.querySelectorAll('#targetPills .pill').forEach(b=>b.classList.toggle('active',+b.dataset.n===targetSel));
-  phaseSel=profile.training_phase||null;
   divisionSel=(profile.race_divisions||[]).slice(0,3);
   document.querySelectorAll('#phasePills .pill').forEach(b=>b.classList.toggle('active',b.dataset.v===phaseSel));
   document.querySelectorAll('#divisionPills .pill').forEach(b=>b.classList.toggle('active',divisionSel.includes(b.dataset.v)));
@@ -2645,9 +2634,6 @@ async function saveSettings(){
     hr_z4_max:intOrNull(document.getElementById('hrz4').value),
     training_phase:phaseSel,
     streak_target:targetSel,
-    race_name:document.getElementById('setRaceName').value||null,
-    race_date:document.getElementById('setRaceDate').value||null,
-    race_divisions:divisionSel,
     weight_kg:numOrNull(document.getElementById('setWeight').value),
     height_cm:numOrNull(document.getElementById('setHeight').value),
   };
