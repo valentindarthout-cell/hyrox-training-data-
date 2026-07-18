@@ -38,6 +38,9 @@ module.exports = async function handler(req, res){
       vma: body.vma, fc_rest: body.fc_rest, fc_max: body.fc_max
     };
     if(body.maxes !== undefined) profileFields.maxes = body.maxes;
+    if(body.prs !== undefined) profileFields.prs = body.prs;
+    if(body.gender !== undefined) profileFields.gender = body.gender;
+    if(body.category !== undefined) profileFields.category = body.category;
     if(body.onboarded !== undefined) profileFields.onboarded = body.onboarded;
     if(body.streak_target !== undefined) profileFields.streak_target = body.streak_target;
     if(body.role !== undefined) profileFields.role = body.role;
