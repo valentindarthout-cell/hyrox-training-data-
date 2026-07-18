@@ -178,6 +178,43 @@ module.exports = async function handler(req, res){
     return res.status(200).json({ landing: (r.ok && r.data && r.data[0]) || null });
   }
 
+  /* ---------------- races ---------------- */
+  if(action === 'races'){
+    const target = (req.query||{}).athlete_id || user.id;
+    // RLS allows own races + coach's linked athletes; anything else returns empty
+    const r = await sb(`/rest/v1/races?athlete_id=eq.${target}&order=race_date.asc`, token, {method:'GET'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not load races')});
+    return res.status(200).json({ races: r.data||[] });
+  }
+
+  if(action === 'save-race'){
+    const b = req.body||{};
+    if(!b.name) return res.status(400).json({error:'Race name required'});
+    const row = {
+      athlete_id: user.id, name: b.name, race_date: b.race_date||null,
+      divisions: b.divisions||[], priority: b.priority||null,
+      location: b.location||null, goal_time: b.goal_time||null
+    };
+    let r;
+    if(b.id){
+      r = await sb(`/rest/v1/races?id=eq.${b.id}&athlete_id=eq.${user.id}`, token, {
+        method:'PATCH', headers:{'Prefer':'return=representation'}, body: JSON.stringify(row)
+      });
+    }else{
+      r = await sb('/rest/v1/races', token, {
+        method:'POST', headers:{'Prefer':'return=representation'}, body: JSON.stringify([row])
+      });
+    }
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not save race')});
+    return res.status(200).json({ race: Array.isArray(r.data)? r.data[0] : null });
+  }
+
+  if(action === 'delete-race'){
+    const { id } = req.body||{};
+    const r = await sb(`/rest/v1/races?id=eq.${id}&athlete_id=eq.${user.id}`, token, {method:'DELETE'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not delete race')});
+    return res.status(200).json({ ok:true });
+  }
   /* ---------------- athlete ---------------- */
   if(action === 'my-assignments'){
     const { start, end } = req.query||{};
