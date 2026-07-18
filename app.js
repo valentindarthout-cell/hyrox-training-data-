@@ -48,6 +48,25 @@ function mondayOf(s){ const d=parseDate(s); const dow=(d.getDay()+6)%7; d.setDat
 function fmtDay(s){ const d=parseDate(s); return d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}).toUpperCase(); }
 function fmtShort(s){ const d=parseDate(s); return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'}); }
 function daysUntil(s){ const ms=parseDate(s)-parseDate(todayStr()); return Math.round(ms/86400000); }
+const MONTH_NAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function dobSelects(idBase,value,onchange){
+  let d=null,m=null,y=null;
+  if(value){ const p=value.split('-'); y=parseInt(p[0]); m=parseInt(p[1]); d=parseInt(p[2]); }
+  const dayOpts=Array.from({length:31},(_,i)=>i+1).map(n=>`<option value="${n}" ${n===d?'selected':''}>${n}</option>`).join('');
+  const monOpts=MONTH_NAMES.map((n,i)=>`<option value="${i+1}" ${i+1===m?'selected':''}>${n}</option>`).join('');
+  const curY=new Date().getFullYear();
+  const yearOpts=Array.from({length:90},(_,i)=>curY-5-i).map(n=>`<option value="${n}" ${n===y?'selected':''}>${n}</option>`).join('');
+  return `<div class="dob-selects">
+    <select id="${idBase}_d" onchange="${onchange}"><option value="">DD</option>${dayOpts}</select>
+    <select id="${idBase}_m" onchange="${onchange}"><option value="">MM</option>${monOpts}</select>
+    <select id="${idBase}_y" onchange="${onchange}"><option value="">YYYY</option>${yearOpts}</select>
+  </div>`;
+}
+function dobRead(idBase){
+  const d=document.getElementById(idBase+'_d').value, m=document.getElementById(idBase+'_m').value, y=document.getElementById(idBase+'_y').value;
+  if(!d||!m||!y) return null;
+  return y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+}
 function ageFromDob(dob){
   if(!dob) return null;
   const d=parseDate(dob), t=new Date();
@@ -1671,7 +1690,7 @@ function wizPickTarget(n){
   document.querySelectorAll('#wizTargetPills .pill').forEach(b=>b.classList.toggle('active',+b.dataset.n===n));
 }
 function updateWizAge(){
-  const a=ageFromDob(document.getElementById('wizDob').value);
+  const a=ageFromDob(dobRead('wizDob'));
   document.getElementById('wizAgeDisplay').textContent = a!=null? a+' years old' : '';
 }
 function wizGoto(n){
@@ -1712,7 +1731,7 @@ async function finishWizard(){
   const raceDate=document.getElementById('wizRaceDate').value;
   const firstName=document.getElementById('wizFirstName').value.trim();
   const lastName=document.getElementById('wizLastName').value.trim();
-  const dob=document.getElementById('wizDob').value;
+  const dob=dobRead('wizDob');
   const city=document.getElementById('wizCity').value.trim();
   const country=document.getElementById('wizCountry').value.trim();
   try{
@@ -2541,7 +2560,7 @@ function triggerDownload(blob){
 let phaseSel=null, divisionSel=[];
 let targetSel=4;
 function updateSetAge(){
-  const a=ageFromDob(document.getElementById('setDob').value);
+  const a=ageFromDob(dobRead('setDob'));
   document.getElementById('setAgeDisplay').textContent = a!=null? a+' years old' : '';
 }
 function pickTarget(n){
@@ -2569,7 +2588,7 @@ function pickDivision(d){
 function fillSettings(){
   document.getElementById('setFirstName').value=profile.first_name??'';
   document.getElementById('setLastName').value=profile.last_name??'';
-  document.getElementById('setDob').value=profile.dob??'';
+  document.getElementById('setDobMount').innerHTML=dobSelects('setDob',profile.dob,'updateSetAge()');
   document.getElementById('setCity').value=profile.city??'';
   document.getElementById('setCountry').value=profile.country??'';
   updateSetAge();
@@ -2611,7 +2630,6 @@ async function saveSettings(){
     vma:numOrNull(document.getElementById('setVma').value),
     fc_rest:intOrNull(document.getElementById('setFcRest').value),
     fc_max:intOrNull(document.getElementById('setFcMax').value),
-    maxes:LIFTS.reduce((o,l)=>{const v=numOrNull(document.getElementById('max_'+l.k).value); if(v!=null)o[l.k]=v; return o;},{}),
     hrv_low:intOrNull(document.getElementById('setHrvLow').value),
     hrv_high:intOrNull(document.getElementById('setHrvHigh').value),
     hr_z1_max:intOrNull(document.getElementById('hrz1').value),
