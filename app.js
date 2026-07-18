@@ -1316,6 +1316,8 @@ function spEdit(a,isNew){
     <div class="pill-row" style="margin-bottom:12px">
       ${['hyrox','endurance','strength'].map(t=>`<button class="pill sp-type ${a.workout_type===t?'active':''}" data-t="${t}" onclick="spSetType('${t}')">${t==='hyrox'?'Hyrox / Mix':cap(t)}</button>`).join('')}
     </div>
+    <div class="section-sublabel">Modalities</div>
+    <div class="pill-row wrap" id="spModalities" style="margin-bottom:12px"></div>
     <div class="metric-field" style="max-width:140px;margin-bottom:12px"><label>Duration min</label>
       <input id="spDuration" type="number" inputmode="numeric" value="${a.duration_min??60}"></div>
     <div id="spBlocks"></div>
