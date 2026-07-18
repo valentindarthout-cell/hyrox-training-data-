@@ -108,7 +108,6 @@ module.exports = async function handler(req, res){
     if(!r.ok) return res.status(500).json({error:'Could not save'});
     return res.status(200).json({ ok:true });
   }
-
   if(action === 'crm'){
     const b = req.body || {};
     if(!b.athlete_id) return res.status(400).json({error:'athlete_id required'});
