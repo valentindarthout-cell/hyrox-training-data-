@@ -952,6 +952,7 @@ function newWorkout(){
 function openBuilder(){
   document.getElementById('wkList').style.display='none';
   document.querySelector('#coachProg .coach-toolbar').style.display='none';
+  document.querySelector('#coachProg .lib-filters').style.display='none';
   document.getElementById('wkBuilder').style.display='block';
   document.getElementById('wkTitle').value=wk.title||'';
   document.getElementById('wkDuration').value=wk.duration_min||60;
@@ -963,6 +964,7 @@ function closeBuilder(){
   document.getElementById('wkBuilder').style.display='none';
   document.getElementById('wkList').style.display='grid';
   document.querySelector('#coachProg .coach-toolbar').style.display='flex';
+  document.querySelector('#coachProg .lib-filters').style.display='flex';
   loadTemplates();
 }
 function setWkType(t){
