@@ -1,6 +1,8 @@
 /* ================================================================
-   OCTA. perf.js — Performance Profile (Week 3 Phase 1)
-   Self-contained module. Injects:
+   OCTA. perf.js — Performance Profile (Week 3 Phase 1, v2)
+   Clean read-only display by default; single "Edit" toggle reveals
+   the full dropdown-based edit form (PRs + division + lifts together).
+   Injects:
    - "Performance" card into athlete Settings (after Lift maxes card)
    - "Performance" card into coach athlete view (below Programming card)
    Both editable; last write wins.
@@ -24,7 +26,6 @@ const PR_FIELDS = [
 
 /* ---------- time dropdown helpers ---------- */
 function perfTimeSelects(idBase, value, hasHours){
-  // value "mm:ss" or "h:mm:ss"
   let h=0,m=0,s=0;
   if(value){
     const p=value.split(':').map(Number);
@@ -54,8 +55,54 @@ function perfGetRM(mx,lift,tier){
   return v[tier]??'';
 }
 
-/* ---------- shared card HTML ---------- */
-function perfCardHTML(p, idPrefix){
+/* ================================================================
+   READ-ONLY VIEW
+================================================================ */
+function perfViewHTML(p, idPrefix){
+  const prs=p.prs||{};
+  const g=p.gender||null, cat=p.category||null;
+  const rwKey=g&&cat? g+'-'+cat : null;
+  const rw=rwKey? RACE_WEIGHTS[rwKey] : null;
+  const mx=p.maxes||{};
+  const anyPR = PR_FIELDS.some(([k])=>prs[k]);
+  const anyLift = LIFTS.some(l=>perfGetRM(mx,l.k,'rm1')!=='');
+  const hasTiers = LIFTS.some(l=>perfGetRM(mx,l.k,'rm3')!==''||perfGetRM(mx,l.k,'rm10')!=='');
+
+  return `
+    <div class="perf-view">
+      <div class="section-sublabel">Run & erg PRs</div>
+      ${anyPR ? `<div class="perf-view-grid">
+        ${PR_FIELDS.map(([k,label])=>prs[k]?`<div class="perf-view-item"><span>${label}</span><b>${prs[k]}</b></div>`:'').join('')}
+      </div>` : `<div class="hint">No PRs set yet.</div>`}
+
+      <div class="section-sublabel">Division</div>
+      ${g&&cat ? `<div class="perf-view-tag">${g==='M'?'Men':'Women'} · ${cat}</div>` : `<div class="hint">Not set.</div>`}
+      ${rw?`<div class="perf-rw">${Object.keys(rw).map(k=>`<div class="perf-rw-row"><span>${RW_LABELS[k]}</span><b>${rw[k]}</b></div>`).join('')}</div>`:''}
+
+      <div class="section-sublabel">Lifts — 1RM kg</div>
+      ${anyLift ? `<div class="perf-view-grid">
+        ${LIFTS.map(l=>{ const v=perfGetRM(mx,l.k,'rm1'); return v!==''?`<div class="perf-view-item"><span>${l.label}</span><b>${v}</b></div>`:''; }).join('')}
+      </div>` : `<div class="hint">No lifts set yet.</div>`}
+      ${hasTiers?`<button class="mini-btn" style="margin-top:10px" onclick="perfToggleViewTiers('${idPrefix}')">3RM / 10RM ▾</button>
+      <div id="${idPrefix}viewTiers" style="display:none">
+        ${['rm3','rm10'].map(t=>{
+          const rows=LIFTS.map(l=>{ const v=perfGetRM(mx,l.k,t); return v!==''?`<div class="perf-view-item"><span>${l.label}</span><b>${v}</b></div>`:''; }).join('');
+          return rows? `<div class="section-sublabel">${t==='rm3'?'3RM kg':'10RM kg'}</div><div class="perf-view-grid">${rows}</div>` : '';
+        }).join('')}
+      </div>`:''}
+
+      <button class="btn-slim secondary" style="margin-top:16px" onclick="perfEnterEdit('${idPrefix}')">Edit performance</button>
+    </div>`;
+}
+function perfToggleViewTiers(prefix){
+  const el=document.getElementById(prefix+'viewTiers');
+  el.style.display = el.style.display==='none'?'block':'none';
+}
+
+/* ================================================================
+   EDIT FORM
+================================================================ */
+function perfEditHTML(p, idPrefix){
   const prs=p.prs||{};
   const g=p.gender||null, cat=p.category||null;
   const rwKey=g&&cat? g+'-'+cat : null;
@@ -88,27 +135,42 @@ function perfCardHTML(p, idPrefix){
             <input id="${idPrefix}${t}_${l.k}" type="number" inputmode="decimal" step="0.5" value="${perfGetRM(p.maxes,l.k,t)}"></div>`).join('')}
         </div>`).join('')}
     </div>
-    <div class="sp-actions">
+    <div class="sp-actions" style="margin-top:16px">
       <button class="btn-slim" onclick="perfSave('${idPrefix}')">Save performance</button>
+      <button class="btn-slim secondary" onclick="perfCancelEdit('${idPrefix}')">Cancel</button>
       <div id="${idPrefix}msg" class="save-msg" style="margin:0;text-align:left"></div>
     </div>`;
 }
 
-/* perf state per prefix: which profile object + save target */
-const perfCtx = {};
+/* ---------- shared state: committed (saved) vs draft (being edited) ---------- */
+const perfCtx = {};   // { mount, athleteId, mode:'view'|'edit', committed:{}, draft:{} }
 
+function perfClone(o){ return JSON.parse(JSON.stringify(o||{})); }
+function perfRenderCurrent(prefix){
+  const ctx=perfCtx[prefix];
+  document.getElementById(ctx.mount).innerHTML = ctx.mode==='edit'
+    ? perfEditHTML(ctx.draft, prefix)
+    : perfViewHTML(ctx.committed, prefix);
+}
+function perfEnterEdit(prefix){
+  const ctx=perfCtx[prefix];
+  ctx.draft=perfClone(ctx.committed);
+  ctx.mode='edit';
+  perfRenderCurrent(prefix);
+}
+function perfCancelEdit(prefix){
+  const ctx=perfCtx[prefix];
+  ctx.mode='view';
+  perfRenderCurrent(prefix);
+}
 function perfPick(prefix, field, val){
+  perfCollect(prefix);
   perfCtx[prefix].draft[field]=val;
-  perfRerender(prefix);
+  perfRenderCurrent(prefix);
 }
 function perfToggleTiers(prefix){
   const el=document.getElementById(prefix+'tiers');
   el.style.display = el.style.display==='none'?'block':'none';
-}
-function perfRerender(prefix){
-  // capture current inputs into draft first so a re-render doesn't lose edits
-  perfCollect(prefix);
-  document.getElementById(perfCtx[prefix].mount).innerHTML=perfCardHTML(perfCtx[prefix].draft, prefix);
 }
 function perfCollect(prefix){
   const d=perfCtx[prefix].draft;
@@ -142,7 +204,9 @@ async function perfSave(prefix){
       await api('/api/profile',{method:'PUT',body:JSON.stringify(body)});
       profile.prs=d.prs; profile.maxes=d.maxes; profile.gender=d.gender; profile.category=d.category;
     }
-    msg.textContent='Saved'; setTimeout(()=>msg.textContent='',2000);
+    ctx.committed=perfClone(d);
+    ctx.mode='view';
+    perfRenderCurrent(prefix);
   }catch(e){ msg.textContent=e.message; }
 }
 
@@ -154,14 +218,14 @@ function renderPerformanceCard(){
     const maxesCard=document.getElementById('maxesGrid').closest('.section-card');
     maxesCard.insertAdjacentHTML('afterend',
       '<div class="section-card"><div class="section-label">Performance</div><div id="perfCardHost"></div></div>');
-    // the old standalone 1RM card is superseded by the performance card
     maxesCard.style.display='none';
     host=document.getElementById('perfCardHost');
   }
-  perfCtx['perf_']={ mount:'perfCardHost', athleteId:null,
-    draft:{ prs:{...(profile.prs||{})}, maxes:JSON.parse(JSON.stringify(profile.maxes||{})),
-            gender:profile.gender||null, category:profile.category||null } };
-  host.innerHTML=perfCardHTML(perfCtx['perf_'].draft,'perf_');
+  perfCtx['perf_']={ mount:'perfCardHost', athleteId:null, mode:'view',
+    committed:{ prs:{...(profile.prs||{})}, maxes:JSON.parse(JSON.stringify(profile.maxes||{})),
+                gender:profile.gender||null, category:profile.category||null },
+    draft:null };
+  perfRenderCurrent('perf_');
 }
 
 /* ---------- mount: coach athlete view ---------- */
@@ -176,9 +240,10 @@ function renderCoachPerf(athlete){
   }
   api(`/api/coach?action=performance&athlete_id=${athlete.id}`).then(d=>{
     const p=d.performance||{};
-    perfCtx['caperf_']={ mount:'caPerfHost', athleteId:athlete.id,
-      draft:{ prs:{...(p.prs||{})}, maxes:JSON.parse(JSON.stringify(p.maxes||{})),
-              gender:p.gender||null, category:p.category||null } };
-    host.innerHTML=perfCardHTML(perfCtx['caperf_'].draft,'caperf_');
+    perfCtx['caperf_']={ mount:'caPerfHost', athleteId:athlete.id, mode:'view',
+      committed:{ prs:{...(p.prs||{})}, maxes:JSON.parse(JSON.stringify(p.maxes||{})),
+                  gender:p.gender||null, category:p.category||null },
+      draft:null };
+    perfRenderCurrent('caperf_');
   }).catch(e=>{ host.innerHTML='<div class="hint">'+e.message+'</div>'; });
 }
