@@ -1649,14 +1649,14 @@ function renderPaces(){
     rows+=`<tr>
       <td class="pz">${pz.z}</td>
       <td>${pz.vma[0]}–${pz.vma[1]}%</td>
-      <td class="pv">${paceFromSpeed(sHi)}–${paceFromSpeed(sLo)}</td>
       <td class="pv">${hr}</td>
+      <td class="pv">${paceFromSpeed(sHi)}–${paceFromSpeed(sLo)}</td>
       <td class="pv">${splitTime(1,mid)}</td>
       <td class="pv">${splitTime(0.4,mid)}</td>
     </tr>`;
   });
   el.innerHTML=`<table class="paces-table">
-    <tr><th>Zone</th><th>%VMA</th><th>Pace /km</th><th>HR bpm</th><th>1km</th><th>400m</th></tr>${rows}</table>`;
+    <tr><th>Zone</th><th>%VMA</th><th>HR bpm</th><th>Pace /km</th><th>1km</th><th>400m</th></tr>${rows}</table>`;
 }
 function zonePaceRange(zoneKey, vma){
   const pz=PACE_ZONES.find(p=>p.z===zoneKey); if(!pz||!vma) return null;
