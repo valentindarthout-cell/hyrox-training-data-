@@ -1724,14 +1724,14 @@ async function wizRunImport(){
   if(items.length){
     let i=0;
     const tick=setInterval(()=>{
-      if(i>=items.length||i>=8){ clearInterval(tick); setTimeout(()=>wizGoto(3),900); return; }
+      if(i>=items.length||i>=8){ clearInterval(tick); setTimeout(()=>{ mountWizPickers(); wizGoto(3); },900); return; }
       const it=items[i++];
       feed.insertAdjacentHTML('beforeend',
         `<div class="wiz-feed-item"><b>${esc(it.name||cap(it.type))}</b> — ${fmtShort(it.date)}</div>`);
     },350);
   }else{
     feed.innerHTML='<div class="wiz-feed-item">No recent activities found — you can log manually or import later from Settings.</div>';
-    setTimeout(()=>wizGoto(3),1600);
+    setTimeout(()=>{ mountWizPickers(); wizGoto(3); },1600);
   }
 }
 async function finishWizard(){
