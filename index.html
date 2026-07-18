@@ -364,8 +364,14 @@
             <div class="metric-field"><label>Duration min</label><input id="wkDuration" type="number" inputmode="numeric" value="60"></div>
             <div class="metric-field"><label>Objective</label>
               <div style="display:flex;gap:8px">
-                <input id="wkObjective" type="text" placeholder="e.g. compromised running under fatigue, race pace" style="flex:1">
+               <input id="wkObjective" type="text" placeholder="e.g. compromised running under fatigue, race pace" style="flex:1">
                 <button id="micBtn" class="mini-btn" onclick="toggleMic()" title="Dictate">🎙</button>
+                <button class="btn-ai" onclick="generateWorkout()" title="Generate with AI">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 3l1.8 4.8L18.6 9.6 13.8 11.4 12 16.2 10.2 11.4 5.4 9.6 10.2 7.8 12 3z"/>
+                    <path d="M19 15l.9 2.4L22.3 18.3 19.9 19.2 19 21.6 18.1 19.2 15.7 18.3 18.1 17.4 19 15z"/>
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
