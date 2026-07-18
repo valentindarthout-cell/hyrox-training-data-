@@ -163,13 +163,11 @@
         <div class="macro-field"><label>First name</label><input id="setFirstName" type="text"></div>
         <div class="macro-field"><label>Last name</label><input id="setLastName" type="text"></div>
       </div>
-      <div class="settings-grid two" style="margin-top:10px">
-        <div class="macro-field"><label>City</label><input id="setCity" type="text"></div>
-        <div class="macro-field"><label>Country</label><input id="setCountry" type="text"></div>
-      </div>
+      <div class="section-sublabel">Country</div>
+      <div id="setCountryMount"></div>
       <div class="section-sublabel">Date of birth</div>
-      <input id="setDob" class="text-input" type="date" oninput="updateSetAge()">
-      <div id="setAgeDisplay" class="hint" style="margin-top:-6px"></div>
+      <div id="setDobMount"></div>
+      <div id="setAgeDisplay" class="hint" style="margin-top:6px"></div>
     </div>
 
     <div class="section-card">
@@ -545,10 +543,9 @@
       <div class="wiz-title">About you.</div>
       <input id="wizFirstName" class="text-input" type="text" placeholder="First name">
       <input id="wizLastName" class="text-input" type="text" placeholder="Last name">
-      <input id="wizDob" class="text-input" type="date" placeholder="Date of birth" oninput="updateWizAge()">
-      <div id="wizAgeDisplay" class="hint" style="margin:-6px 0 4px"></div>
-      <input id="wizCity" class="text-input" type="text" placeholder="City">
-      <input id="wizCountry" class="text-input" type="text" placeholder="Country">
+      <div id="wizDobMount"></div>
+      <div id="wizAgeDisplay" class="hint" style="margin:6px 0 10px"></div>
+      <div id="wizCountryMount"></div>
       <div class="wiz-sub" style="margin-top:22px">Training days per week — this powers your streak.</div>
       <div class="pill-row" id="wizTargetPills" style="justify-content:center;margin-bottom:22px"></div>
       <div class="wiz-sub">Next race, if you have one.</div>
