@@ -429,3 +429,23 @@ body.coach{max-width:1100px}
 .perf-rw-row{display:flex;justify-content:space-between;padding:9px 14px;font-size:12px;border-bottom:1px solid #f2f1ed;background:#fff}
 .perf-rw-row:last-child{border-bottom:none}
 .perf-rw-row b{font-family:var(--font-display)}
+/* ============ AI generate — subtle icon button ============ */
+.ai-gen-row{display:flex;gap:8px;margin-top:14px}
+.ai-gen-row input{flex:1}
+.btn-ai{
+  width:40px;height:40px;flex-shrink:0;border-radius:10px;
+  background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;
+  transition:opacity .15s;
+}
+.btn-ai:active{opacity:.8}
+.btn-ai svg{width:17px;height:17px}
+
+/* ============ Finance YTD projection bars ============ */
+.vbar.projected{background:#d8d6d0}
+.vbar-lbl.projected-val{color:#b7b4ac}
+
+/* ============ dob/country selects, strava connected ============ */
+.dob-selects{display:flex;gap:8px}
+.dob-selects select{flex:1;background:var(--input);border:1px solid var(--hair);border-radius:10px;padding:11px 8px;font-size:13px;outline:none}
+#setCountryMount select,#wizCountryMount select{width:100%;background:var(--input);border:1px solid var(--hair);border-radius:10px;padding:11px;font-size:13px;outline:none}
+.strava-connected{color:#0e9f6e;font-weight:600}
