@@ -90,6 +90,25 @@ module.exports = async function handler(req, res){
     return res.status(200).json({ sessions: sess.data||[], physiology: phys.data||[] });
   }
 
+  if(action === 'performance'){
+    const { athlete_id } = req.query||{};
+    const link = await sb(`/rest/v1/profiles?id=eq.${athlete_id}&coach_id=eq.${user.id}&select=prs,maxes,gender,category`, token, {method:'GET'});
+    if(!link.ok || !link.data || !link.data.length) return res.status(403).json({error:'Not your athlete'});
+    return res.status(200).json({ performance: link.data[0] });
+  }
+
+  if(action === 'save-performance'){
+    const b = req.body||{};
+    if(!b.athlete_id) return res.status(400).json({error:'athlete_id required'});
+    const link = await sb(`/rest/v1/profiles?id=eq.${b.athlete_id}&coach_id=eq.${user.id}&select=id`, token, {method:'GET'});
+    if(!link.ok || !link.data || !link.data.length) return res.status(403).json({error:'Not your athlete'});
+    const patch = {};
+    ['prs','maxes','gender','category'].forEach(k=>{ if(b[k]!==undefined) patch[k]=b[k]; });
+    const r = await sb(`/rest/v1/profiles?id=eq.${b.athlete_id}`, token, {method:'PATCH', body: JSON.stringify(patch)});
+    if(!r.ok) return res.status(500).json({error:'Could not save'});
+    return res.status(200).json({ ok:true });
+  }
+
   if(action === 'crm'){
     const b = req.body || {};
     if(!b.athlete_id) return res.status(400).json({error:'athlete_id required'});
