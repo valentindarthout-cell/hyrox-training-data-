@@ -209,6 +209,7 @@ function openAthlete(i){
   document.getElementById('caPeriodNav').style.display='flex';
   wlWeek=mondayOf(todayStr());
   renderWlSection();
+  if(window.renderCoachPerf) renderCoachPerf(caCurrent);
   loadCaStats();
 }
 let crmStatusVal='active';
@@ -2578,6 +2579,7 @@ function fillSettings(){
   document.getElementById('setFcRest').value=profile.fc_rest??'';
   document.getElementById('setFcMax').value=profile.fc_max??'';
   renderPaces(); renderMaxesGrid();
+  if(window.renderPerformanceCard) renderPerformanceCard();
   document.getElementById('setHrvLow').value=profile.hrv_low??'';
   document.getElementById('setHrvHigh').value=profile.hrv_high??'';
   document.getElementById('hrz1').value=profile.hr_z1_max??'';
