@@ -49,6 +49,10 @@ function fmtDay(s){ const d=parseDate(s); return d.toLocaleDateString('en-GB',{d
 function fmtShort(s){ const d=parseDate(s); return d.toLocaleDateString('en-GB',{day:'numeric',month:'short'}); }
 function daysUntil(s){ const ms=parseDate(s)-parseDate(todayStr()); return Math.round(ms/86400000); }
 const MONTH_NAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const COUNTRIES=['France','United Kingdom','United States','Germany','Spain','Italy','Netherlands','Belgium','Switzerland','Austria','Portugal','Ireland','Denmark','Sweden','Norway','Finland','Poland','Czechia','Slovakia','Hungary','Romania','Bulgaria','Greece','Croatia','Slovenia','Estonia','Latvia','Lithuania','Luxembourg','Iceland','Canada','Mexico','Brazil','Argentina','Chile','Colombia','Peru','Australia','New Zealand','Japan','South Korea','China','Singapore','Hong Kong','India','United Arab Emirates','Saudi Arabia','Qatar','Israel','South Africa','Morocco','Tunisia','Egypt','Turkey','Russia','Ukraine','Other'];
+function countrySelect(idBase,value){
+  return `<select id="${idBase}"><option value="">Select country</option>${COUNTRIES.map(c=>`<option ${c===value?'selected':''}>${c}</option>`).join('')}</select>`;
+}
 function dobSelects(idBase,value,onchange){
   let d=null,m=null,y=null;
   if(value){ const p=value.split('-'); y=parseInt(p[0]); m=parseInt(p[1]); d=parseInt(p[2]); }
@@ -2589,8 +2593,7 @@ function fillSettings(){
   document.getElementById('setFirstName').value=profile.first_name??'';
   document.getElementById('setLastName').value=profile.last_name??'';
   document.getElementById('setDobMount').innerHTML=dobSelects('setDob',profile.dob,'updateSetAge()');
-  document.getElementById('setCity').value=profile.city??'';
-  document.getElementById('setCountry').value=profile.country??'';
+  document.getElementById('setCountryMount').innerHTML=countrySelect('setCountry',profile.country);
   updateSetAge();
   document.getElementById('setHeight').value=profile._height??'';
   document.getElementById('setWeight').value=profile._weight??'';
@@ -2624,7 +2627,7 @@ async function saveSettings(){
   const body={
     first_name:document.getElementById('setFirstName').value||null,
     last_name:document.getElementById('setLastName').value||null,
-    dob:document.getElementById('setDob').value||null,
+    dob:dobRead('setDob'),
     city:document.getElementById('setCity').value||null,
     country:document.getElementById('setCountry').value||null,
     vma:numOrNull(document.getElementById('setVma').value),
