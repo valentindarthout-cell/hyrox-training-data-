@@ -4,6 +4,68 @@
 // output shape (api/ai.js) and must be mapped to subtypes before reaching this file.
 const { cors, userToken, sb, getUser } = require('./_supabase.js');
 
+
+/* ---------------- TrainRox result parser (consolidated here: Vercel function limit) ---------------- */
+const TR_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
+const TR_TIME = '(\\d{1,2}:\\d{2}(?::\\d{2})?)';
+const TR_STATIONS = [
+  ['ski','SkiErg'], ['sled_push','Sled Push'], ['sled_pull','Sled Pull'],
+  ['burpees','BBJ'], ['row','Row'], ['farmers','Farmers C\\.'],
+  ['lunges','S\\. Lunges'], ['wallballs','Wall Balls'],
+];
+function trStrip(html){
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi,' ')
+    .replace(/<style[\s\S]*?<\/style>/gi,' ')
+    .replace(/<[^>]+>/g,'\n')
+    .replace(/&amp;/g,'&').replace(/&#39;/g,"'").replace(/&rsquo;/g,"'")
+    .replace(/&nbsp;/g,' ').replace(/&quot;/g,'"')
+    .replace(/[ \t]+/g,' ')
+    .replace(/\n{2,}/g,'\n')
+    .trim();
+}
+function trNorm(t){
+  const p=t.split(':');
+  if(p.length===3 && p[0]==='0') return p[1]+':'+p[2];
+  return t;
+}
+function trParse(html){
+  const text = trStrip(html);
+  let raceName=null;
+  const ogM = html.match(/property="og:title"\s+content="([^"]+)"/i);
+  if(ogM){
+    raceName = ogM[1]
+      .replace(/&amp;/g,'&').replace(/&#39;/g,"'")
+      .replace(/^.*?['\u2019]s\s+/,'')
+      .replace(/\s+Race Results.*$/i,'')
+      .trim();
+  }
+  let division=null;
+  const divM = text.match(/(HYROX\s+(?:PRO|OPEN)\s+(?:DOUBLES\s+)?(?:MEN|WOMEN))/i);
+  if(divM) division = divM[1].replace(/\s+/g,' ').toUpperCase();
+  let total=null;
+  const totM = text.match(new RegExp('Finish time\\D{0,20}'+TR_TIME,'i'));
+  if(totM) total=trNorm(totM[1]);
+  let runTotal=null, roxzone=null;
+  const aggM = text.match(new RegExp('Running\\D{0,15}'+TR_TIME+'[\\s\\S]{0,60}?Stations\\D{0,15}'+TR_TIME+'[\\s\\S]{0,60}?Roxzone\\D{0,15}'+TR_TIME,'i'));
+  if(aggM){ runTotal=trNorm(aggM[1]); roxzone=trNorm(aggM[3]); }
+  const secM = text.match(/###\s*Splits([\s\S]*?)###\s*Rank/i);
+  const splitsText = secM ? secM[1] : text;
+  const splits={};
+  TR_STATIONS.forEach(([key,label])=>{
+    const m = splitsText.match(new RegExp(label+'\\D{0,10}'+TR_TIME,'i'));
+    if(m) splits[key]=trNorm(m[1]);
+  });
+  if(runTotal) splits.run_total=runTotal;
+  if(roxzone) splits.roxzone=roxzone;
+  for(let i=1;i<=8;i++){
+    const m = splitsText.match(new RegExp('Run '+i+'\\D{0,10}'+TR_TIME,'i'));
+    if(m) splits['run_'+i]=trNorm(m[1]);
+  }
+  if(!total) return null;
+  return { race_name: raceName||'HYROX race', race_date:null, division, total_time: total, splits };
+}
+
 function slugify(s){
   return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
     .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40) || 'coach';
@@ -177,7 +239,29 @@ module.exports = async function handler(req, res){
     const r = await sb(`/rest/v1/coach_public?coach_id=eq.${user.id}`, token, {method:'GET'});
     return res.status(200).json({ landing: (r.ok && r.data && r.data[0]) || null });
   }
-/* ---------------- race results ---------------- */
+
+  /* ---------------- TrainRox import ---------------- */
+  if(action === 'import-trainrox'){
+    const { url } = req.query || {};
+    if(!url) return res.status(400).json({error:'url required'});
+    let target;
+    try{ target = new URL(url); }catch(e){ return res.status(400).json({error:'Invalid URL'}); }
+    if(!/(^|\.)trainrox\.com$/.test(target.hostname) || !/^\/results\//.test(target.pathname))
+      return res.status(400).json({error:'Paste a TrainRox result URL (trainrox.com/results/…)'});
+    let html;
+    try{
+      const r = await fetch(target.toString(), { headers:{ 'User-Agent':TR_UA, 'Accept':'text/html' }, redirect:'follow' });
+      if(!r.ok) return res.status(502).json({error:'TrainRox responded with '+r.status+' — check the URL'});
+      html = await r.text();
+    }catch(e){
+      return res.status(502).json({error:'Could not reach TrainRox — try again or use manual entry'});
+    }
+    const parsed = trParse(html);
+    if(!parsed) return res.status(422).json({error:'Could not read this result page — use manual entry.'});
+    return res.status(200).json({ result: parsed, source:'trainrox' });
+  }
+
+  /* ---------------- race results ---------------- */
   if(action === 'results'){
     const target = (req.query||{}).athlete_id || user.id;
     const r = await sb(`/rest/v1/race_results?athlete_id=eq.${target}&order=created_at.desc`, token, {method:'GET'});
@@ -218,7 +302,6 @@ module.exports = async function handler(req, res){
   if(action === 'set-reference'){
     const { id } = req.body||{};
     if(!id) return res.status(400).json({error:'id required'});
-    // exactly one reference: clear all, then set the chosen one
     const clear = await sb(`/rest/v1/race_results?athlete_id=eq.${user.id}&is_reference=eq.true`, token, {
       method:'PATCH', body: JSON.stringify({ is_reference:false })
     });
@@ -236,10 +319,10 @@ module.exports = async function handler(req, res){
     if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not delete result')});
     return res.status(200).json({ ok:true });
   }
-  /* ---------------- races ---------------- */
+
+  /* ---------------- races (calendar) ---------------- */
   if(action === 'races'){
     const target = (req.query||{}).athlete_id || user.id;
-    // RLS allows own races + coach's linked athletes; anything else returns empty
     const r = await sb(`/rest/v1/races?athlete_id=eq.${target}&order=race_date.asc`, token, {method:'GET'});
     if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not load races')});
     return res.status(200).json({ races: r.data||[] });
@@ -273,6 +356,7 @@ module.exports = async function handler(req, res){
     if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not delete race')});
     return res.status(200).json({ ok:true });
   }
+
   /* ---------------- athlete ---------------- */
   if(action === 'my-assignments'){
     const { start, end } = req.query||{};
