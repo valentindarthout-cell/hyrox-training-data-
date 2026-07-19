@@ -177,7 +177,65 @@ module.exports = async function handler(req, res){
     const r = await sb(`/rest/v1/coach_public?coach_id=eq.${user.id}`, token, {method:'GET'});
     return res.status(200).json({ landing: (r.ok && r.data && r.data[0]) || null });
   }
+/* ---------------- race results ---------------- */
+  if(action === 'results'){
+    const target = (req.query||{}).athlete_id || user.id;
+    const r = await sb(`/rest/v1/race_results?athlete_id=eq.${target}&order=created_at.desc`, token, {method:'GET'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not load results')});
+    return res.status(200).json({ results: r.data||[] });
+  }
 
+  if(action === 'save-result'){
+    const b = req.body||{};
+    if(!b.total_time) return res.status(400).json({error:'Total time required'});
+    const row = {
+      athlete_id: user.id, source: b.source||'manual',
+      race_name: b.race_name||null, race_date: b.race_date||null,
+      division: b.division||null, total_time: b.total_time,
+      splits: b.splits||{}, is_reference: !!b.is_reference
+    };
+    const r = await sb('/rest/v1/race_results', token, {
+      method:'POST', headers:{'Prefer':'return=representation'}, body: JSON.stringify([row])
+    });
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not save result')});
+    return res.status(200).json({ result: Array.isArray(r.data)? r.data[0] : null });
+  }
+
+  if(action === 'update-result'){
+    const b = req.body||{};
+    if(!b.id) return res.status(400).json({error:'id required'});
+    const patch = {};
+    ['race_name','race_date','division','total_time','splits'].forEach(k=>{
+      if(b[k] !== undefined) patch[k]=b[k];
+    });
+    const r = await sb(`/rest/v1/race_results?id=eq.${b.id}&athlete_id=eq.${user.id}`, token, {
+      method:'PATCH', body: JSON.stringify(patch)
+    });
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not update result')});
+    return res.status(200).json({ ok:true });
+  }
+
+  if(action === 'set-reference'){
+    const { id } = req.body||{};
+    if(!id) return res.status(400).json({error:'id required'});
+    // exactly one reference: clear all, then set the chosen one
+    const clear = await sb(`/rest/v1/race_results?athlete_id=eq.${user.id}&is_reference=eq.true`, token, {
+      method:'PATCH', body: JSON.stringify({ is_reference:false })
+    });
+    if(!clear.ok) return res.status(500).json({error: dbErr(clear,'Could not update')});
+    const r = await sb(`/rest/v1/race_results?id=eq.${id}&athlete_id=eq.${user.id}`, token, {
+      method:'PATCH', body: JSON.stringify({ is_reference:true })
+    });
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not set reference')});
+    return res.status(200).json({ ok:true });
+  }
+
+  if(action === 'delete-result'){
+    const { id } = req.body||{};
+    const r = await sb(`/rest/v1/race_results?id=eq.${id}&athlete_id=eq.${user.id}`, token, {method:'DELETE'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not delete result')});
+    return res.status(200).json({ ok:true });
+  }
   /* ---------------- races ---------------- */
   if(action === 'races'){
     const target = (req.query||{}).athlete_id || user.id;
