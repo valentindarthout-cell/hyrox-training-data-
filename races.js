@@ -75,7 +75,8 @@ function renderRacesCard(){
   if(!perfHost) return;
   let host=document.getElementById('racesCardHost');
   if(!host){
-    perfHost.closest('.section-card').insertAdjacentHTML('afterend',
+    const plannerCard=document.getElementById('rrPlannerHost')?.closest('.section-card');
+    (plannerCard || perfHost.closest('.section-card')).insertAdjacentHTML('afterend',
       '<div class="section-card"><div class="section-label">Race calendar</div><div id="racesCardHost"></div></div>');
     host=document.getElementById('racesCardHost');
   }
