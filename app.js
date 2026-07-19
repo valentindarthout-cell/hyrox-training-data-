@@ -2597,8 +2597,6 @@ function fillSettings(){
   document.getElementById('setFcRest').value=profile.fc_rest??'';
   document.getElementById('setFcMax').value=profile.fc_max??'';
   renderPaces(); renderMaxesGrid();
-  if(window.renderCoachPerf) renderCoachPerf(caCurrent);
-  if(window.renderCoachRaceResults) renderCoachRaceResults(caCurrent);
   if(window.renderPerformanceCard) renderPerformanceCard();
   if(window.renderRaceResults) renderRaceResults();
   if(window.initRaces) initRaces();
