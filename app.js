@@ -2599,6 +2599,8 @@ function fillSettings(){
   renderPaces(); renderMaxesGrid();
   if(window.renderCoachPerf) renderCoachPerf(caCurrent);
   if(window.renderCoachRaceResults) renderCoachRaceResults(caCurrent);
+  if(window.renderPerformanceCard) renderPerformanceCard();
+  if(window.renderRaceResults) renderRaceResults();
   if(window.initRaces) initRaces();
   document.getElementById('setHrvLow').value=profile.hrv_low??'';
   document.getElementById('setHrvHigh').value=profile.hrv_high??'';
