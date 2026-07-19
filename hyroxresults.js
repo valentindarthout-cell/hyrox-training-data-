@@ -127,7 +127,7 @@ async function rrImport(){
   if(!url){ msg.textContent='Paste your TrainRox result URL.'; return; }
   msg.textContent='Reading the race…';
   let data;
-  try{ data=await api('/api/hyresult?url='+encodeURIComponent(url)); }
+  try{ data=await api('/api/workouts?action=import-trainrox&url='+encodeURIComponent(url)); }
   catch(e){ msg.textContent=e.message; return; }
   const r=data.result;
   const dup=myResults.some(x=>x.race_name===r.race_name && x.total_time===r.total_time);
