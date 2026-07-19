@@ -39,6 +39,7 @@ module.exports = async function handler(req, res){
     };
     if(body.maxes !== undefined) profileFields.maxes = body.maxes;
     if(body.prs !== undefined) profileFields.prs = body.prs;
+    if(body.race_targets !== undefined) profileFields.race_targets = body.race_targets;
     if(body.gender !== undefined) profileFields.gender = body.gender;
     if(body.category !== undefined) profileFields.category = body.category;
     if(body.onboarded !== undefined) profileFields.onboarded = body.onboarded;
