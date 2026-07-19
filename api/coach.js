@@ -82,7 +82,7 @@ module.exports = async function handler(req, res){
     const { id, start, end } = req.query || {};
     if(!id || !start || !end) return res.status(400).json({error:'id, start, end required'});
     // RLS enforces the coach link; verify anyway for a clean error
-    const link = await sb(`/rest/v1/profiles?id=eq.${id}&coach_id=eq.${user.id}&select=id`, token, {method:'GET'});
+    const link = await sb(`/rest/v1/profiles?id=eq.${athlete_id}&coach_id=eq.${user.id}&select=prs,maxes,gender,category,race_targets`, token, {method:'GET'});
     if(!link.ok || !link.data || !link.data.length) return res.status(403).json({error:'Not your athlete'});
     const sess = await sb(`/rest/v1/sessions?user_id=eq.${id}&session_date=gte.${start}&session_date=lte.${end}&order=session_date.asc,session_index.asc`, token, {method:'GET'});
     const phys = await sb(`/rest/v1/daily_physiology?user_id=eq.${id}&day=gte.${start}&day=lte.${end}&order=day.asc`, token, {method:'GET'});
