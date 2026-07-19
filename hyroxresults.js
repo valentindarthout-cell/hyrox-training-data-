@@ -84,11 +84,11 @@ function rrListHTML(results, editable){
 }
 
 function renderRaceResults(){
-  const statsContent=document.getElementById('statsContent');
-  if(!statsContent) return;
+  const perfHost=document.getElementById('perfCardHost');
+  if(!perfHost) return;
   let host=document.getElementById('rrHost');
   if(!host){
-    statsContent.insertAdjacentHTML('afterend',
+    perfHost.closest('.section-card').insertAdjacentHTML('afterend',
       '<div class="section-card"><div class="section-label">Race results</div><div id="rrHost"><div class="empty-state">Loading…</div></div></div>'+
       '<div class="section-card"><div class="section-label">Race planner</div><div id="rrPlannerHost"></div></div>');
     host=document.getElementById('rrHost');
