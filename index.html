@@ -155,11 +155,11 @@
     <div id="exportMsg" class="save-msg"></div>
   </div>
 
-  <!-- SETTINGS TAB -->
-  <div id="viewSettings" class="view" style="display:none">
+  <!-- PROFILE TAB -->
+  <div id="viewProfile" class="view" style="display:none">
     <div class="section-card">
       <div class="section-label">Personal</div>
-      <div class="settings-grid two">
+      <div class="Profile-grid two">
         <div class="macro-field"><label>First name</label><input id="setFirstName" type="text"></div>
         <div class="macro-field"><label>Last name</label><input id="setLastName" type="text"></div>
       </div>
@@ -172,7 +172,7 @@
 
     <div class="section-card">
       <div class="section-label">Athlete</div>
-      <div class="settings-grid two">
+      <div class="Profile-grid two">
         <div class="macro-field"><label>Height cm</label><input id="setHeight" type="number" inputmode="numeric"></div>
         <div class="macro-field"><label>Weight kg</label><input id="setWeight" type="number" inputmode="decimal" step="0.1"></div>
       </div>
@@ -183,7 +183,7 @@
 
     <div class="section-card">
       <div class="section-label">HRV baseline range</div>
-      <div class="settings-grid two">
+      <div class="Profile-grid two">
         <div class="macro-field"><label>Low ms</label><input id="setHrvLow" type="number" inputmode="numeric"></div>
         <div class="macro-field"><label>High ms</label><input id="setHrvHigh" type="number" inputmode="numeric"></div>
       </div>
@@ -205,7 +205,7 @@
 
     <div class="section-card">
       <div class="section-label">Run paces</div>
-      <div class="settings-grid">
+      <div class="Profile-grid">
         <div class="macro-field"><label>VMA km/h</label><input id="setVma" type="number" inputmode="decimal" step="0.1" oninput="renderPaces()"></div>
         <div class="macro-field"><label>Rest HR</label><input id="setFcRest" type="number" inputmode="numeric" oninput="renderPaces()"></div>
         <div class="macro-field"><label>Max HR</label><input id="setFcMax" type="number" inputmode="numeric" oninput="renderPaces()"></div>
@@ -215,7 +215,7 @@
 
     <div class="section-card">
       <div class="section-label">Lift maxes (1RM kg)</div>
-      <div class="settings-grid" id="maxesGrid"></div>
+      <div class="Profile-grid" id="maxesGrid"></div>
       <div class="hint">Used to resolve %1RM loads in assigned workouts.</div>
     </div>
 
@@ -251,8 +251,8 @@
       <div id="bulkMsg" class="hint"></div>
     </div>
 
-    <button class="cta" onclick="saveSettings()">Save settings</button>
-    <div id="settingsMsg" class="save-msg"></div>
+    <button class="cta" onclick="saveProfile()">Save Profile</button>
+    <div id="ProfileMsg" class="save-msg"></div>
     <button class="ghost-btn logout-btn" onclick="logout()">Log out</button>
   </div>
 
@@ -280,7 +280,7 @@
       <div id="caHead" class="ca-head"></div>
       <div class="section-card">
         <div class="section-label">CRM</div>
-        <div class="settings-grid">
+        <div class="Profile-grid">
           <div class="macro-field"><label>Start date</label><input id="crmStart" type="date"></div>
           <div class="macro-field"><label>€ / month</label><input id="crmPrice" type="number" inputmode="decimal"></div>
           <div class="macro-field"><label>Status</label>
