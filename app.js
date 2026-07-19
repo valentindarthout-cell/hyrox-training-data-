@@ -290,7 +290,6 @@ async function loadCaStats(){
     }catch(e){}
   }
   wrap.innerHTML=statsBlockHTML(sessions,phys,start,end,prev);
-  if(window.renderRaceResults) renderRaceResults();
 }
 function fillCoachSettings(){
   document.getElementById('csName').value=profile.program_name||'';
