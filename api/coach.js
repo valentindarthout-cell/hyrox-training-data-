@@ -86,7 +86,14 @@ module.exports = async function handler(req, res){
     if(!link.ok || !link.data || !link.data.length) return res.status(403).json({error:'Not your athlete'});
     const sess = await sb(`/rest/v1/sessions?user_id=eq.${id}&session_date=gte.${start}&session_date=lte.${end}&order=session_date.asc,session_index.asc`, token, {method:'GET'});
     const phys = await sb(`/rest/v1/daily_physiology?user_id=eq.${id}&day=gte.${start}&day=lte.${end}&order=day.asc`, token, {method:'GET'});
-    if(!sess.ok || !phys.ok) return res.status(500).json({error:'Could not load data'});
+    if(!sess.ok){
+      const d=sess.data;
+      return res.status(500).json({error:'Sessions query failed: '+(d&&(d.message||d.hint||JSON.stringify(d))||sess.status)});
+    }
+    if(!phys.ok){
+      const d=phys.data;
+      return res.status(500).json({error:'Physiology query failed: '+(d&&(d.message||d.hint||JSON.stringify(d))||phys.status)});
+    }
     return res.status(200).json({ sessions: sess.data||[], physiology: phys.data||[] });
   }
 
