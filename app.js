@@ -232,7 +232,7 @@ function openAthlete(i){
   document.getElementById('caPeriodNav').style.display='flex';
   wlWeek=mondayOf(todayStr());
   renderWlSection();
-  if(window.renderAthleteTracks) renderAthleteTracks(caCurrent);
+  if(window.renderCrmCard) renderCrmCard(caCurrent);
   if(window.renderCoachPerf) renderCoachPerf(caCurrent);
   loadCaStats();
 }
