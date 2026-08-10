@@ -181,7 +181,7 @@ function coachTab(t){
   document.getElementById('cnavFinance').classList.toggle('active',t==='finance');
   document.getElementById('cnavSettings').classList.toggle('active',t==='settings');
   if(t==='finance') loadFinance();
-  if(t==='prog'){ loadTemplates(); if(!coachAthletes.length) api('/api/coach?action=athletes').then(d=>coachAthletes=d.athletes||[]).catch(()=>{}); }
+  if(t==='prog'){ if(window.renderWeekPlan) renderWeekPlan(); loadTemplates(); if(!coachAthletes.length) api('/api/coach?action=athletes').then(d=>coachAthletes=d.athletes||[]).catch(()=>{}); }
 }
 async function regenCode(){
   try{
@@ -232,6 +232,7 @@ function openAthlete(i){
   document.getElementById('caPeriodNav').style.display='flex';
   wlWeek=mondayOf(todayStr());
   renderWlSection();
+  if(window.renderAthleteTracks) renderAthleteTracks(caCurrent);
   if(window.renderCoachPerf) renderCoachPerf(caCurrent);
   loadCaStats();
 }
@@ -298,6 +299,7 @@ function fillCoachSettings(){
   document.getElementById('csUrl').value=profile.program_url||'';
   document.getElementById('csCurrency').value=profile.currency||'EUR';
   loadMyLanding();
+  if(window.renderTracksCard) renderTracksCard();
   if(profile.logo_url){
     const img=document.getElementById('csLogoPreview');
     img.src=profile.logo_url; img.style.display='block';
