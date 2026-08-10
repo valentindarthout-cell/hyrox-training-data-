@@ -1,11 +1,19 @@
-// OCTA. workouts endpoint — templates, assignments, week labels, landing publish
-// Field name note: the taxonomy column is ALWAYS "subtypes" (matches sessions/workouts/
-// assignments tables). Never send "modalities" — that name only exists in the AI JSON
-// output shape (api/ai.js) and must be mapped to subtypes before reaching this file.
+// OCTA. workouts endpoint — templates, assignments, group plan blocks, week labels,
+// landing publish, races, race results, TrainRox import. Consolidated: Vercel function limit.
+// Taxonomy field is ALWAYS "subtypes" — never send "modalities" to this API.
 const { cors, userToken, sb, getUser } = require('./_supabase.js');
 
+function slugify(s){
+  return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40) || 'coach';
+}
+function dbErr(r, fallback){
+  const d = r && r.data;
+  const detail = d && (d.message || d.hint || d.details || (typeof d==='string'? d : null));
+  return fallback + (detail? ' — ' + detail : ' (HTTP '+(r?r.status:'?')+')');
+}
 
-/* ---------------- TrainRox result parser (consolidated here: Vercel function limit) ---------------- */
+/* ---------------- TrainRox result parser ---------------- */
 const TR_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36';
 const TR_TIME = '(\\d{1,2}:\\d{2}(?::\\d{2})?)';
 const TR_STATIONS = [
@@ -66,14 +74,43 @@ function trParse(html){
   return { race_name: raceName||'HYROX race', race_date:null, division, total_time: total, splits };
 }
 
-function slugify(s){
-  return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
-    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40) || 'coach';
-}
-function dbErr(r, fallback){
-  const d = r && r.data;
-  const detail = d && (d.message || d.hint || d.details || (typeof d==='string'? d : null));
-  return fallback + (detail? ' — ' + detail : ' (HTTP '+(r?r.status:'?')+')');
+/* Sync a plan block into per-athlete assignments.
+   Done assignments are never modified or deleted; pending ones update;
+   de-targeted pending ones are removed; newly targeted athletes get a copy. */
+async function materializeBlock(token, user, block){
+  const ath = await sb(`/rest/v1/profiles?coach_id=eq.${user.id}&select=id,track_ids`, token, {method:'GET'});
+  const roster = (ath.ok && ath.data) || [];
+  const btracks = block.track_ids||[];
+  const excluded = block.excluded_athletes||[];
+  const targets = roster
+    .filter(a => (a.track_ids||[]).some(t => btracks.includes(t)) && !excluded.includes(a.id))
+    .map(a => a.id);
+
+  const ex = await sb(`/rest/v1/assignments?plan_block_id=eq.${block.id}&coach_id=eq.${user.id}`, token, {method:'GET'});
+  const existing = (ex.ok && ex.data) || [];
+  const content = {
+    date: block.date, title: block.title, workout_type: block.workout_type,
+    duration_min: block.duration_min, objective: block.objective,
+    blocks: block.blocks, stations: block.stations, subtypes: block.subtypes
+  };
+  for(const a of existing){
+    if(a.status === 'done') continue;
+    if(!targets.includes(a.athlete_id)){
+      await sb(`/rest/v1/assignments?id=eq.${a.id}&coach_id=eq.${user.id}`, token, {method:'DELETE'});
+    }else{
+      await sb(`/rest/v1/assignments?id=eq.${a.id}&coach_id=eq.${user.id}`, token, {
+        method:'PATCH', body: JSON.stringify(content)
+      });
+    }
+  }
+  const have = existing.map(a=>a.athlete_id);
+  const fresh = targets.filter(id=>!have.includes(id)).map(aid=>({
+    ...content, coach_id: user.id, athlete_id: aid, plan_block_id: block.id
+  }));
+  if(fresh.length){
+    await sb('/rest/v1/assignments', token, {method:'POST', body: JSON.stringify(fresh)});
+  }
+  return { targets: targets.length };
 }
 
 module.exports = async function handler(req, res){
@@ -86,7 +123,6 @@ module.exports = async function handler(req, res){
 
   const action = (req.method === 'GET' ? req.query.action : (req.body||{}).action) || '';
 
-  /* ---------------- coach: templates ---------------- */
   if(action === 'templates'){
     const r = await sb(`/rest/v1/workouts?coach_id=eq.${user.id}&order=created_at.desc`, token, {method:'GET'});
     if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not load library')});
@@ -126,7 +162,6 @@ module.exports = async function handler(req, res){
     return res.status(200).json({ ok:true });
   }
 
-  /* ---------------- coach: assignment ---------------- */
   if(action === 'assign'){
     const { workout_id, athlete_ids, date } = req.body||{};
     if(!workout_id || !athlete_ids || !athlete_ids.length || !date)
@@ -173,7 +208,7 @@ module.exports = async function handler(req, res){
   if(action === 'update-assignment'){
     const b = req.body||{};
     if(!b.id) return res.status(400).json({error:'id required'});
-    const patch = {};
+    const patch = { plan_block_id: null };
     ['title','workout_type','duration_min','objective','blocks','stations','date','subtypes'].forEach(k=>{
       if(b[k] !== undefined) patch[k] = b[k];
     });
@@ -206,38 +241,99 @@ module.exports = async function handler(req, res){
     return res.status(200).json({ ok:true });
   }
 
-  /* ---------------- coach: landing publish ---------------- */
-  if(action === 'publish-landing'){
-    const b = req.body||{};
-    const pr = await sb(`/rest/v1/profiles?id=eq.${user.id}`, token, {method:'GET'});
-    const prof = (pr.ok && pr.data && pr.data[0]) || {};
-    let slug = b.slug ? slugify(b.slug) : slugify(prof.program_name || prof.email);
-    const row = {
-      coach_id: user.id, slug,
-      headline: b.headline||null, bio: b.bio ?? prof.program_desc ?? null,
-      ig_url: b.ig_url||null, website: b.website ?? prof.program_url ?? null,
-      logo_url: prof.logo_url||null, photo_url: b.photo_url||null,
-      program_name: prof.program_name||null, invite_code: prof.invite_code||null,
-      published: b.published !== false, updated_at: new Date().toISOString()
-    };
-    let r = await sb('/rest/v1/coach_public?on_conflict=coach_id', token, {
-      method:'POST', headers:{'Prefer':'resolution=merge-duplicates,return=representation'},
-      body: JSON.stringify([row])
-    });
-    if(!r.ok && r.status === 409){
-      row.slug = slug + '-' + Math.floor(Math.random()*900+100);
-      r = await sb('/rest/v1/coach_public?on_conflict=coach_id', token, {
-        method:'POST', headers:{'Prefer':'resolution=merge-duplicates,return=representation'},
-        body: JSON.stringify([row])
-      });
-    }
-    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not publish')});
-    return res.status(200).json({ landing: Array.isArray(r.data)? r.data[0] : row });
+  /* ---------------- group programming: plan blocks ---------------- */
+  if(action === 'blocks'){
+    const { start, end } = req.query||{};
+    if(!start || !end) return res.status(400).json({error:'start and end required'});
+    const r = await sb(`/rest/v1/plan_blocks?coach_id=eq.${user.id}&date=gte.${start}&date=lte.${end}&order=date.asc`, token, {method:'GET'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not load plan')});
+    return res.status(200).json({ blocks: r.data||[] });
   }
 
-  if(action === 'my-landing'){
-    const r = await sb(`/rest/v1/coach_public?coach_id=eq.${user.id}`, token, {method:'GET'});
-    return res.status(200).json({ landing: (r.ok && r.data && r.data[0]) || null });
+  if(action === 'save-block'){
+    const b = req.body||{};
+    if(!b.date) return res.status(400).json({error:'date required'});
+    const row = {
+      coach_id: user.id, date: b.date,
+      title: b.title||'Workout', workout_type: b.workout_type||'hyrox',
+      duration_min: b.duration_min??null, objective: b.objective||null,
+      blocks: b.blocks||[], stations: b.stations||{}, subtypes: b.subtypes||[],
+      track_ids: b.track_ids||[], excluded_athletes: b.excluded_athletes||[]
+    };
+    let r;
+    if(b.id){
+      r = await sb(`/rest/v1/plan_blocks?id=eq.${b.id}&coach_id=eq.${user.id}`, token, {
+        method:'PATCH', headers:{'Prefer':'return=representation'}, body: JSON.stringify(row)
+      });
+    }else{
+      r = await sb('/rest/v1/plan_blocks', token, {
+        method:'POST', headers:{'Prefer':'return=representation'}, body: JSON.stringify([row])
+      });
+    }
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not save block')});
+    const saved = Array.isArray(r.data)? r.data[0] : null;
+    if(!saved) return res.status(500).json({error:'Could not save block'});
+    const mat = await materializeBlock(token, user, saved);
+    return res.status(200).json({ block: saved, athletes: mat.targets });
+  }
+
+  if(action === 'delete-block'){
+    const { id } = req.body||{};
+    if(!id) return res.status(400).json({error:'id required'});
+    await sb(`/rest/v1/assignments?plan_block_id=eq.${id}&coach_id=eq.${user.id}&status=neq.done`, token, {method:'DELETE'});
+    const r = await sb(`/rest/v1/plan_blocks?id=eq.${id}&coach_id=eq.${user.id}`, token, {method:'DELETE'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not delete block')});
+    return res.status(200).json({ ok:true });
+  }
+
+  if(action === 'toggle-exclusion'){
+    const { block_id, athlete_id } = req.body||{};
+    if(!block_id || !athlete_id) return res.status(400).json({error:'block_id and athlete_id required'});
+    const br = await sb(`/rest/v1/plan_blocks?id=eq.${block_id}&coach_id=eq.${user.id}`, token, {method:'GET'});
+    const block = br.ok && br.data && br.data[0];
+    if(!block) return res.status(404).json({error:'Block not found'});
+    let ex = block.excluded_athletes||[];
+    ex = ex.includes(athlete_id)? ex.filter(x=>x!==athlete_id) : ex.concat([athlete_id]);
+    const ur = await sb(`/rest/v1/plan_blocks?id=eq.${block_id}`, token, {
+      method:'PATCH', headers:{'Prefer':'return=representation'}, body: JSON.stringify({ excluded_athletes: ex })
+    });
+    if(!ur.ok) return res.status(500).json({error: dbErr(ur,'Could not update')});
+    const saved = (Array.isArray(ur.data) && ur.data[0]) || block;
+    saved.excluded_athletes = ex;
+    await materializeBlock(token, user, saved);
+    return res.status(200).json({ excluded: ex });
+  }
+
+  /* ---------------- coach: tracks ---------------- */
+  if(action === 'tracks'){
+    const r = await sb(`/rest/v1/tracks?coach_id=eq.${user.id}&order=position.asc,created_at.asc`, token, {method:'GET'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not load tracks')});
+    return res.status(200).json({ tracks: r.data||[] });
+  }
+
+  if(action === 'save-track'){
+    const b = req.body||{};
+    if(!b.name || !b.name.trim()) return res.status(400).json({error:'Track name required'});
+    const row = { coach_id: user.id, name: b.name.trim(), color: b.color||null, position: b.position??0 };
+    let r;
+    if(b.id){
+      r = await sb(`/rest/v1/tracks?id=eq.${b.id}&coach_id=eq.${user.id}`, token, {
+        method:'PATCH', headers:{'Prefer':'return=representation'}, body: JSON.stringify(row)
+      });
+    }else{
+      r = await sb('/rest/v1/tracks', token, {
+        method:'POST', headers:{'Prefer':'return=representation'}, body: JSON.stringify([row])
+      });
+    }
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not save track')});
+    return res.status(200).json({ track: Array.isArray(r.data)? r.data[0] : null });
+  }
+
+  if(action === 'delete-track'){
+    const { id } = req.body||{};
+    const r = await sb(`/rest/v1/tracks?id=eq.${id}&coach_id=eq.${user.id}`, token, {method:'DELETE'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not delete track')});
+    return res.status(200).json({ ok:true });
   }
 
   /* ---------------- TrainRox import ---------------- */
@@ -355,6 +451,40 @@ module.exports = async function handler(req, res){
     const r = await sb(`/rest/v1/races?id=eq.${id}&athlete_id=eq.${user.id}`, token, {method:'DELETE'});
     if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not delete race')});
     return res.status(200).json({ ok:true });
+  }
+
+  /* ---------------- coach: landing publish ---------------- */
+  if(action === 'publish-landing'){
+    const b = req.body||{};
+    const pr = await sb(`/rest/v1/profiles?id=eq.${user.id}`, token, {method:'GET'});
+    const prof = (pr.ok && pr.data && pr.data[0]) || {};
+    let slug = b.slug ? slugify(b.slug) : slugify(prof.program_name || prof.email);
+    const row = {
+      coach_id: user.id, slug,
+      headline: b.headline||null, bio: b.bio ?? prof.program_desc ?? null,
+      ig_url: b.ig_url||null, website: b.website ?? prof.program_url ?? null,
+      logo_url: prof.logo_url||null, photo_url: b.photo_url||null,
+      program_name: prof.program_name||null, invite_code: prof.invite_code||null,
+      published: b.published !== false, updated_at: new Date().toISOString()
+    };
+    let r = await sb('/rest/v1/coach_public?on_conflict=coach_id', token, {
+      method:'POST', headers:{'Prefer':'resolution=merge-duplicates,return=representation'},
+      body: JSON.stringify([row])
+    });
+    if(!r.ok && r.status === 409){
+      row.slug = slug + '-' + Math.floor(Math.random()*900+100);
+      r = await sb('/rest/v1/coach_public?on_conflict=coach_id', token, {
+        method:'POST', headers:{'Prefer':'resolution=merge-duplicates,return=representation'},
+        body: JSON.stringify([row])
+      });
+    }
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not publish')});
+    return res.status(200).json({ landing: Array.isArray(r.data)? r.data[0] : row });
+  }
+
+  if(action === 'my-landing'){
+    const r = await sb(`/rest/v1/coach_public?coach_id=eq.${user.id}`, token, {method:'GET'});
+    return res.status(200).json({ landing: (r.ok && r.data && r.data[0]) || null });
   }
 
   /* ---------------- athlete ---------------- */
