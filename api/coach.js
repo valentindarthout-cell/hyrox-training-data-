@@ -115,6 +115,15 @@ module.exports = async function handler(req, res){
     if(!r.ok) return res.status(500).json({error:'Could not save'});
     return res.status(200).json({ ok:true });
   }
+  if(action === 'set-tracks'){
+    const b = req.body||{};
+    if(!b.athlete_id) return res.status(400).json({error:'athlete_id required'});
+    const link = await sb(`/rest/v1/profiles?id=eq.${b.athlete_id}&coach_id=eq.${user.id}&select=id`, token, {method:'GET'});
+    if(!link.ok || !link.data || !link.data.length) return res.status(403).json({error:'Not your athlete'});
+    const r = await sb(`/rest/v1/profiles?id=eq.${b.athlete_id}`, token, {method:'PATCH', body: JSON.stringify({ track_ids: b.track_ids||[] })});
+    if(!r.ok) return res.status(500).json({error:'Could not save tracks'});
+    return res.status(200).json({ ok:true });
+  }
   if(action === 'crm'){
     const b = req.body || {};
     if(!b.athlete_id) return res.status(400).json({error:'athlete_id required'});
