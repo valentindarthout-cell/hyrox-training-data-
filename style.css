@@ -539,3 +539,16 @@ body.coach{max-width:1100px}
   .lane-cells{grid-template-columns:repeat(7,1fr)}
   .lane-cells::before{display:none}
 }
+/* ============ CRM card — clean view/edit ============ */
+.crm-view-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.crm-status-chip{display:inline-block;border-radius:999px;padding:6px 16px;font-size:11px;font-weight:700}
+.crm-status-chip.active{background:#e5f7ee;color:#0e9f6e}
+.crm-status-chip.paused{background:#fdf1de;color:#c47f0e}
+.crm-status-chip.churned{background:#f3f1ee;color:#8a8780}
+.crm-price{font-family:var(--font-display);font-size:15px;font-weight:700;color:var(--ink)}
+.crm-price small{font-size:9px;font-weight:500;color:var(--muted);margin-left:1px}
+.crm-since{font-size:11px;color:var(--muted)}
+.crm-notes-view{font-size:12px;color:#3c3b37;line-height:1.6;white-space:pre-wrap}
+.crm-status-pill.active.active{background:#0e9f6e;color:#fff;border-color:#0e9f6e}
+.crm-status-pill.paused.active{background:#c47f0e;color:#fff;border-color:#c47f0e}
+.crm-status-pill.churned.active{background:#8a8780;color:#fff;border-color:#8a8780}
