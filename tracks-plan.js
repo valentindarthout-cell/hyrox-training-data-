@@ -81,36 +81,7 @@ async function trackDelete(id){
 /* ================================================================
    COACH ATHLETE VIEW — track tagging
 ================================================================ */
-function renderAthleteTracks(athlete){
-  const crmNotes=document.getElementById('crmNotes');
-  if(!crmNotes) return;
-  let host=document.getElementById('athTracksHost');
-  if(!host){
-    crmNotes.insertAdjacentHTML('beforebegin',
-      '<div class="section-sublabel">Tracks</div><div class="pill-row wrap" id="athTracksHost"></div>');
-    host=document.getElementById('athTracksHost');
-  }
-  const paint=()=>{
-    host.innerHTML=coachTracks.length? coachTracks.map(t=>{
-      const on=(athlete.track_ids||[]).includes(t.id);
-      return `<button class="pill" style="${on?`background:${t.color};color:#fff;border-color:${t.color};`:''}"
-        onclick="athToggleTrack('${t.id}')">${esc(t.name)}</button>`;
-    }).join('') : '<div class="hint">Create tracks in Settings first.</div>';
-  };
-  if(coachTracks.length) paint(); else loadTracks().then(paint);
-  window._athTracksPaint=paint;
-  window._athTracksAthlete=athlete;
-}
-async function athToggleTrack(trackId){
-  const athlete=window._athTracksAthlete;
-  athlete.track_ids=athlete.track_ids||[];
-  const i=athlete.track_ids.indexOf(trackId);
-  if(i>-1) athlete.track_ids.splice(i,1); else athlete.track_ids.push(trackId);
-  window._athTracksPaint();
-  try{
-    await api('/api/coach',{method:'POST',body:JSON.stringify({action:'set-tracks',athlete_id:athlete.id,track_ids:athlete.track_ids})});
-  }catch(e){}
-}
+
 
 /* ================================================================
    ROSTER — track filter + chips (overrides app.js loadAthletes)
