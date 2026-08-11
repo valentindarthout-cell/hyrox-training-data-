@@ -218,14 +218,6 @@ function openAthlete(i){
   document.getElementById('coachHome').style.display='none';
   document.getElementById('coachAthleteView').style.display='block';
   document.getElementById('caHead').textContent=[caCurrent.first_name,caCurrent.last_name].filter(Boolean).join(' ') || caCurrent.email;
-  const c=caCurrent.crm||{};
-  document.getElementById('crmStart').value=c.start_date||'';
-  document.getElementById('crmPrice').value=c.monthly_price??'';
-  crmStatusVal=c.status||'active';
-  renderCrmStatusPills();
-  document.getElementById('crmNotes').value=c.notes||'';
-  const priceLbl=document.querySelector('#crmPrice').closest('.macro-field').querySelector('label');
-  if(priceLbl) priceLbl.textContent=(CURRENCY_SYMBOLS[profile.currency]||profile.currency||'€')+' / month';
   caPeriod='week'; caAnchor=todayStr();
   document.querySelectorAll('.ca-period').forEach(b=>b.classList.toggle('active',b.dataset.p==='week'));
   document.getElementById('caCustomRange').style.display='none';
