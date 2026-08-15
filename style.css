@@ -552,3 +552,5 @@ body.coach{max-width:1100px}
 .crm-status-pill.active.active{background:#0e9f6e;color:#fff;border-color:#0e9f6e}
 .crm-status-pill.paused.active{background:#c47f0e;color:#fff;border-color:#c47f0e}
 .crm-status-pill.churned.active{background:#8a8780;color:#fff;border-color:#8a8780}
+/* ============ Public page — programs, testimonials, QR ============ */
+#lpProgramsHost, #lpTestimonialsHost{margin-top:14px}
