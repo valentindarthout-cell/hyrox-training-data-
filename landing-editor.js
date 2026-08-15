@@ -234,6 +234,7 @@ function paintLpTestimonials(){
   host.innerHTML=`
     ${lpTestimonials.length? lpTestimonials.map(t=>`
       <div class="race-row">
+        ${t.photo_url?`<img src="${t.photo_url}" style="width:32px;height:32px;border-radius:999px;object-fit:cover;flex-shrink:0">`:'<span style="width:32px"></span>'}
         <div class="race-row-main">
           <div class="race-row-name">${esc(t.name)}</div>
           <div class="race-row-meta">${t.quote?esc(t.quote.slice(0,60))+(t.quote.length>60?'…':''):'No quote'}</div>
@@ -244,8 +245,7 @@ function paintLpTestimonials(){
       : '<div class="hint">No testimonials yet.</div>'}
     <div id="lpTestimonialForm"></div>
     <button id="lpTestimonialAddBtn" class="mini-btn" style="margin-top:10px" onclick="lpNewTestimonial()" ${lpTestimonials.length>=5?'disabled':''}>
-      ${lpTestimonials.length>=5?'Maximum 5 testimonials':'+ Add testimonial'}</button>
-    <div class="hint" style="margin-top:8px">Photo upload for testimonials is coming soon.</div>`;
+      ${lpTestimonials.length>=5?'Maximum 5 testimonials':'+ Add testimonial'}</button>`;
 }
 let lpTestimonialDraft=null;
 function lpNewTestimonial(){
@@ -265,12 +265,53 @@ function lpOpenTestimonialForm(){
       <input id="lptName" class="text-input" type="text" placeholder="Athlete name" value="${esc(d.name)}">
       <textarea id="lptQuote" class="text-input" placeholder="What they said" style="margin-top:10px">${esc(d.quote||'')}</textarea>
       <input id="lptIg" class="text-input" type="text" placeholder="@instagram_handle (optional)" value="${esc(d.ig_handle||'')}" style="margin-top:10px">
+      <div class="section-sublabel">Photo (optional)</div>
+      <div class="logo-row">
+        <img id="lptPhotoPreview" class="logo-preview" style="${d.photo_url?'':'display:none'}" src="${d.photo_url||''}">
+        <label class="ghost-btn file-btn">Upload photo<input type="file" accept="image/*" onchange="lptUploadPhoto(event)" hidden></label>
+      </div>
       <div class="sp-actions">
         <button class="btn-slim" onclick="lpSaveTestimonial()">Save</button>
         <button class="btn-slim secondary" onclick="lpCancelTestimonial()">Cancel</button>
         <div id="lptMsg" class="save-msg" style="margin:0;text-align:left"></div>
       </div>
     </div>`;
+}
+function compressImageToBase64(file, maxDim, quality){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>{
+      const img=new Image();
+      img.onload=()=>{
+        let w=img.width, h=img.height;
+        if(w>h){ if(w>maxDim){ h=Math.round(h*maxDim/w); w=maxDim; } }
+        else { if(h>maxDim){ w=Math.round(w*maxDim/h); h=maxDim; } }
+        const canvas=document.createElement('canvas');
+        canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        const dataUrl=canvas.toDataURL('image/jpeg', quality);
+        resolve({ base64: dataUrl.split(',')[1], content_type:'image/jpeg' });
+      };
+      img.onerror=reject;
+      img.src=reader.result;
+    };
+    reader.onerror=reject;
+    reader.readAsDataURL(file);
+  });
+}
+async function lptUploadPhoto(e){
+  const file=e.target.files[0]; if(!file) return;
+  const msg=document.getElementById('lptMsg');
+  msg.textContent='Uploading photo…';
+  try{
+    const tid = lpTestimonialDraft.id || (lpTestimonialDraft._tempId ||= 'new-'+Date.now()+'-'+Math.random().toString(36).slice(2,8));
+    const {base64, content_type} = await compressImageToBase64(file, 300, 0.82);
+    const d = await api('/api/upload-logo',{method:'POST',body:JSON.stringify({image:base64, content_type, kind:'testimonial', testimonial_id:tid})});
+    lpTestimonialDraft.photo_url = d.url || d.logo_url;
+    const prev=document.getElementById('lptPhotoPreview');
+    prev.src=lpTestimonialDraft.photo_url; prev.style.display='block';
+    msg.textContent='';
+  }catch(err){ msg.textContent=err.message; }
 }
 function lpCancelTestimonial(){
   lpTestimonialDraft=null;
