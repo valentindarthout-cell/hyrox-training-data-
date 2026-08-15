@@ -453,6 +453,89 @@ module.exports = async function handler(req, res){
     return res.status(200).json({ ok:true });
   }
 
+  /* ---------------- coach: landing programs ---------------- */
+  if(action === 'landing-programs'){
+    const coachId = (req.query||{}).coach_id || user.id;
+    const r = await sb(`/rest/v1/landing_programs?coach_id=eq.${coachId}&order=position.asc,created_at.asc`, token, {method:'GET'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not load programs')});
+    return res.status(200).json({ programs: r.data||[] });
+  }
+
+  if(action === 'save-landing-program'){
+    const b = req.body||{};
+    if(!b.name || !b.name.trim()) return res.status(400).json({error:'Program name required'});
+    if(!b.id){
+      const count = await sb(`/rest/v1/landing_programs?coach_id=eq.${user.id}&select=id`, token, {method:'GET'});
+      if(count.ok && (count.data||[]).length >= 5) return res.status(400).json({error:'Maximum 5 programs — remove one first'});
+    }
+    const row = {
+      coach_id: user.id, track_id: b.track_id||null, name: b.name.trim(),
+      description: b.description||null, difficulty: b.difficulty||null,
+      sessions_per_week: b.sessions_per_week||null, hours_per_week: b.hours_per_week||null,
+      running_km_per_week: b.running_km_per_week||null, price: b.price||null,
+      is_1on1: !!b.is_1on1, cta_type: b.cta_type||'code', position: b.position??0
+    };
+    let r;
+    if(b.id){
+      r = await sb(`/rest/v1/landing_programs?id=eq.${b.id}&coach_id=eq.${user.id}`, token, {
+        method:'PATCH', headers:{'Prefer':'return=representation'}, body: JSON.stringify(row)
+      });
+    }else{
+      r = await sb('/rest/v1/landing_programs', token, {
+        method:'POST', headers:{'Prefer':'return=representation'}, body: JSON.stringify([row])
+      });
+    }
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not save program')});
+    return res.status(200).json({ program: Array.isArray(r.data)? r.data[0] : null });
+  }
+
+  if(action === 'delete-landing-program'){
+    const { id } = req.body||{};
+    const r = await sb(`/rest/v1/landing_programs?id=eq.${id}&coach_id=eq.${user.id}`, token, {method:'DELETE'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not delete program')});
+    return res.status(200).json({ ok:true });
+  }
+
+  /* ---------------- coach: landing testimonials ---------------- */
+  if(action === 'landing-testimonials'){
+    const coachId = (req.query||{}).coach_id || user.id;
+    const r = await sb(`/rest/v1/landing_testimonials?coach_id=eq.${coachId}&order=position.asc,created_at.asc`, token, {method:'GET'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not load testimonials')});
+    return res.status(200).json({ testimonials: r.data||[] });
+  }
+
+  if(action === 'save-landing-testimonial'){
+    const b = req.body||{};
+    if(!b.name || !b.name.trim()) return res.status(400).json({error:'Name required'});
+    if(!b.id){
+      const count = await sb(`/rest/v1/landing_testimonials?coach_id=eq.${user.id}&select=id`, token, {method:'GET'});
+      if(count.ok && (count.data||[]).length >= 5) return res.status(400).json({error:'Maximum 5 testimonials — remove one first'});
+    }
+    const row = {
+      coach_id: user.id, name: b.name.trim(), quote: b.quote||null,
+      photo_url: b.photo_url||null, ig_handle: b.ig_handle||null, position: b.position??0
+    };
+    let r;
+    if(b.id){
+      r = await sb(`/rest/v1/landing_testimonials?id=eq.${b.id}&coach_id=eq.${user.id}`, token, {
+        method:'PATCH', headers:{'Prefer':'return=representation'}, body: JSON.stringify(row)
+      });
+    }else{
+      r = await sb('/rest/v1/landing_testimonials', token, {
+        method:'POST', headers:{'Prefer':'return=representation'}, body: JSON.stringify([row])
+      });
+    }
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not save testimonial')});
+    return res.status(200).json({ testimonial: Array.isArray(r.data)? r.data[0] : null });
+  }
+
+  if(action === 'delete-landing-testimonial'){
+    const { id } = req.body||{};
+    const r = await sb(`/rest/v1/landing_testimonials?id=eq.${id}&coach_id=eq.${user.id}`, token, {method:'DELETE'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not delete testimonial')});
+    return res.status(200).json({ ok:true });
+  }
+
   /* ---------------- coach: landing publish ---------------- */
   if(action === 'publish-landing'){
     const b = req.body||{};
