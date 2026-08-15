@@ -9,7 +9,12 @@
 ================================================================ */
 
 const DIFFICULTIES=['Beginner','Intermediate','Advanced','Elite'];
-let lpPrograms=[], lpTestimonials=[];
+const LP_THEMES=[
+  {k:'light', label:'Light'},
+  {k:'dark', label:'Dark'},
+  {k:'stone', label:'Stone'}
+];
+let lpPrograms=[], lpTestimonials=[], lpTheme='light';
 
 /* ---------------- auto-tag-on-join (safe, opportunistic, additive) ---------------- */
 (function bootPendingJoin(){
@@ -48,13 +53,26 @@ async function loadMyLanding(){
       document.getElementById('lpBio').value=L.bio||'';
       document.getElementById('lpIg').value=L.ig_url||'';
       lpPhotoUrl=L.photo_url||null;
+      lpTheme=L.theme||'light';
       if(L.photo_url){ const p=document.getElementById('lpPhotoPreview'); p.src=L.photo_url; p.style.display='block'; }
       if(L.published) showLpUrl(L.slug);
     }
   }catch(e){}
+  paintLpThemePicker();
   if(!coachTracks || !coachTracks.length) await loadTracks();
   loadLpPrograms();
   loadLpTestimonials();
+}
+function paintLpThemePicker(){
+  const host=document.getElementById('lpThemeHost');
+  if(!host) return;
+  host.innerHTML=LP_THEMES.map(t=>
+    `<button class="pill lp-theme-pill ${lpTheme===t.k?'active':''}" data-k="${t.k}" onclick="lpPickTheme('${t.k}')">
+      <span class="lp-theme-dot ${t.k}"></span>${t.label}</button>`).join('');
+}
+function lpPickTheme(k){
+  lpTheme=k;
+  document.querySelectorAll('.lp-theme-pill').forEach(b=>b.classList.toggle('active',b.dataset.k===k));
 }
 async function publishLanding(){
   const msg=document.getElementById('lpMsg');
@@ -66,7 +84,7 @@ async function publishLanding(){
       headline:document.getElementById('lpHeadline').value.trim(),
       bio:document.getElementById('lpBio').value.trim(),
       ig_url:document.getElementById('lpIg').value.trim(),
-      photo_url:lpPhotoUrl, published:true
+      photo_url:lpPhotoUrl, theme:lpTheme, published:true
     })});
     msg.textContent='Published';
     showLpUrl(d.landing.slug);
