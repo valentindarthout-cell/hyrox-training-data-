@@ -4,6 +4,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
 <title>OCTA.</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -25,6 +26,7 @@ h1{font-family:var(--fd);font-size:clamp(28px,6vw,42px);font-weight:600;letter-s
 .cta{display:block;width:100%;background:var(--ink);color:#fff;border:none;border-radius:14px;
   padding:17px;font-family:var(--fb);font-size:12px;font-weight:700;letter-spacing:.14em;
   text-transform:uppercase;text-align:center;text-decoration:none;cursor:pointer}
+.cta.secondary{background:#fff;color:var(--ink);border:1px solid var(--hair)}
 .links{display:flex;gap:10px;margin-top:12px}
 .link-btn{flex:1;background:#fff;border:1px solid var(--hair);border-radius:14px;padding:15px;
   font-size:12px;font-weight:600;color:var(--ink);text-align:center;text-decoration:none}
@@ -33,6 +35,30 @@ h1{font-family:var(--fd);font-size:clamp(28px,6vw,42px);font-weight:600;letter-s
 .octa{text-align:center;font-family:var(--fd);font-size:9px;font-weight:600;letter-spacing:.34em;
   color:#c5c2ba;margin-top:60px;text-transform:uppercase}
 .err{max-width:640px;margin:30vh auto 0;text-align:center;color:var(--muted);padding:0 24px}
+
+.section-label{font-family:var(--fd);font-size:10px;font-weight:700;letter-spacing:.28em;
+  text-transform:uppercase;color:#b7b7b0;margin:44px 0 16px}
+.program{background:#fff;border:1px solid var(--hair);border-radius:18px;padding:22px 20px;margin-bottom:14px}
+.program-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px}
+.program-name{font-family:var(--fd);font-size:17px;font-weight:700}
+.program-diff{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#fff;
+  background:var(--ink);border-radius:999px;padding:4px 10px;white-space:nowrap}
+.program-desc{font-size:13px;line-height:1.65;color:#57554f;margin-bottom:14px;white-space:pre-line}
+.program-meta{display:flex;flex-wrap:wrap;gap:8px 18px;margin-bottom:16px}
+.pm-item{font-size:11px;color:var(--muted)}
+.pm-item b{font-family:var(--fd);color:var(--ink);font-weight:700}
+.program-price{font-family:var(--fd);font-size:15px;font-weight:700;margin-bottom:14px}
+.program-1on1{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:#c47f0e;background:#fdf1de;border-radius:999px;padding:3px 10px;margin-bottom:10px}
+.program-ctas{display:flex;gap:8px}
+.program-ctas .cta,.program-ctas .cta.secondary{padding:13px;font-size:11px}
+
+.testi{background:#fff;border:1px solid var(--hair);border-radius:16px;padding:18px;margin-bottom:12px;display:flex;gap:14px}
+.testi-photo{width:44px;height:44px;border-radius:999px;object-fit:cover;flex-shrink:0;background:var(--hair)}
+.testi-body{flex:1;min-width:0}
+.testi-quote{font-size:13px;line-height:1.6;color:#3c3b37;margin-bottom:8px}
+.testi-name{font-family:var(--fd);font-size:12px;font-weight:700}
+.testi-ig{font-size:11px;color:var(--muted);text-decoration:none}
 </style>
 </head>
 <body>
@@ -46,39 +72,115 @@ h1{font-family:var(--fd);font-size:clamp(28px,6vw,42px);font-weight:600;letter-s
   </div>
   <div class="body">
     <div id="bio" class="bio"></div>
-    <a id="joinBtn" class="cta">Join the program</a>
+    <a id="joinBtn" class="cta" style="display:none">Join the program</a>
     <div class="links">
       <a id="igBtn" class="link-btn" style="display:none" target="_blank" rel="noopener">Instagram</a>
       <a id="webBtn" class="link-btn" style="display:none" target="_blank" rel="noopener">Website</a>
     </div>
     <div id="codeNote" class="code-note"></div>
+
+    <div id="programsSection" style="display:none">
+      <div class="section-label">Programs</div>
+      <div id="programsList"></div>
+    </div>
+
+    <div id="testimonialsSection" style="display:none">
+      <div class="section-label">Athletes say</div>
+      <div id="testimonialsList"></div>
+    </div>
+
     <div class="octa">OCTA.</div>
   </div>
 </div>
 <div id="notFound" class="err" style="display:none">This page doesn't exist or isn't published.</div>
 <script>
-(async function(){
-  const slug=location.pathname.split('/').filter(Boolean).pop();
-  try{
-    const r=await fetch('/api/public?slug='+encodeURIComponent(slug));
-    if(!r.ok) throw new Error();
-    const {landing:L}=await r.json();
-    if(L.photo_url) document.getElementById('hero').style.backgroundImage='url('+L.photo_url+')';
-    if(L.logo_url){ const l=document.getElementById('logo'); l.src=L.logo_url; l.style.display='block'; }
-    document.getElementById('pname').textContent=(L.program_name||'').toUpperCase();
-    document.getElementById('headline').textContent=L.headline||L.program_name||'Coaching';
-    document.getElementById('bio').textContent=L.bio||'';
-    document.title=(L.program_name||'OCTA.')+' — OCTA.';
-    const join=document.getElementById('joinBtn');
-    join.href='/'+(L.invite_code?('?code='+encodeURIComponent(L.invite_code)):'');
-    if(L.invite_code) document.getElementById('codeNote').innerHTML=
-      'Create your athlete account and you\'ll join automatically — or enter code <b>'+L.invite_code+'</b> in Settings.';
-    if(L.ig_url){ const b=document.getElementById('igBtn'); b.href=L.ig_url; b.style.display='block'; }
-    if(L.website){ const b=document.getElementById('webBtn'); b.href=L.website; b.style.display='block'; }
-    document.getElementById('page').style.display='block';
-  }catch(e){
-    document.getElementById('notFound').style.display='block';
+var DIFF_ORDER={'Beginner':0,'Intermediate':1,'Advanced':2,'Elite':3};
+function esc(s){ var d=document.createElement('div'); d.textContent=(s===null||s===undefined)?'':s; return d.innerHTML; }
+
+function programCard(p, inviteCode){
+  var rows=[];
+  if(p.sessions_per_week) rows.push(['Sessions/wk', p.sessions_per_week]);
+  if(p.hours_per_week) rows.push(['Hours/wk', p.hours_per_week]);
+  if(p.running_km_per_week) rows.push(['Running km/wk', p.running_km_per_week]);
+  var joinHref='/'+(inviteCode?('?code='+encodeURIComponent(inviteCode)+(p.track_id?'&track='+encodeURIComponent(p.track_id):'')):'');
+  var showJoin = p.cta_type!=='instagram';
+  var showIg = p.cta_type==='instagram' || p.cta_type==='both';
+  var igHandle=(window._igHandle||'').replace('@','');
+  var html='<div class="program">';
+  html+='<div class="program-head">';
+  html+='<div class="program-name">'+esc(p.name)+'</div>';
+  if(p.difficulty) html+='<span class="program-diff">'+esc(p.difficulty)+'</span>';
+  html+='</div>';
+  if(p.is_1on1) html+='<span class="program-1on1">1:1 coaching</span>';
+  if(p.description) html+='<div class="program-desc">'+esc(p.description)+'</div>';
+  if(rows.length){
+    html+='<div class="program-meta">';
+    for(var i=0;i<rows.length;i++){ html+='<span class="pm-item">'+rows[i][0]+' <b>'+esc(rows[i][1])+'</b></span>'; }
+    html+='</div>';
   }
+  if(p.price) html+='<div class="program-price">'+esc(p.price)+'</div>';
+  html+='<div class="program-ctas">';
+  if(showJoin) html+='<a class="cta" href="'+joinHref+'" style="flex:1">Join</a>';
+  if(showIg) html+='<a class="cta secondary" href="https://instagram.com/'+esc(igHandle)+'" target="_blank" rel="noopener" style="flex:1">Message</a>';
+  html+='</div></div>';
+  return html;
+}
+function testiCard(t){
+  var igClean = t.ig_handle ? t.ig_handle.replace('@','') : '';
+  var html='<div class="testi">';
+  html+='<img class="testi-photo" src="'+(t.photo_url||'')+'" onerror="this.style.display=\'none\'">';
+  html+='<div class="testi-body">';
+  if(t.quote) html+='<div class="testi-quote">"'+esc(t.quote)+'"</div>';
+  html+='<div class="testi-name">'+esc(t.name)+'</div>';
+  if(t.ig_handle) html+='<a class="testi-ig" href="https://instagram.com/'+esc(igClean)+'" target="_blank" rel="noopener">@'+esc(igClean)+'</a>';
+  html+='</div></div>';
+  return html;
+}
+
+(function(){
+  var slug=location.pathname.split('/').filter(function(x){return x;}).pop();
+  fetch('/api/public?slug='+encodeURIComponent(slug))
+    .then(function(r){ if(!r.ok) throw new Error('not found'); return r.json(); })
+    .then(function(data){
+      var L=data.landing, programs=data.programs, testimonials=data.testimonials;
+      window._igHandle = L.ig_url ? (L.ig_url.split('/').filter(function(x){return x;}).pop()) : '';
+
+      if(L.photo_url) document.getElementById('hero').style.backgroundImage='url('+L.photo_url+')';
+      if(L.logo_url){ var l=document.getElementById('logo'); l.src=L.logo_url; l.style.display='block'; }
+      document.getElementById('pname').textContent=(L.program_name||'').toUpperCase();
+      document.getElementById('headline').textContent=L.headline||L.program_name||'Coaching';
+      document.getElementById('bio').textContent=L.bio||'';
+      document.title=(L.program_name||'OCTA.')+' — OCTA.';
+
+      var join=document.getElementById('joinBtn');
+      if(!programs || !programs.length){
+        join.style.display='block';
+        join.href='/'+(L.invite_code?('?code='+encodeURIComponent(L.invite_code)):'');
+      }
+      if(L.invite_code) document.getElementById('codeNote').innerHTML=
+        'Create your athlete account and you\'ll join automatically — or enter code <b>'+L.invite_code+'</b> in Settings.';
+      if(L.ig_url){ var ib=document.getElementById('igBtn'); ib.href=L.ig_url; ib.style.display='block'; }
+      if(L.website){ var wb=document.getElementById('webBtn'); wb.href=L.website; wb.style.display='block'; }
+
+      if(programs && programs.length){
+        var sorted=programs.slice().sort(function(a,b){
+          var da=(DIFF_ORDER[a.difficulty]!==undefined)?DIFF_ORDER[a.difficulty]:9;
+          var db=(DIFF_ORDER[b.difficulty]!==undefined)?DIFF_ORDER[b.difficulty]:9;
+          return da-db;
+        });
+        document.getElementById('programsList').innerHTML=sorted.map(function(p){return programCard(p,L.invite_code);}).join('');
+        document.getElementById('programsSection').style.display='block';
+      }
+      if(testimonials && testimonials.length){
+        document.getElementById('testimonialsList').innerHTML=testimonials.map(testiCard).join('');
+        document.getElementById('testimonialsSection').style.display='block';
+      }
+
+      document.getElementById('page').style.display='block';
+    })
+    .catch(function(e){
+      document.getElementById('notFound').style.display='block';
+    });
 })();
 </script>
 </body>
