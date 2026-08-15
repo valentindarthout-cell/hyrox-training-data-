@@ -1,5 +1,4 @@
 const { cors, userToken, getUser, SUPABASE_URL, ANON } = require('./_supabase.js');
-
 module.exports = async function handler(req, res){
   cors(res);
   if(req.method === 'OPTIONS') return res.status(200).end();
@@ -8,16 +7,16 @@ module.exports = async function handler(req, res){
   if(!token) return res.status(401).json({error:'Not authenticated'});
   const user = await getUser(token);
   if(!user) return res.status(401).json({error:'Session expired'});
-
-  const { image, content_type, kind } = req.body || {};
+  const { image, content_type, kind, testimonial_id } = req.body || {};
   if(!image) return res.status(400).json({error:'No image provided'});
-
   const ext = (content_type || 'image/png').split('/')[1].replace('jpeg','jpg');
-  const name = kind === 'photo' ? 'photo' : 'logo';
+  let name;
+  if(kind === 'photo') name = 'photo';
+  else if(kind === 'testimonial') name = 'testimonial-' + (testimonial_id || Date.now());
+  else name = 'logo';
   const path = `${user.id}/${name}.${ext}`;
   const buffer = Buffer.from(image, 'base64');
-  if(buffer.length > 2 * 1024 * 1024) return res.status(400).json({error:'Logo must be under 2 MB'});
-
+  if(buffer.length > 2 * 1024 * 1024) return res.status(400).json({error:'Image must be under 2 MB'});
   const up = await fetch(`${SUPABASE_URL}/storage/v1/object/logos/${path}`, {
     method:'POST',
     headers:{
@@ -32,9 +31,8 @@ module.exports = async function handler(req, res){
     const err = await up.json().catch(() => ({}));
     return res.status(500).json({error: err.message || 'Upload failed'});
   }
-
   const url = `${SUPABASE_URL}/storage/v1/object/public/logos/${path}?v=${Date.now()}`;
-  if(kind !== 'photo'){
+  if(kind !== 'photo' && kind !== 'testimonial'){
     await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}`, {
       method:'PATCH',
       headers:{ 'apikey': ANON, 'Authorization':'Bearer '+token, 'Content-Type':'application/json' },
