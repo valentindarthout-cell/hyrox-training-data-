@@ -548,6 +548,7 @@ module.exports = async function handler(req, res){
       ig_url: b.ig_url||null, website: b.website ?? prof.program_url ?? null,
       logo_url: prof.logo_url||null, photo_url: b.photo_url||null,
       program_name: prof.program_name||null, invite_code: prof.invite_code||null,
+      theme: b.theme || 'light',
       published: b.published !== false, updated_at: new Date().toISOString()
     };
     let r = await sb('/rest/v1/coach_public?on_conflict=coach_id', token, {
