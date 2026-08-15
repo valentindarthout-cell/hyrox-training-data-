@@ -25,7 +25,7 @@ module.exports = async function handler(req, res){
   return res.status(200).json({ landing:{
     slug: row.slug, headline: row.headline, bio: row.bio, ig_url: row.ig_url,
     website: row.website, logo_url: row.logo_url, photo_url: row.photo_url,
-    program_name: row.program_name, invite_code: row.invite_code
+    program_name: row.program_name, invite_code: row.invite_code, theme: row.theme||'light'
   }, programs: (progRes||[]).map(p=>({
     id:p.id, track_id:p.track_id, name:p.name, description:p.description, difficulty:p.difficulty,
     sessions_per_week:p.sessions_per_week, hours_per_week:p.hours_per_week,
