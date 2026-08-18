@@ -1660,8 +1660,12 @@ function zonePaceRange(zoneKey, vma){
 function renderMaxesGrid(){
   const g=document.getElementById('maxesGrid'); if(!g) return;
   const mx=profile.maxes||{};
-  g.innerHTML=LIFTS.map(l=>`<div class="macro-field"><label>${l.label}</label>
-    <input id="max_${l.k}" type="number" inputmode="decimal" step="0.5" value="${mx[l.k]??''}"></div>`).join('');
+  g.innerHTML=LIFTS.map(l=>{
+    const v=mx[l.k];
+    const shown=(v&&typeof v==='object')?(v.rm1??''):(v??'');
+    return `<div class="macro-field"><label>${l.label}</label>
+    <input id="max_${l.k}" type="number" inputmode="decimal" step="0.5" value="${shown}"></div>`;
+  }).join('');
 }
 /* ================================================================
    ONBOARDING WIZARD
