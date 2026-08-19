@@ -182,6 +182,7 @@ function coachTab(t){
   document.getElementById('cnavSettings').classList.toggle('active',t==='settings');
   if(t==='finance') loadFinance();
   if(t==='prog'){ if(window.renderWeekPlan) renderWeekPlan(); loadTemplates(); if(!coachAthletes.length) api('/api/coach?action=athletes').then(d=>coachAthletes=d.athletes||[]).catch(()=>{}); }
+  if(t==='home' && window.renderCoachChecklist) renderCoachChecklist(); 
 }
 async function regenCode(){
   try{
@@ -2598,6 +2599,7 @@ function fillSettings(){
   if(window.renderPerformanceCard) renderPerformanceCard();
   if(window.renderRaceResults) renderRaceResults();if(window.initRaces) initRaces();
   if(window.octaApplyPendingTrack) octaApplyPendingTrack();
+  if(window.maybeShowAthleteTutorial) maybeShowAthleteTutorial();
   document.getElementById('setHrvLow').value=profile.hrv_low??'';
   document.getElementById('setHrvHigh').value=profile.hrv_high??'';
   document.getElementById('hrz1').value=profile.hr_z1_max??'';
