@@ -304,6 +304,22 @@ module.exports = async function handler(req, res){
     return res.status(200).json({ excluded: ex });
   }
 
+  /* ---------------- coach: onboarding status ---------------- */
+  if(action === 'onboarding-status'){
+    const [trR, athR, pbR, cpR] = await Promise.all([
+      sb(`/rest/v1/tracks?coach_id=eq.${user.id}&select=id`, token, {method:'GET'}),
+      sb(`/rest/v1/profiles?coach_id=eq.${user.id}&select=id`, token, {method:'GET'}),
+      sb(`/rest/v1/plan_blocks?coach_id=eq.${user.id}&select=id&limit=1`, token, {method:'GET'}),
+      sb(`/rest/v1/coach_public?coach_id=eq.${user.id}&select=published`, token, {method:'GET'})
+    ]);
+    return res.status(200).json({
+      tracks: (trR.ok && trR.data)? trR.data.length : 0,
+      athletes: (athR.ok && athR.data)? athR.data.length : 0,
+      hasBlocks: !!(pbR.ok && pbR.data && pbR.data.length),
+      published: !!(cpR.ok && cpR.data && cpR.data[0] && cpR.data[0].published)
+    });
+  }
+
   /* ---------------- coach: tracks ---------------- */
   if(action === 'tracks'){
     const r = await sb(`/rest/v1/tracks?coach_id=eq.${user.id}&order=position.asc,created_at.asc`, token, {method:'GET'});
