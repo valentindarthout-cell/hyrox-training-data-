@@ -1,0 +1,97 @@
+/* ================================================================
+   OCTA. onboarding.js — coach checklist + athlete swipe-through
+   Loads after app.js and tracks-plan.js (uses coachTab, api, esc, profile).
+   Coach checklist: fully live-derived from real data, no stored state.
+   Athlete tutorial: shown once, tracked via localStorage (works
+   immediately, no dependency on unseen get-data.js internals) with a
+   best-effort backend sync to profiles.onboarded for cross-device record.
+================================================================ */
+
+/* ---------------- Coach checklist ---------------- */
+let onbSteps=[];
+async function renderCoachChecklist(force){
+  const home=document.getElementById('coachHome');
+  if(!home) return;
+  let host=document.getElementById('onbChecklistHost');
+  if(!host){
+    home.insertAdjacentHTML('afterbegin','<div id="onbChecklistHost"></div>');
+    host=document.getElementById('onbChecklistHost');
+  }
+  let status;
+  try{ status=await api('/api/workouts?action=onboarding-status'); }catch(e){ return; }
+
+  onbSteps=[
+    { done: status.tracks>0, label:'Create your first track', sub:'Elite, Open, Running-focused — however you group athletes',
+      go:function(){ coachTab('settings'); onbScrollTo('tracksCardHost'); } },
+    { done: status.athletes>0, label:'Add your first athlete',
+      sub: status.athletes>0 ? (status.athletes+' athlete'+(status.athletes>1?'s':'')+' added') : 'Share your invite code — find it in Settings',
+      go:function(){ coachTab('settings'); } },
+    { done: status.hasBlocks, label:'Build your first week', sub:'Add a workout to any lane in Programming',
+      go:function(){ coachTab('prog'); } },
+    { done: status.published, label:'Publish your public page', sub:'A page athletes can find and join from',
+      go:function(){ coachTab('settings'); onbScrollTo('lpSlug'); } }
+  ];
+  const allDone = onbSteps.every(function(s){ return s.done; });
+  if(allDone && !force){ host.innerHTML=''; return; }
+
+  host.innerHTML = '<div class="section-card onb-checklist"><div class="section-label">Getting started</div>'
+    + onbSteps.map(function(s,i){
+        return '<div class="onb-step '+(s.done?'done':'')+'" onclick="onbGoStep('+i+')">'
+          + '<span class="onb-check">'+(s.done?'✓':(i+1))+'</span>'
+          + '<div class="onb-step-body"><div class="onb-step-label">'+esc(s.label)+'</div><div class="onb-step-sub">'+esc(s.sub)+'</div></div>'
+          + '</div>';
+      }).join('')
+    + '</div>';
+}
+function onbGoStep(i){ if(onbSteps[i]) onbSteps[i].go(); }
+function onbScrollTo(id){
+  setTimeout(function(){
+    const el=document.getElementById(id);
+    if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
+  },150);
+}
+function onbShowChecklist(){
+  coachTab('home');
+  setTimeout(function(){ renderCoachChecklist(true); },50);
+}
+
+/* ---------------- Athlete swipe-through tutorial ---------------- */
+const ONB_SLIDES=[
+  { title:'Welcome to OCTA.', body:'Your training, logged in seconds and shared like a pro.' },
+  { title:'Log', body:'This is where today\u2019s workout lives \u2014 tap through duration, pace, and how it felt.' },
+  { title:'Stats', body:'See your training add up over weeks, months, and race cycles.' },
+  { title:'Profile', body:'PRs, races, and your coach connection \u2014 all in one place.' }
+];
+let onbSlide=0;
+function maybeShowAthleteTutorial(){
+  if(!window.profile || !profile.id) return;
+  if(localStorage.getItem('octa_athlete_onboarded')) return;
+  if(document.getElementById('onbTutorial')) return;
+  onbSlide=0;
+  renderAthleteTutorial();
+}
+function renderAthleteTutorial(){
+  const old=document.getElementById('onbTutorial'); if(old) old.remove();
+  const s=ONB_SLIDES[onbSlide];
+  const isLast=onbSlide===ONB_SLIDES.length-1;
+  document.body.insertAdjacentHTML('beforeend',
+    '<div id="onbTutorial" class="onb-overlay">'
+    + '<button class="onb-skip" onclick="onbFinishTutorial()">Skip</button>'
+    + '<div class="onb-slide">'
+    +   '<div class="onb-slide-title">'+esc(s.title)+'</div>'
+    +   '<div class="onb-slide-body">'+esc(s.body)+'</div>'
+    + '</div>'
+    + '<div class="onb-dots">'+ONB_SLIDES.map(function(_,i){ return '<span class="onb-dot '+(i===onbSlide?'on':'')+'"></span>'; }).join('')+'</div>'
+    + '<button class="cta" style="max-width:280px;margin:0 auto" onclick="onbNextSlide()">'+(isLast?'Get started':'Next')+'</button>'
+    + '</div>');
+}
+function onbNextSlide(){
+  onbSlide++;
+  if(onbSlide>=ONB_SLIDES.length){ onbFinishTutorial(); return; }
+  renderAthleteTutorial();
+}
+async function onbFinishTutorial(){
+  const el=document.getElementById('onbTutorial'); if(el) el.remove();
+  localStorage.setItem('octa_athlete_onboarded','1');
+  try{ await api('/api/profile',{method:'PUT',body:JSON.stringify({onboarded:true})}); }catch(e){}
+}
