@@ -1940,7 +1940,12 @@ function renderAssigned(){
       ${assignedBlocksHTML(a)}
       ${athleteRefFooter()}
       ${done
-        ? `<span class="aw-done-tag">Done${a.difficulty?' · '+a.difficulty+'/10':''}</span>`
+        ? `<span class="aw-done-tag">Done${a.difficulty?' · '+a.difficulty+'/10':''}</span>
+           <button class="aw-like ${a.liked?'on':''}" onclick="toggleLike('${a.id}')" aria-label="Like this workout">
+             <svg width="18" height="18" viewBox="0 0 24 24" fill="${a.liked?'currentColor':'none'}" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+               <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/>
+             </svg>
+           </button>`
         : `<div class="assigned-done">
              <span style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.5)">Difficulty</span>
              <input type="range" min="1" max="10" value="6" oninput="this.nextElementSibling.textContent=this.value" id="diff_${a.id}">
