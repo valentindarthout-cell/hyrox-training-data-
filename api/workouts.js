@@ -247,7 +247,20 @@ module.exports = async function handler(req, res){
     if(!start || !end) return res.status(400).json({error:'start and end required'});
     const r = await sb(`/rest/v1/plan_blocks?coach_id=eq.${user.id}&date=gte.${start}&date=lte.${end}&order=date.asc`, token, {method:'GET'});
     if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not load plan')});
-    return res.status(200).json({ blocks: r.data||[] });
+    const blocks = r.data||[];
+    if(blocks.length){
+      const ids = blocks.map(b=>b.id).join(',');
+      const likeR = await sb(`/rest/v1/assignments?plan_block_id=in.(${ids})&status=eq.done&select=plan_block_id,liked,difficulty`, token, {method:'GET'});
+      const counts={};
+      ((likeR.ok && likeR.data)||[]).forEach(a=>{
+        const c = counts[a.plan_block_id] || (counts[a.plan_block_id]={done:0,liked:0,diffSum:0,diffCount:0});
+        c.done++;
+        if(a.liked) c.liked++;
+        if(a.difficulty!=null){ c.diffSum+=a.difficulty; c.diffCount++; }
+      });
+      blocks.forEach(b=>{ b._feedback = counts[b.id] || {done:0,liked:0,diffSum:0,diffCount:0}; });
+    }
+    return res.status(200).json({ blocks });
   }
 
   if(action === 'save-block'){
@@ -605,6 +618,20 @@ module.exports = async function handler(req, res){
     });
     if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not update')});
     return res.status(200).json({ ok:true });
+  }
+
+  if(action === 'toggle-like'){
+    const { id } = req.body||{};
+    if(!id) return res.status(400).json({error:'id required'});
+    const cur = await sb(`/rest/v1/assignments?id=eq.${id}&athlete_id=eq.${user.id}&select=liked`, token, {method:'GET'});
+    const row = cur.ok && cur.data && cur.data[0];
+    if(!row) return res.status(404).json({error:'Not found'});
+    const newVal = !row.liked;
+    const r = await sb(`/rest/v1/assignments?id=eq.${id}&athlete_id=eq.${user.id}`, token, {
+      method:'PATCH', body: JSON.stringify({ liked:newVal })
+    });
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not update')});
+    return res.status(200).json({ liked:newVal });
   }
 
   return res.status(400).json({error:'Unknown action'});
