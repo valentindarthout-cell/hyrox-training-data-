@@ -1240,7 +1240,7 @@ function renderCaCalendar(){
         const col=SPLIT_COLORS[a.workout_type]||'#888';
         return `<div class="cal-wk" style="background:${col}" onclick="event.stopPropagation();openAssignmentPanel('${a.id}')">
           ${esc(a.title||'Workout')}
-          <span class="cw-status">${a.status==='done'?'✓ Done'+(a.difficulty?' · '+a.difficulty+'/10':''):'Assigned'}${a.duration_min?' · '+a.duration_min+"'":''}</span>
+          <span class="cw-status">${a.status==='done'?'✓ Done'+(a.difficulty?' · '+a.difficulty+'/10':'')+(a.liked?' · ♥':''):'Assigned'}${a.duration_min?' · '+a.duration_min+"'":''}</span>
         </div>`;
       }).join('')}
     </div>`;
