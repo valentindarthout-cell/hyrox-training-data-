@@ -91,7 +91,8 @@ async function materializeBlock(token, user, block){
   const content = {
     date: block.date, title: block.title, workout_type: block.workout_type,
     duration_min: block.duration_min, objective: block.objective,
-    blocks: block.blocks, stations: block.stations, subtypes: block.subtypes
+    blocks: block.blocks, stations: block.stations, subtypes: block.subtypes,
+    workout_id: block.template_id || null
   };
   for(const a of existing){
     if(a.status === 'done') continue;
@@ -126,7 +127,20 @@ module.exports = async function handler(req, res){
   if(action === 'templates'){
     const r = await sb(`/rest/v1/workouts?coach_id=eq.${user.id}&order=created_at.desc`, token, {method:'GET'});
     if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not load library')});
-    return res.status(200).json({ templates: r.data||[] });
+    const templates = r.data||[];
+    if(templates.length){
+      const ids = templates.map(t=>t.id).join(',');
+      const fbR = await sb(`/rest/v1/assignments?workout_id=in.(${ids})&status=eq.done&select=workout_id,liked,difficulty`, token, {method:'GET'});
+      const counts={};
+      ((fbR.ok && fbR.data)||[]).forEach(a=>{
+        const c = counts[a.workout_id] || (counts[a.workout_id]={done:0,liked:0,diffSum:0,diffCount:0});
+        c.done++;
+        if(a.liked) c.liked++;
+        if(a.difficulty!=null){ c.diffSum+=a.difficulty; c.diffCount++; }
+      });
+      templates.forEach(t=>{ t._feedback = counts[t.id] || {done:0,liked:0,diffSum:0,diffCount:0}; });
+    }
+    return res.status(200).json({ templates });
   }
 
   if(action === 'save-template'){
@@ -271,7 +285,8 @@ module.exports = async function handler(req, res){
       title: b.title||'Workout', workout_type: b.workout_type||'hyrox',
       duration_min: b.duration_min??null, objective: b.objective||null,
       blocks: b.blocks||[], stations: b.stations||{}, subtypes: b.subtypes||[],
-      track_ids: b.track_ids||[], excluded_athletes: b.excluded_athletes||[]
+      track_ids: b.track_ids||[], excluded_athletes: b.excluded_athletes||[],
+      template_id: b.template_id||null
     };
     let r;
     if(b.id){
