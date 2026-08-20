@@ -1955,6 +1955,17 @@ function renderAssigned(){
     </div>`;
   }).join('');
 }
+async function toggleLike(id){
+  const a=myAssignments.find(x=>x.id===id); if(!a) return;
+  a.liked=!a.liked;
+  renderAssigned();
+  try{
+    await api('/api/workouts',{method:'POST',body:JSON.stringify({action:'toggle-like',id})});
+  }catch(e){
+    a.liked=!a.liked;
+    renderAssigned();
+  }
+}
 async function markDone(id, idx){
   const a=myAssignments.find(x=>x.id===id); if(!a) return;
   const diff=parseInt((document.getElementById('diff_'+id)||{}).value)||null;
