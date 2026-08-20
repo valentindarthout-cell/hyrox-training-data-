@@ -494,9 +494,15 @@ function renderLibrary(){
   list.innerHTML=filtered.map(t=>{
     const i=wkTemplates.indexOf(t);
     const col=SPLIT_COLORS[t.workout_type]||'#999';
+    const fb=t._feedback;
+    const avgDiff = fb && fb.diffCount>0 ? (fb.diffSum/fb.diffCount).toFixed(1) : null;
+    const likePct = fb && fb.done>0 ? Math.round(100*fb.liked/fb.done) : null;
+    const fbLine = fb && fb.done>0
+      ? '<br><span class="wk-fb">'+fb.done+' done'+(avgDiff?' \u00b7 RPE '+avgDiff:'')+(likePct!=null?' \u00b7 \u2665'+likePct+'% ('+fb.liked+'/'+fb.done+')':'')+'</span>'
+      : '';
     return `<div class="athlete-card wk-card" style="border-left-color:${col}" onclick="qaOpen(${i})">
       <div class="an"><span class="type-dot" style="background:${col}"></span>${esc(t.title||'Untitled')}</div>
-      <div class="am">${t.workout_type==='hyrox'?'Hyrox / Mix':cap(t.workout_type||'')} · ${t.duration_min||'—'} min${(t.subtypes||[]).length?'<br>'+t.subtypes.slice(0,3).join(' · '):''}</div>
+      <div class="am">${t.workout_type==='hyrox'?'Hyrox / Mix':cap(t.workout_type||'')} · ${t.duration_min||'—'} min${(t.subtypes||[]).length?'<br>'+t.subtypes.slice(0,3).join(' · '):''}${fbLine}</div>
     </div>`;
   }).join('');
 }
@@ -561,7 +567,7 @@ async function qaAdd(){
         action:'save-block', date:qa.day,
         title:t.title, workout_type:t.workout_type, duration_min:t.duration_min,
         objective:t.objective||null, blocks:t.blocks||[], stations:t.stations||{}, subtypes:t.subtypes||[],
-        track_ids:[tid], excluded_athletes:[]
+        track_ids:[tid], excluded_athletes:[], template_id:t.id
       })});
       total+=d.athletes||0;
     }
