@@ -1756,7 +1756,7 @@ async function finishWizard(){
   if(raceName) profile.race_name=raceName;
   if(raceDate) profile.race_date=raceDate;
   profile.first_name=firstName||null; profile.last_name=lastName||null;
-  profile.dob=dob||null; profile.city=city||null; profile.country=country||null;
+    profile.dob=dob||null; profile.country=country||null;
   localStorage.removeItem('htd_wiz');
   document.getElementById('wizard').style.display='none';
   datesWithData.clear();
