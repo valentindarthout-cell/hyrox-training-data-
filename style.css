@@ -445,7 +445,8 @@ body.coach{max-width:1100px}
 .vbar-lbl.projected-val{color:#b7b4ac}
 
 /* ============ dob/country selects — premium custom-styled ============ */
-.dob-selects{display:flex;gap:8px}
+.dob-selects{display:flex;gap:6px;width:100%;max-width:100%}
+.dob-selects select{min-width:0;flex:1 1 0}
 .dob-selects select,
 #setCountryMount select,#wizCountryMount select{
   -webkit-appearance:none; -moz-appearance:none; appearance:none;
