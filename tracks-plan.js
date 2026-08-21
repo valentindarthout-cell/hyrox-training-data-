@@ -170,8 +170,14 @@ function renderWeekPlan(){
   if(!prog) return;
   let host=document.getElementById('weekPlanHost');
   if(!host){
+    const tipHtml = localStorage.getItem('octa_prog_tip_seen') ? '' :
+      '<div class="onb-tip" id="onbProgTip">'
+      + '<button class="onb-tip-close" onclick="onbDismissProgTip()">\u2715</button>'
+      + 'Two ways to build a workout: save it to your <b>Library</b> below to reuse it across weeks and tracks, or click straight into a <b>lane cell</b> above for a one-off session for just that track.'
+      + '</div>';
     prog.insertAdjacentHTML('afterbegin',
       `<div class="section-card" id="weekPlanCard">
+        ${tipHtml}
         <div class="coach-toolbar" style="margin-bottom:10px">
           <div class="section-label" style="margin:0">Week plan</div>
           <div style="display:flex;align-items:center;gap:8px">
@@ -201,6 +207,10 @@ function renderWeekPlan(){
   boot();
 }
 function shiftPlanWeek(n){ planWeek=addDays(planWeek,7*n); loadPlanWeek(); }
+function onbDismissProgTip(){
+  localStorage.setItem('octa_prog_tip_seen','1');
+  document.getElementById('onbProgTip')?.remove();
+}
 async function loadPlanWeek(){
   document.getElementById('planWeekLabel').textContent=fmtShort(planWeek)+' – '+fmtShort(addDays(planWeek,6));
   try{
