@@ -475,12 +475,9 @@ function sessionHTML(s,i){
   const zoneRows=[0,1,2,3,4].map(z=>`
     <div class="zone-row">
       <div class="zone-tag" style="color:${ZONE_COLORS[z]}">Z${z+1}</div>
-      <div class="zone-bar-track"><div id="zfill_${i}_${z}" class="zone-bar-fill z${z+1}"></div></div>
-      <div class="zone-stepper">
-        <button onclick="stepZone(${i},${z},-5)">−</button>
-        <span id="zval_${i}_${z}">${s.zones[z]}%</span>
-        <button onclick="stepZone(${i},${z},5)">+</button>
-      </div>
+      <input type="range" min="0" max="100" step="5" value="${s.zones[z]}" class="zone-slider z${z+1}"
+        id="zslider_${i}_${z}" oninput="setZoneSlider(${i},${z},this.value)">
+      <span id="zval_${i}_${z}" class="zone-slider-val">${s.zones[z]}%</span>
     </div>`).join('');
 
   return `<div class="section-card" id="session_${i}">
