@@ -39,10 +39,16 @@ async function renderCoachChecklist(force){
       sub:'Go to Programming, save a workout to your Library, then drop it into a track\u2019s lane \u2014 every athlete in that track gets it automatically.',
       go:function(){ coachTab('prog'); } }
   ];
-  const requiredDone = onbSteps.filter(function(s){return !s.optional;}).every(function(s){return s.done;});
+  const requiredSteps = onbSteps.filter(function(s){return !s.optional;});
+  const doneCount = requiredSteps.filter(function(s){return s.done;}).length;
+  const pct = Math.round(100*doneCount/requiredSteps.length);
+  const requiredDone = doneCount===requiredSteps.length;
   if(requiredDone && !force){ host.innerHTML=''; return; }
 
-  host.innerHTML = '<div class="section-card onb-checklist"><div class="section-label">Getting started</div>'
+  host.innerHTML = '<div class="section-card onb-checklist">'
+    + '<div class="onb-head"><div class="section-label" style="margin:0">Getting started</div>'
+    + '<span class="onb-progress-text">'+doneCount+' of '+requiredSteps.length+'</span></div>'
+    + '<div class="onb-progress-track"><div class="onb-progress-fill" style="width:'+pct+'%"></div></div>'
     + onbSteps.map(function(s,i){
         return '<div class="onb-step '+(s.done?'done':'')+'" onclick="onbGoStep('+i+')">'
           + '<span class="onb-check">'+(s.done?'\u2713':(i+1))+'</span>'
