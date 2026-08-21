@@ -578,9 +578,9 @@ function mmss(totalSec){
 }
 
 /* --------- zones --------- */
-function stepZone(i,z,delta){
+function setZoneSlider(i,z,val){
   const s=daySessions[i];
-  s.zones[z]=Math.max(0,Math.min(100,(s.zones[z]||0)+delta));
+  s.zones[z]=Math.max(0,Math.min(100,parseInt(val)||0));
   updateZoneUI(i); maybeAutoRpe(i); updateSaveState();
 }
 /* RPE = weighted zone intensity: (Z1·2 + Z2·4 + Z3·6 + Z4·8 + Z5·10)/100
