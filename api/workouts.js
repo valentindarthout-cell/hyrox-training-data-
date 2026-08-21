@@ -334,17 +334,32 @@ module.exports = async function handler(req, res){
 
   /* ---------------- coach: onboarding status ---------------- */
   if(action === 'onboarding-status'){
-    const [trR, athR, pbR, cpR] = await Promise.all([
+    const [trR, athR, pbR, cpR, prR] = await Promise.all([
       sb(`/rest/v1/tracks?coach_id=eq.${user.id}&select=id`, token, {method:'GET'}),
       sb(`/rest/v1/profiles?coach_id=eq.${user.id}&select=id`, token, {method:'GET'}),
       sb(`/rest/v1/plan_blocks?coach_id=eq.${user.id}&select=id&limit=1`, token, {method:'GET'}),
-      sb(`/rest/v1/coach_public?coach_id=eq.${user.id}&select=published`, token, {method:'GET'})
+      sb(`/rest/v1/coach_public?coach_id=eq.${user.id}&select=published`, token, {method:'GET'}),
+      sb(`/rest/v1/profiles?id=eq.${user.id}&select=program_name,invite_code`, token, {method:'GET'})
     ]);
+    const prof = (prR.ok && prR.data && prR.data[0]) || {};
+    let inviteCode = prof.invite_code || null;
+    if(!inviteCode){
+      // auto-generate on first checklist view so the coach never hits a dead end
+      const chars='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+      let code=''; for(let i=0;i<6;i++) code+=chars[Math.floor(Math.random()*chars.length)];
+      const gen = await sb(`/rest/v1/profiles?id=eq.${user.id}`, token, {
+        method:'PATCH', headers:{'Prefer':'return=representation'},
+        body: JSON.stringify({ invite_code: code, role:'coach' })
+      });
+      if(gen.ok && gen.data && gen.data[0]) inviteCode = gen.data[0].invite_code;
+    }
     return res.status(200).json({
       tracks: (trR.ok && trR.data)? trR.data.length : 0,
       athletes: (athR.ok && athR.data)? athR.data.length : 0,
       hasBlocks: !!(pbR.ok && pbR.data && pbR.data.length),
-      published: !!(cpR.ok && cpR.data && cpR.data[0] && cpR.data[0].published)
+      published: !!(cpR.ok && cpR.data && cpR.data[0] && cpR.data[0].published),
+      programName: !!(prof.program_name && prof.program_name.trim()),
+      inviteCode
     });
   }
 
