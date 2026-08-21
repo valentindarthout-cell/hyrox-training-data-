@@ -1739,6 +1739,7 @@ async function finishWizard(){
   const raceDate=document.getElementById('wizRaceDate').value;
   const firstName=document.getElementById('wizFirstName').value.trim();
   const lastName=document.getElementById('wizLastName').value.trim();
+    if(!document.getElementById('wizDob_d')) mountWizPickers();
   const dob=dobRead('wizDob');
   const country=document.getElementById('wizCountry').value;
   try{
