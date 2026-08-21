@@ -642,3 +642,13 @@ if(body.prs !== undefined) profileFields.prs = body.prs;
 
 /* ============ library feedback aggregates ============ */
 .wk-fb{color:var(--muted);font-size:10px}
+.zone-row{display:flex;align-items:center;gap:10px}
+.zone-slider{flex:1;height:4px;-webkit-appearance:none;appearance:none;background:var(--hair);border-radius:999px;outline:none}
+.zone-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:999px;background:currentColor;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.zone-slider::-moz-range-thumb{width:18px;height:18px;border-radius:999px;background:currentColor;border:none;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.zone-slider.z1{color:#60a5fa;accent-color:#60a5fa}
+.zone-slider.z2{color:#34d399;accent-color:#34d399}
+.zone-slider.z3{color:#fbbf24;accent-color:#fbbf24}
+.zone-slider.z4{color:#f97316;accent-color:#f97316}
+.zone-slider.z5{color:#ef4444;accent-color:#ef4444}
+.zone-slider-val{font-family:var(--font-display);font-size:12px;font-weight:700;min-width:34px;text-align:right}
