@@ -578,6 +578,11 @@ function mmss(totalSec){
 }
 
 /* --------- zones --------- */
+function stepZone(i,z,delta){
+  const s=daySessions[i];
+  s.zones[z]=Math.max(0,Math.min(100,(s.zones[z]||0)+delta));
+  updateZoneUI(i); maybeAutoRpe(i); updateSaveState();
+}
 function setZoneSlider(i,z,val){
   const s=daySessions[i];
   s.zones[z]=Math.max(0,Math.min(100,parseInt(val)||0));
@@ -610,11 +615,11 @@ function maybeAutoRpe(i){
 function updateZoneUI(i){
   const s=daySessions[i];
   const total=s.zones.reduce((a,b)=>a+b,0);
-  s.zones.forEach((v,z)=>{
-    const fill=document.getElementById(`zfill_${i}_${z}`);
+    s.zones.forEach((v,z)=>{
     const val=document.getElementById(`zval_${i}_${z}`);
-    if(fill) fill.style.width=v+'%';
+    const slider=document.getElementById(`zslider_${i}_${z}`);
     if(val) val.textContent=v+'%';
+    if(slider) slider.value=v;
   });
   const t=document.getElementById('ztotal_'+i);
   if(t){ t.textContent=total+'%'; t.className='zone-total'+(total===100?' ok':(total>100?' over':'')); }
