@@ -652,34 +652,47 @@ if(body.prs !== undefined) profileFields.prs = body.prs;
 .zone-slider.z4{color:#f97316;accent-color:#f97316}
 .zone-slider.z5{color:#ef4444;accent-color:#ef4444}
 .zone-slider-val{font-family:var(--font-display);font-size:12px;font-weight:700;min-width:34px;text-align:right}
-/* ============ onboarding: checklist + tutorial ============ */
+/* ============ onboarding: checklist ============ */
 .onb-checklist{margin-bottom:14px}
-.onb-step{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid #f2f1ed;cursor:pointer}
-.onb-step:last-child{border-bottom:none}
-.onb-step:hover{background:#faf9f7}
-.onb-check{width:26px;height:26px;border-radius:999px;background:var(--input);border:1px solid var(--hair);
-  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;color:var(--muted)}
-.onb-step.done .onb-check{background:#0e9f6e;border-color:#0e9f6e;color:#fff}
-.onb-step-label{font-family:var(--font-display);font-size:13px;font-weight:600}
-.onb-step.done .onb-step-label{color:var(--muted);text-decoration:line-through;text-decoration-color:#ddd}
-.onb-step-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.onb-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+.onb-progress-text{font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.04em}
+.onb-progress-track{height:2px;background:var(--hair);border-radius:999px;margin-bottom:16px;overflow:hidden}
+.onb-progress-fill{height:100%;background:var(--ink);border-radius:999px;transition:width .3s ease}
 
+.onb-step{display:flex;align-items:flex-start;gap:13px;padding:13px 2px;cursor:pointer;
+  border-bottom:1px solid #f4f3f0;transition:opacity .15s}
+.onb-step:last-child{border-bottom:none;padding-bottom:2px}
+.onb-step:hover{opacity:.7}
+.onb-step.done{opacity:.5}
+
+.onb-check{width:22px;height:22px;border-radius:999px;background:none;border:1.3px solid var(--hair);
+  display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;
+  color:var(--muted);margin-top:1px;transition:all .15s}
+.onb-step.done .onb-check{background:var(--ink);border-color:var(--ink);color:#fff;font-size:11px}
+
+.onb-step-label{font-family:var(--font-display);font-size:13px;font-weight:600;letter-spacing:-.005em;line-height:1.4}
+.onb-step-sub{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.6;max-width:92%}
+.onb-step.done .onb-step-sub{display:none}
+
+.onb-optional{font-size:8px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#b7b7b0;
+  margin-left:7px;font-family:var(--font-body)}
+.onb-code{font-family:var(--font-display);letter-spacing:.16em;color:var(--ink);font-weight:700}
+
+.onb-tip{position:relative;background:var(--input);border:1px solid var(--hair);border-radius:12px;
+  padding:12px 34px 12px 16px;font-size:11.5px;line-height:1.65;color:#57554f;margin-bottom:14px}
+.onb-tip b{color:var(--ink);font-weight:600}
+.onb-tip-close{position:absolute;top:9px;right:10px;background:none;border:none;font-size:11px;
+  color:var(--muted);cursor:pointer;padding:4px;line-height:1}
+.onb-tip-close:hover{color:var(--ink)}
+
+/* ---------- athlete swipe-through tutorial ---------- */
 .onb-overlay{position:fixed;inset:0;background:var(--bg,#f4f3f0);z-index:999;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;padding:32px 24px;gap:28px}
-.onb-skip{position:absolute;top:24px;right:24px;background:none;border:none;font-size:12px;font-weight:600;
-  color:var(--muted);cursor:pointer;letter-spacing:.04em}
-.onb-slide{text-align:center;max-width:340px}
-.onb-slide-title{font-family:var(--font-display);font-size:24px;font-weight:700;margin-bottom:14px;letter-spacing:-.01em}
-.onb-slide-body{font-size:14px;line-height:1.6;color:#57554f}
-.onb-dots{display:flex;gap:7px}
-.onb-dot{width:6px;height:6px;border-radius:999px;background:var(--hair,#e9e7e1)}
-.onb-dot.on{background:var(--ink,#0f0f0e);width:18px;transition:width .2s}
-
-/* ============ checklist v2: optional tag, inline code, prog tip ============ */
-.onb-optional{font-size:8px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
-  background:var(--input);border-radius:999px;padding:2px 7px;margin-left:6px;vertical-align:middle}
-.onb-code{font-family:var(--font-display);letter-spacing:.14em;color:var(--ink)}
-.onb-tip{position:relative;background:#fdf6e8;border:1px solid #f0e2c4;border-radius:12px;padding:12px 34px 12px 14px;
-  font-size:12px;line-height:1.6;color:#5c4a1a;margin-bottom:14px}
-.onb-tip b{color:#3d3013}
-.onb-tip-close{position:absolute;top:8px;right:10px;background:none;border:none;font-size:12px;color:#a4894a;cursor:pointer;padding:4px}
+  align-items:center;justify-content:center;padding:32px 24px;gap:32px}
+.onb-skip{position:absolute;top:24px;right:24px;background:none;border:none;font-size:11px;font-weight:600;
+  color:var(--muted);cursor:pointer;letter-spacing:.06em;text-transform:uppercase}
+.onb-slide{text-align:center;max-width:320px}
+.onb-slide-title{font-family:var(--font-display);font-size:23px;font-weight:600;margin-bottom:12px;letter-spacing:-.015em}
+.onb-slide-body{font-size:13.5px;line-height:1.65;color:#68655e}
+.onb-dots{display:flex;gap:6px}
+.onb-dot{width:5px;height:5px;border-radius:999px;background:var(--hair,#e9e7e1);transition:all .2s}
+.onb-dot.on{background:var(--ink,#0f0f0e);width:16px}
