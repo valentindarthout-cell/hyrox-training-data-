@@ -58,13 +58,8 @@ function rrActualPaceSec(ref){
 function rrListHTML(results, editable){
   const sorted=[...results].sort((a,b)=>(b.race_date||b.created_at||'')<(a.race_date||a.created_at||'')?-1:1);
   return `
-    ${editable?`
-    <div class="rr-import">
-      <input id="rrUrl" class="text-input" type="url" placeholder="https://www.trainrox.com/results/…" style="margin-bottom:0">
-      <button class="btn-slim" onclick="rrImport()">Import</button>
-    </div>
-    <div class="hint" style="margin-top:6px">Find your race on trainrox.com and paste the result page URL. ★ marks your planner reference race.</div>
-    <div id="rrImportMsg" class="save-msg" style="text-align:left"></div>`:''}
+        ${editable?`
+    <div class="hint" style="margin-top:6px">Add your race below. ★ marks your planner reference race.</div>`:''}
     <div id="rrList">
     ${sorted.length? sorted.map(r=>`
       <div class="race-row">
