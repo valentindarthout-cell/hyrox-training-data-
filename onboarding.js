@@ -21,27 +21,39 @@ async function renderCoachChecklist(force){
   try{ status=await api('/api/workouts?action=onboarding-status'); }catch(e){ return; }
 
   onbSteps=[
-    { done: status.tracks>0, label:'Create your first track', sub:'Elite, Open, Running-focused — however you group athletes',
+    { done: status.programName, label:'Tell athletes what you offer', optional:false,
+      sub:'Add your program name and logo in Settings \u2014 it appears on every workout card your athletes share.',
+      go:function(){ coachTab('settings'); onbScrollTo('csName'); } },
+    { done: status.tracks>0, label:'Create your tracks', optional:false,
+      sub:'Group athletes by level or focus \u2014 Elite, Open, Running-focused. Takes 30 seconds.',
       go:function(){ coachTab('settings'); onbScrollTo('tracksCardHost'); } },
-    { done: status.athletes>0, label:'Add your first athlete',
-      sub: status.athletes>0 ? (status.athletes+' athlete'+(status.athletes>1?'s':'')+' added') : 'Share your invite code — find it in Settings',
-      go:function(){ coachTab('settings'); } },
-    { done: status.hasBlocks, label:'Build your first week', sub:'Add a workout to any lane in Programming',
-      go:function(){ coachTab('prog'); } },
-    { done: status.published, label:'Publish your public page', sub:'A page athletes can find and join from',
-      go:function(){ coachTab('settings'); onbScrollTo('lpSlug'); } }
+    { done: status.athletes>0, label:'Invite your athletes', optional:false,
+      sub: status.inviteCode
+        ? 'Share this code \u2014 they enter it in their app, under Profile \u2192 Coach: <b class="onb-code">'+esc(status.inviteCode)+'</b> <button class="mini-btn" onclick="event.stopPropagation();onbCopyCode(\''+status.inviteCode+'\')">Copy</button>'
+        : 'Find your invite code in Settings and share it with your athletes.',
+      go:function(){ coachTab('settings'); onbScrollTo('coachCode'); } },
+    { done: status.published, label:'Build your public page', optional:true,
+      sub:'No website? Build one in under 5 minutes \u2014 your program, tracks, and testimonials, ready to share and scan via QR code.',
+      go:function(){ coachTab('settings'); onbScrollTo('lpSlug'); } },
+    { done: status.hasBlocks, label:'Build your first week', optional:false,
+      sub:'Go to Programming, save a workout to your Library, then drop it into a track\u2019s lane \u2014 every athlete in that track gets it automatically.',
+      go:function(){ coachTab('prog'); } }
   ];
-  const allDone = onbSteps.every(function(s){ return s.done; });
-  if(allDone && !force){ host.innerHTML=''; return; }
+  const requiredDone = onbSteps.filter(function(s){return !s.optional;}).every(function(s){return s.done;});
+  if(requiredDone && !force){ host.innerHTML=''; return; }
 
   host.innerHTML = '<div class="section-card onb-checklist"><div class="section-label">Getting started</div>'
     + onbSteps.map(function(s,i){
         return '<div class="onb-step '+(s.done?'done':'')+'" onclick="onbGoStep('+i+')">'
-          + '<span class="onb-check">'+(s.done?'✓':(i+1))+'</span>'
-          + '<div class="onb-step-body"><div class="onb-step-label">'+esc(s.label)+'</div><div class="onb-step-sub">'+esc(s.sub)+'</div></div>'
+          + '<span class="onb-check">'+(s.done?'\u2713':(i+1))+'</span>'
+          + '<div class="onb-step-body"><div class="onb-step-label">'+esc(s.label)+(s.optional?' <span class="onb-optional">Optional</span>':'')+'</div>'
+          + '<div class="onb-step-sub">'+s.sub+'</div></div>'
           + '</div>';
       }).join('')
     + '</div>';
+}
+function onbCopyCode(code){
+  navigator.clipboard?.writeText(code).catch(function(){});
 }
 function onbGoStep(i){ if(onbSteps[i]) onbSteps[i].go(); }
 function onbScrollTo(id){
