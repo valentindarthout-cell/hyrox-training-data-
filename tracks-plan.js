@@ -589,3 +589,83 @@ async function qaAdd(){
     setTimeout(()=>{ document.getElementById('qaModal')?.remove(); loadPlanWeek(); },1000);
   }catch(e){ msg.textContent=e.message; }
 }
+/* ================================================================
+   WEEK TEMPLATES — save the current week (all lanes) and re-apply later
+================================================================ */
+let weekTemplates=[];
+
+function wtSaveOpen(){
+  if(!planBlocks.length){
+    alert('This week is empty — add some workouts first.');
+    return;
+  }
+  document.getElementById('wtModal')?.remove();
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="wtModal" class="strava-modal" style="display:flex">
+      <div class="strava-sheet">
+        <div class="strava-sheet-head">
+          <div class="section-label" style="margin:0">Save week as template</div>
+          <button class="mini-btn" onclick="document.getElementById('wtModal').remove()">Close</button>
+        </div>
+        <input id="wtName" class="text-input" type="text" placeholder="Template name (e.g. Base — Week A)">
+        <div class="hint">Saves all ${planBlocks.length} workout${planBlocks.length===1?'':'s'} across every lane this week, by day of week — apply it to any future week and tweak as needed.</div>
+        <div class="sp-actions">
+          <button class="btn-slim" onclick="wtSaveConfirm()">Save template</button>
+          <div id="wtMsg" class="save-msg" style="margin:0;text-align:left"></div>
+        </div>
+      </div>
+    </div>`);
+}
+async function wtSaveConfirm(){
+  const name=document.getElementById('wtName').value.trim();
+  const msg=document.getElementById('wtMsg');
+  if(!name){ msg.textContent='Give the template a name.'; return; }
+  const blocks=planBlocks.map(b=>({
+    day_offset: Math.round((parseDate(b.date)-parseDate(planWeek))/86400000),
+    track_id: blockTrackId(b),
+    title:b.title, workout_type:b.workout_type, duration_min:b.duration_min,
+    objective:b.objective||null, blocks:b.blocks||[], stations:b.stations||{}, subtypes:b.subtypes||[]
+  }));
+  msg.textContent='Saving…';
+  try{
+    await api('/api/workouts',{method:'POST',body:JSON.stringify({action:'save-week-template',name,blocks})});
+    weekTemplates=[]; // force refetch next time the menu opens
+    msg.textContent='Saved';
+    setTimeout(()=>document.getElementById('wtModal')?.remove(),700);
+  }catch(e){ msg.textContent=e.message; }
+}
+
+async function wtApplyMenu(el){
+  document.getElementById('lanePhasePop')?.remove();
+  if(!weekTemplates.length){
+    try{ const d=await api('/api/workouts?action=week-templates'); weekTemplates=d.templates||[]; }catch(e){ weekTemplates=[]; }
+  }
+  const rect=el.getBoundingClientRect();
+  document.body.insertAdjacentHTML('beforeend',
+    `<div id="lanePhasePop" class="qa-pop" style="top:${rect.bottom+6+window.scrollY}px;left:${Math.max(10,rect.left-80)}px">
+      ${weekTemplates.length? weekTemplates.map(t=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:3px 0">
+          <button class="pill" style="text-align:left;flex:1" onclick="wtApplyConfirm('${t.id}')">${esc(t.name)}<br><span style="font-size:9px;opacity:.6">${(t.blocks||[]).length} workout${(t.blocks||[]).length===1?'':'s'}</span></button>
+          <button class="mini-btn" onclick="wtDelete('${t.id}',this)">✕</button>
+        </div>`).join('') : '<span class="hint">No saved templates yet.</span>'}
+    </div>`);
+  setTimeout(()=>document.addEventListener('click', closeLanePop, {once:true}),0);
+}
+async function wtApplyConfirm(id){
+  const pop=document.getElementById('lanePhasePop');
+  if(pop) pop.innerHTML='<span class="hint">Applying…</span>';
+  try{
+    const d=await api('/api/workouts',{method:'POST',body:JSON.stringify({action:'apply-week-template',id,week_start:planWeek})});
+    if(pop) pop.innerHTML=`<span class="hint">Added ${d.created||0} workout${d.created===1?'':'s'}${d.skipped?' · '+d.skipped+' skipped (track no longer exists)':''}</span>`;
+    setTimeout(()=>{ document.getElementById('lanePhasePop')?.remove(); loadPlanWeek(); },1200);
+  }catch(e){
+    if(pop) pop.innerHTML='<span class="hint">'+esc(e.message)+'</span>';
+  }
+}
+async function wtDelete(id, el){
+  try{
+    await api('/api/workouts',{method:'POST',body:JSON.stringify({action:'delete-week-template',id})});
+    weekTemplates=weekTemplates.filter(t=>t.id!==id);
+    el.closest('div[style*="justify-content:space-between"]')?.remove();
+  }catch(e){}
+}
