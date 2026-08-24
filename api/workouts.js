@@ -332,6 +332,66 @@ module.exports = async function handler(req, res){
     return res.status(200).json({ excluded: ex });
   }
 
+  /* ---------------- group programming: week templates ---------------- */
+  if(action === 'week-templates'){
+    const r = await sb(`/rest/v1/week_templates?coach_id=eq.${user.id}&order=created_at.desc`, token, {method:'GET'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not load templates')});
+    return res.status(200).json({ templates: r.data||[] });
+  }
+
+  if(action === 'save-week-template'){
+    const b = req.body||{};
+    if(!b.name || !b.name.trim()) return res.status(400).json({error:'Template name required'});
+    if(!b.blocks || !b.blocks.length) return res.status(400).json({error:'Nothing to save — this week is empty'});
+    const row = { coach_id: user.id, name: b.name.trim(), blocks: b.blocks };
+    const r = await sb('/rest/v1/week_templates', token, {
+      method:'POST', headers:{'Prefer':'return=representation'}, body: JSON.stringify([row])
+    });
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not save template')});
+    return res.status(200).json({ template: Array.isArray(r.data)? r.data[0] : null });
+  }
+
+  if(action === 'delete-week-template'){
+    const { id } = req.body||{};
+    const r = await sb(`/rest/v1/week_templates?id=eq.${id}&coach_id=eq.${user.id}`, token, {method:'DELETE'});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not delete')});
+    return res.status(200).json({ ok:true });
+  }
+
+  if(action === 'apply-week-template'){
+    const { id, week_start } = req.body||{};
+    if(!id || !week_start) return res.status(400).json({error:'id and week_start required'});
+    const tr = await sb(`/rest/v1/week_templates?id=eq.${id}&coach_id=eq.${user.id}`, token, {method:'GET'});
+    const tmpl = tr.ok && tr.data && tr.data[0];
+    if(!tmpl) return res.status(404).json({error:'Template not found'});
+    const trkR = await sb(`/rest/v1/tracks?coach_id=eq.${user.id}&select=id`, token, {method:'GET'});
+    const validTracks = new Set(((trkR.ok && trkR.data)||[]).map(t=>t.id));
+    let created = 0, skipped = 0;
+    for(const blk of (tmpl.blocks||[])){
+      if(!blk.track_id || !validTracks.has(blk.track_id)){ skipped++; continue; }
+      const base = new Date(week_start+'T00:00:00Z');
+      base.setUTCDate(base.getUTCDate() + (blk.day_offset||0));
+      const date = base.toISOString().slice(0,10);
+      const row = {
+        coach_id: user.id, date,
+        title: blk.title||'Workout', workout_type: blk.workout_type||'hyrox',
+        duration_min: blk.duration_min??null, objective: blk.objective||null,
+        blocks: blk.blocks||[], stations: blk.stations||{}, subtypes: blk.subtypes||[],
+        track_ids: [blk.track_id], excluded_athletes: []
+      };
+      const ir = await sb('/rest/v1/plan_blocks', token, {
+        method:'POST', headers:{'Prefer':'return=representation'}, body: JSON.stringify([row])
+      });
+      if(ir.ok && ir.data && ir.data[0]){
+        await materializeBlock(token, user, ir.data[0]);
+        created++;
+      }else{
+        skipped++;
+      }
+    }
+    return res.status(200).json({ created, skipped });
+  }
+
   /* ---------------- coach: onboarding status ---------------- */
   if(action === 'onboarding-status'){
     const [trR, athR, pbR, cpR, prR] = await Promise.all([
