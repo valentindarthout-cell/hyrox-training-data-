@@ -178,13 +178,17 @@ function renderWeekPlan(){
     prog.insertAdjacentHTML('afterbegin',
       `<div class="section-card" id="weekPlanCard">
         ${tipHtml}
-        <div class="coach-toolbar" style="margin-bottom:10px">
+                <div class="coach-toolbar" style="margin-bottom:10px">
           <div class="section-label" style="margin:0">Week plan</div>
           <div style="display:flex;align-items:center;gap:8px">
             <button class="strip-arrow" onclick="shiftPlanWeek(-1)">‹</button>
             <span id="planWeekLabel" class="stats-period-label" style="font-size:11px">—</span>
             <button class="strip-arrow" onclick="shiftPlanWeek(1)">›</button>
           </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <button class="btn-slim secondary" onclick="wtSaveOpen()">Save week as template</button>
+          <button class="btn-slim secondary" onclick="wtApplyMenu(this)">Use template ▾</button>
         </div>
         <div id="weekPlanHost"></div>
       </div>`);
