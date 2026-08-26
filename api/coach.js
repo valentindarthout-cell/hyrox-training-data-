@@ -118,11 +118,45 @@ module.exports = async function handler(req, res){
   if(action === 'set-tracks'){
     const b = req.body||{};
     if(!b.athlete_id) return res.status(400).json({error:'athlete_id required'});
-    const link = await sb(`/rest/v1/profiles?id=eq.${b.athlete_id}&coach_id=eq.${user.id}&select=id`, token, {method:'GET'});
+    const link = await sb(`/rest/v1/profiles?id=eq.${b.athlete_id}&coach_id=eq.${user.id}&select=id,track_ids`, token, {method:'GET'});
     if(!link.ok || !link.data || !link.data.length) return res.status(403).json({error:'Not your athlete'});
-    const r = await sb(`/rest/v1/profiles?id=eq.${b.athlete_id}`, token, {method:'PATCH', body: JSON.stringify({ track_ids: b.track_ids||[] })});
+    const oldTracks = link.data[0].track_ids || [];
+    const newTracks = b.track_ids || [];
+    const r = await sb(`/rest/v1/profiles?id=eq.${b.athlete_id}`, token, {method:'PATCH', body: JSON.stringify({ track_ids: newTracks })});
     if(!r.ok) return res.status(500).json({error:'Could not save tracks'});
-    return res.status(200).json({ ok:true });
+
+    // Backfill: sweep the athlete into any existing/upcoming workouts on newly added
+    // tracks, and drop pending (not-done) assignments from tracks they just left.
+    const added = newTracks.filter(t=>!oldTracks.includes(t));
+    const removed = oldTracks.filter(t=>!newTracks.includes(t));
+    const today = new Date().toISOString().slice(0,10);
+    let backfilled = 0;
+
+    if(added.length){
+      const bq = await sb(`/rest/v1/plan_blocks?coach_id=eq.${user.id}&track_ids=ov.{${added.join(',')}}&date=gte.${today}`, token, {method:'GET'});
+      const blocks = (bq.ok && bq.data) || [];
+      for(const blk of blocks){
+        if((blk.excluded_athletes||[]).includes(b.athlete_id)) continue;
+        const ex = await sb(`/rest/v1/assignments?plan_block_id=eq.${blk.id}&athlete_id=eq.${b.athlete_id}`, token, {method:'GET'});
+        if(ex.ok && ex.data && ex.data.length) continue;
+        const row = {
+          coach_id: user.id, athlete_id: b.athlete_id, plan_block_id: blk.id, date: blk.date,
+          title: blk.title, workout_type: blk.workout_type, duration_min: blk.duration_min,
+          objective: blk.objective, blocks: blk.blocks, stations: blk.stations, subtypes: blk.subtypes,
+          workout_id: blk.template_id || null
+        };
+        const ir = await sb('/rest/v1/assignments', token, {method:'POST', body: JSON.stringify([row])});
+        if(ir.ok) backfilled++;
+      }
+    }
+    if(removed.length){
+      const bq = await sb(`/rest/v1/plan_blocks?coach_id=eq.${user.id}&track_ids=ov.{${removed.join(',')}}&date=gte.${today}`, token, {method:'GET'});
+      const blockIds = ((bq.ok && bq.data) || []).map(x=>x.id);
+      if(blockIds.length){
+        await sb(`/rest/v1/assignments?plan_block_id=in.(${blockIds.join(',')})&athlete_id=eq.${b.athlete_id}&status=neq.done`, token, {method:'DELETE'});
+      }
+    }
+    return res.status(200).json({ ok:true, backfilled });
   }
   if(action === 'crm'){
     const b = req.body || {};
