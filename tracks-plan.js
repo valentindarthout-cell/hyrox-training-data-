@@ -256,11 +256,13 @@ function paintLanes(){
               const badge = fb && fb.done>0
                 ? '<span class="lw-fb">'+fb.done+' done'+(avgDiff?' \u00b7 RPE '+avgDiff:'')+(fb.liked>0?' \u00b7 \u2665'+fb.liked:'')+'</span>'
                 : '';
-              const arrows = arr.length>1 ? `<span style="display:inline-flex;gap:2px;margin-left:6px">
-                ${ci>0?`<button style="border:none;background:rgba(255,255,255,.25);border-radius:3px;font-size:9px;line-height:1;padding:2px 4px;cursor:pointer" onclick="event.stopPropagation();moveBlock('${ds}','${t.id}','${b.id}',-1)">▲</button>`:''}
-                ${ci<arr.length-1?`<button style="border:none;background:rgba(255,255,255,.25);border-radius:3px;font-size:9px;line-height:1;padding:2px 4px;cursor:pointer" onclick="event.stopPropagation();moveBlock('${ds}','${t.id}','${b.id}',1)">▼</button>`:''}
+                            const chevUp='<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>';
+              const chevDn='<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+              const arrowBtn=(dir,icon,enabled)=>enabled?`<button style="width:16px;height:16px;display:flex;align-items:center;justify-content:center;border:none;border-radius:50%;background:rgba(255,255,255,.22);color:#fff;cursor:pointer;padding:0;transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.4)'" onmouseout="this.style.background='rgba(255,255,255,.22)'" onclick="event.stopPropagation();moveBlock('${ds}','${t.id}','${b.id}',${dir})">${icon}</button>`:'';
+              const arrows = arr.length>1 ? `<span class="lw-reorder" style="display:inline-flex;gap:3px;margin-left:8px;vertical-align:middle;opacity:0;transition:opacity .15s">
+                ${arrowBtn(-1,chevUp,ci>0)}${arrowBtn(1,chevDn,ci<arr.length-1)}
               </span>` : '';
-              return `<div class="lane-wk" style="background:${col}" onclick="event.stopPropagation();pbEdit('${b.id}')">
+              return `<div class="lane-wk" style="background:${col}" onclick="event.stopPropagation();pbEdit('${b.id}')" onmouseover="this.querySelector('.lw-reorder')&&(this.querySelector('.lw-reorder').style.opacity='1')" onmouseout="this.querySelector('.lw-reorder')&&(this.querySelector('.lw-reorder').style.opacity='0')">
                 ${esc(b.title||'Workout')}${b.duration_min?`<span class="lw-dur">${b.duration_min}'</span>`:''}${arrows}${badge}
               </div>`;
             }).join('')}
