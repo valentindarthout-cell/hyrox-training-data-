@@ -22,7 +22,16 @@ module.exports = async function handler(req, res){
   if(!user) return res.status(401).json({error:'Session expired'});
 
   const action = (req.method === 'GET' ? req.query.action : (req.body||{}).action) || '';
-
+  if(action === 'tracks-for-code'){
+    const { code } = req.query || {};
+    if(!code || code.trim().length < 4) return res.status(400).json({error:'Enter the code your coach gave you'});
+    const r = await sb('/rest/v1/rpc/tracks_for_code', token, {
+      method:'POST', body: JSON.stringify({ code: code.trim() })
+    });
+    if(!r.ok) return res.status(500).json({error:'Could not look up code'});
+    if(r.data && r.data.error) return res.status(400).json({error:r.data.error});
+    return res.status(200).json({ ...r.data });
+  }
   /* ---------- athlete-side actions ---------- */
   if(action === 'join'){
     const { code } = req.body || {};
