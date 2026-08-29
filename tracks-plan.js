@@ -249,15 +249,19 @@ function paintLanes(){
           const ds=addDays(planWeek,i);
           const cells=laneBlocks.filter(b=>b.date===ds);
           return `<div class="lane-cell ${ds===todayStr()?'today':''}" onclick="pbNewForLane('${ds}','${t.id}')">
-            ${cells.map(b=>{
+                        ${cells.slice().sort((a,b)=>(a.position||0)-(b.position||0)).map((b,ci,arr)=>{
               const col=SPLIT_COLORS[b.workout_type]||'#888';
               const fb=b._feedback;
               const avgDiff = fb && fb.diffCount>0 ? (fb.diffSum/fb.diffCount).toFixed(1) : null;
               const badge = fb && fb.done>0
                 ? '<span class="lw-fb">'+fb.done+' done'+(avgDiff?' \u00b7 RPE '+avgDiff:'')+(fb.liked>0?' \u00b7 \u2665'+fb.liked:'')+'</span>'
                 : '';
+              const arrows = arr.length>1 ? `<span style="display:inline-flex;gap:2px;margin-left:6px">
+                ${ci>0?`<button style="border:none;background:rgba(255,255,255,.25);border-radius:3px;font-size:9px;line-height:1;padding:2px 4px;cursor:pointer" onclick="event.stopPropagation();moveBlock('${ds}','${t.id}','${b.id}',-1)">▲</button>`:''}
+                ${ci<arr.length-1?`<button style="border:none;background:rgba(255,255,255,.25);border-radius:3px;font-size:9px;line-height:1;padding:2px 4px;cursor:pointer" onclick="event.stopPropagation();moveBlock('${ds}','${t.id}','${b.id}',1)">▼</button>`:''}
+              </span>` : '';
               return `<div class="lane-wk" style="background:${col}" onclick="event.stopPropagation();pbEdit('${b.id}')">
-                ${esc(b.title||'Workout')}${b.duration_min?`<span class="lw-dur">${b.duration_min}'</span>`:''}${badge}
+                ${esc(b.title||'Workout')}${b.duration_min?`<span class="lw-dur">${b.duration_min}'</span>`:''}${arrows}${badge}
               </div>`;
             }).join('')}
           </div>`;
@@ -668,4 +672,17 @@ async function wtDelete(id, el){
     weekTemplates=weekTemplates.filter(t=>t.id!==id);
     el.closest('div[style*="justify-content:space-between"]')?.remove();
   }catch(e){}
+}
+async function moveBlock(date, trackId, blockId, dir){
+  const dayBlocks = planBlocks.filter(b=>b.date===date && blockTrackId(b)===trackId)
+    .sort((a,b)=>(a.position||0)-(b.position||0));
+  const idx = dayBlocks.findIndex(b=>b.id===blockId);
+  const swapIdx = idx+dir;
+  if(swapIdx<0 || swapIdx>=dayBlocks.length) return;
+  [dayBlocks[idx], dayBlocks[swapIdx]] = [dayBlocks[swapIdx], dayBlocks[idx]];
+  dayBlocks.forEach((b,i)=>{ b.position=i; });
+  paintLanes();
+  try{
+    await api('/api/workouts',{method:'POST',body:JSON.stringify({action:'reorder-blocks',date,track_id:trackId,order:dayBlocks.map(b=>b.id)})});
+  }catch(e){ loadPlanWeek(); }
 }
