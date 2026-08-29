@@ -408,7 +408,27 @@ function renderWeekStrip(){
   }
   strip.innerHTML=html;
 }
-function shiftWeek(n){ weekStart=addDays(weekStart,7*n); renderWeekStrip(); refreshWeekDots(); }
+function shiftWeek(n){
+  const nextStart = addDays(weekStart,7*n);
+  const thisMonday = mondayOf(todayStr());
+  const cap = addDays(thisMonday,13); // end of next week
+  if(n>0 && nextStart>cap){
+    weekCapMsg();
+    return;
+  }
+  weekStart=nextStart;
+  renderWeekStrip(); refreshWeekDots();
+}
+function weekCapMsg(){
+  let el=document.getElementById('weekCapMsg');
+  if(!el){
+    document.getElementById('weekStrip').insertAdjacentHTML('afterend','<div id="weekCapMsg" class="hint"></div>');
+    el=document.getElementById('weekCapMsg');
+  }
+  el.textContent="Your coach hasn't planned that far ahead yet.";
+  clearTimeout(window._wcmTimer);
+  window._wcmTimer=setTimeout(()=>{ el.textContent=''; },2500);
+}
 function goToday(){ selectDay(todayStr()); }
 async function selectDay(ds){
   selectedDate=ds; weekStart=mondayOf(ds);
