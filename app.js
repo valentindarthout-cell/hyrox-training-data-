@@ -134,16 +134,64 @@ function renderCoachSection(){
     linked.style.display='none'; un.style.display='block';
   }
 }
+let jcPending=null, jcSelectedTrack=null;
+
 async function joinCoach(){
   const code=document.getElementById('coachCode').value.trim();
   const msg=document.getElementById('coachMsg');
+  if(!code){ msg.textContent='Enter the code your coach gave you'; return; }
+  msg.textContent='Checking code…';
+  try{
+    const d=await api(`/api/coach?action=tracks-for-code&code=${encodeURIComponent(code)}`);
+    const tracks=d.tracks||[];
+    if(!tracks.length){
+      await jcFinishJoin(code, null);
+      return;
+    }
+    jcPending={ code, tracks, program_name:d.program_name };
+    jcSelectedTrack=null;
+    jcShowPicker();
+    msg.textContent='';
+  }catch(e){ msg.textContent=e.message; }
+}
+
+function jcShowPicker(){
+  let host=document.getElementById('coachTrackPicker');
+  if(!host){
+    document.getElementById('coachCode').insertAdjacentHTML('afterend', '<div id="coachTrackPicker"></div>');
+    host=document.getElementById('coachTrackPicker');
+  }
+  host.innerHTML = `
+    <div class="section-sublabel" style="margin-top:14px">Which track fits you?</div>
+    <div class="pill-row wrap" id="jcTrackPills">
+      ${jcPending.tracks.map(t=>`<button class="pill" style="border-color:${t.color||'#999'}" onclick="jcSelectTrack('${t.id}',this)">${esc(t.name)}</button>`).join('')}
+    </div>
+    <button class="btn-slim" style="margin-top:10px" onclick="jcConfirmJoin()">Join ${jcPending.program_name?esc(jcPending.program_name):'the program'}</button>
+  `;
+}
+function jcSelectTrack(id, el){
+  jcSelectedTrack=id;
+  document.querySelectorAll('#jcTrackPills .pill').forEach(b=>b.classList.toggle('active',b===el));
+}
+async function jcConfirmJoin(){
+  const msg=document.getElementById('coachMsg');
+  if(!jcSelectedTrack){ msg.textContent='Pick a track first'; return; }
+  await jcFinishJoin(jcPending.code, jcSelectedTrack);
+}
+async function jcFinishJoin(code, track_id){
+  const msg=document.getElementById('coachMsg');
   msg.textContent='Joining…';
   try{
-    const d=await api('/api/coach',{method:'POST',body:JSON.stringify({action:'join',code})});
+    const body={action:'join',code}; if(track_id) body.track_id=track_id;
+    const d=await api('/api/coach',{method:'POST',body:JSON.stringify(body)});
     coachInfo=d.coach||null;
+    document.getElementById('coachTrackPicker')?.remove();
+    jcPending=null; jcSelectedTrack=null;
     renderCoachSection();
     msg.textContent='Welcome to '+((coachInfo&&coachInfo.program_name)||'the program');
     setTimeout(()=>msg.textContent='',3000);
+    if(window.loadDay && typeof selectedDate!=='undefined') loadDay(selectedDate);
+    if(window.refreshWeekDots) refreshWeekDots();
   }catch(e){ msg.textContent=e.message; }
 }
 async function leaveCoach(){
