@@ -704,11 +704,18 @@ module.exports = async function handler(req, res){
   }
 
   /* ---------------- athlete ---------------- */
-  if(action === 'my-assignments'){
+    if(action === 'my-assignments'){
     const { start, end } = req.query||{};
     if(!start || !end) return res.status(400).json({error:'start and end required'});
-    const a = await sb(`/rest/v1/assignments?athlete_id=eq.${user.id}&date=gte.${start}&date=lte.${end}&order=date.asc`, token, {method:'GET'});
-    const l = await sb(`/rest/v1/week_labels?athlete_id=eq.${user.id}&week_start=gte.${start}&week_start=lte.${end}`, token, {method:'GET'});
+    const now = new Date();
+    const dow = now.getUTCDay();
+    const mondayOffset = dow===0 ? -6 : 1-dow;
+    const thisMonday = new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate()+mondayOffset));
+    const maxEnd = new Date(thisMonday); maxEnd.setUTCDate(maxEnd.getUTCDate()+13);
+    const cap = maxEnd.toISOString().slice(0,10);
+    const clampedEnd = end > cap ? cap : end;
+    const a = await sb(`/rest/v1/assignments?athlete_id=eq.${user.id}&date=gte.${start}&date=lte.${clampedEnd}&order=date.asc,position.asc`, token, {method:'GET'});
+    const l = await sb(`/rest/v1/week_labels?athlete_id=eq.${user.id}&week_start=gte.${start}&week_start=lte.${clampedEnd}`, token, {method:'GET'});
     if(!a.ok) return res.status(500).json({error: dbErr(a,'Could not load')});
     return res.status(200).json({ assignments: a.data||[], labels: (l.ok && l.data)||[] });
   }
