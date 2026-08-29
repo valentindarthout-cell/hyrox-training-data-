@@ -33,11 +33,13 @@ module.exports = async function handler(req, res){
     return res.status(200).json({ ...r.data });
   }
   /* ---------- athlete-side actions ---------- */
-  if(action === 'join'){
-    const { code } = req.body || {};
+    if(action === 'join'){
+    const { code, track_id } = req.body || {};
     if(!code || code.trim().length < 4) return res.status(400).json({error:'Enter the code your coach gave you'});
-    const r = await sb('/rest/v1/rpc/join_coach', token, {
-      method:'POST', body: JSON.stringify({ code: code.trim() })
+    const rpc = track_id ? 'join_coach_with_track' : 'join_coach';
+    const body = track_id ? { code: code.trim(), p_track_id: track_id } : { code: code.trim() };
+    const r = await sb(`/rest/v1/rpc/${rpc}`, token, {
+      method:'POST', body: JSON.stringify(body)
     });
     if(!r.ok) return res.status(500).json({error:'Could not join'});
     if(r.data && r.data.error) return res.status(400).json({error:r.data.error});
