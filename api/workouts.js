@@ -92,8 +92,8 @@ async function materializeBlock(token, user, block){
     date: block.date, title: block.title, workout_type: block.workout_type,
     duration_min: block.duration_min, objective: block.objective,
     blocks: block.blocks, stations: block.stations, subtypes: block.subtypes,
-    workout_id: block.template_id || null
-  };
+    workout_id: block.template_id || null, position: block.position ?? 0
+};
   for(const a of existing){
     if(a.status === 'done') continue;
     if(!targets.includes(a.athlete_id)){
@@ -259,7 +259,7 @@ module.exports = async function handler(req, res){
   if(action === 'blocks'){
     const { start, end } = req.query||{};
     if(!start || !end) return res.status(400).json({error:'start and end required'});
-    const r = await sb(`/rest/v1/plan_blocks?coach_id=eq.${user.id}&date=gte.${start}&date=lte.${end}&order=date.asc`, token, {method:'GET'});
+    const r = await sb(`/rest/v1/plan_blocks?coach_id=eq.${user.id}&date=gte.${start}&date=lte.${end}&order=date.asc,position.asc,created_at.asc`, token, {method:'GET'});
     if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not load plan')});
     const blocks = r.data||[];
     if(blocks.length){
@@ -280,13 +280,18 @@ module.exports = async function handler(req, res){
   if(action === 'save-block'){
     const b = req.body||{};
     if(!b.date) return res.status(400).json({error:'date required'});
+    let position = b.position;
+    if(!b.id && position === undefined){
+      const cnt = await sb(`/rest/v1/plan_blocks?coach_id=eq.${user.id}&date=eq.${b.date}&track_ids=cs.{${(b.track_ids||[])[0]}}&select=id`, token, {method:'GET'});
+      position = (cnt.ok && cnt.data) ? cnt.data.length : 0;
+    }
     const row = {
       coach_id: user.id, date: b.date,
       title: b.title||'Workout', workout_type: b.workout_type||'hyrox',
       duration_min: b.duration_min??null, objective: b.objective||null,
       blocks: b.blocks||[], stations: b.stations||{}, subtypes: b.subtypes||[],
       track_ids: b.track_ids||[], excluded_athletes: b.excluded_athletes||[],
-      template_id: b.template_id||null
+      template_id: b.template_id||null, position: position ?? 0
     };
     let r;
     if(b.id){
@@ -304,7 +309,15 @@ module.exports = async function handler(req, res){
     const mat = await materializeBlock(token, user, saved);
     return res.status(200).json({ block: saved, athletes: mat.targets });
   }
-
+  if(action === 'reorder-blocks'){
+    const { date, track_id, order } = req.body||{};
+    if(!date || !track_id || !Array.isArray(order) || !order.length) return res.status(400).json({error:'date, track_id, order required'});
+    for(let i=0;i<order.length;i++){
+      await sb(`/rest/v1/plan_blocks?id=eq.${order[i]}&coach_id=eq.${user.id}`, token, {method:'PATCH', body: JSON.stringify({position:i})});
+      await sb(`/rest/v1/assignments?plan_block_id=eq.${order[i]}&coach_id=eq.${user.id}`, token, {method:'PATCH', body: JSON.stringify({position:i})});
+    }
+    return res.status(200).json({ok:true});
+  }
   if(action === 'delete-block'){
     const { id } = req.body||{};
     if(!id) return res.status(400).json({error:'id required'});
