@@ -27,6 +27,7 @@ module.exports = async function handler(req, res){
     customer: existingCustomer || undefined,
     customer_email: existingCustomer ? undefined : user.email,
     allow_promotion_codes: true,
+    subscription_data: { trial_period_days: 7 },
     success_url: `${req.headers.origin}/?payment=success`,
     cancel_url: `${req.headers.origin}/?payment=cancelled`,
     metadata: { coach_id: coachId, athlete_id: user.id }
