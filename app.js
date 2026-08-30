@@ -1942,14 +1942,15 @@ async function runPasteExtract(){
 /* ================================================================
    ATHLETE — ASSIGNED WORKOUTS + WEEK LABELS
 ================================================================ */
-let myAssignments=[], weekLabelMap={};
+let myAssignments=[], weekLabelMap={}, paymentRequired=false;
 async function loadAssignments(){
   try{
     const d=await api(`/api/workouts?action=my-assignments&start=${weekStart}&end=${addDays(weekStart,6)}`);
     myAssignments=d.assignments||[];
+    paymentRequired=!!d.payment_required;
     weekLabelMap={};
     (d.labels||[]).forEach(l=>weekLabelMap[l.week_start]=l.label);
-  }catch(e){ myAssignments=[]; }
+  }catch(e){ myAssignments=[]; paymentRequired=false; }
   renderWeekLabelChip();
   renderAssigned();
 }
@@ -2000,6 +2001,15 @@ function athleteRefFooter(){
 }
 function renderAssigned(){
   const wrap=document.getElementById('assignedWrap'); if(!wrap) return;
+  if(paymentRequired){
+    wrap.innerHTML=`<div class="section-card" style="text-align:center">
+      <div class="section-label" style="margin-bottom:6px">Subscription required</div>
+      <div class="hint" style="margin-bottom:14px">Your trial has ended — subscribe to keep seeing ${coachInfo&&coachInfo.program_name?esc(coachInfo.program_name):'your'} programming.</div>
+      <button class="cta" onclick="subscribeNow()">Subscribe</button>
+      <div id="subMsg" class="save-msg" style="margin-top:8px"></div>
+    </div>`;
+    return;
+  }
   const todays=myAssignments.filter(a=>a.date===selectedDate);
   if(!todays.length){ wrap.innerHTML=''; return; }
   wrap.innerHTML=todays.map((a,i)=>{
@@ -2072,6 +2082,15 @@ async function markDone(id, idx){
   }catch(e){
     document.getElementById('saveMsg').textContent=e.message;
   }
+}
+async function subscribeNow(){
+  const msg=document.getElementById('subMsg');
+  if(msg) msg.textContent='Redirecting to checkout…';
+  try{
+    const d=await api('/api/stripe-checkout',{method:'POST',body:JSON.stringify({})});
+    if(d.url) window.location.href=d.url;
+    else if(msg) msg.textContent='Could not start checkout';
+  }catch(e){ if(msg) msg.textContent=e.message; }
 }
 /* ================================================================
    STATS ENGINE
