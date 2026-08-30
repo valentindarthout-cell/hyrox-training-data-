@@ -1,6 +1,6 @@
 const { sb } = require('./_supabase.js');
 const Stripe = require('stripe');
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2025-03-31.basil' });
 
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
