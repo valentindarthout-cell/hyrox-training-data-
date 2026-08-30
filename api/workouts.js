@@ -715,9 +715,9 @@ module.exports = async function handler(req, res){
     const cap = maxEnd.toISOString().slice(0,10);
     const clampedEnd = end > cap ? cap : end;
 
-        const payR = await sb('/rest/v1/rpc/athlete_payment_status', token, {method:'POST', body:'{}'});
+            const payR = await sb('/rest/v1/rpc/athlete_payment_status', token, {method:'POST', body:'{}'});
     if(payR.ok && payR.data && payR.data.payment_required){
-      return res.status(200).json({ assignments: [], labels: [], payment_required: true });
+      return res.status(200).json({ assignments: [], labels: [], payment_required: true, payment_reason: payR.data.reason||'lapsed' });
     }
 
     const a = await sb(`/rest/v1/assignments?athlete_id=eq.${user.id}&date=gte.${start}&date=lte.${clampedEnd}&order=date.asc,position.asc`, token, {method:'GET'});
