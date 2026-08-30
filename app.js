@@ -204,11 +204,17 @@ async function leaveCoach(){
     setTimeout(()=>msg.textContent='',3000);
   }catch(e){ msg.textContent=e.message; }
 }
-function renderSubscriptionSection(){
+async function renderSubscriptionSection(){
   if(!coachInfo) return;
   const anchor=document.getElementById('setFirstName');
   if(!anchor) return;
+  let hasSub=false;
+  try{
+    const d=await api('/api/workouts?action=subscription-status');
+    hasSub=!!d.has_subscription;
+  }catch(e){ return; }
   let host=document.getElementById('subManageHost');
+  if(!hasSub){ if(host) host.closest('.section-card').remove(); return; }
   if(!host){
     anchor.closest('.section-card').insertAdjacentHTML('afterend',
       '<div class="section-card"><div class="section-label">Subscription</div><div id="subManageHost"></div></div>');
