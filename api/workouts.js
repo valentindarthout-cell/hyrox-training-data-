@@ -704,7 +704,7 @@ module.exports = async function handler(req, res){
   }
 
   /* ---------------- athlete ---------------- */
-    if(action === 'my-assignments'){
+      if(action === 'my-assignments'){
     const { start, end } = req.query||{};
     if(!start || !end) return res.status(400).json({error:'start and end required'});
     const now = new Date();
@@ -714,6 +714,19 @@ module.exports = async function handler(req, res){
     const maxEnd = new Date(thisMonday); maxEnd.setUTCDate(maxEnd.getUTCDate()+13);
     const cap = maxEnd.toISOString().slice(0,10);
     const clampedEnd = end > cap ? cap : end;
+
+    const crm = await sb(`/rest/v1/coach_crm?athlete_id=eq.${user.id}&select=coach_id,paid_until,status`, token, {method:'GET'});
+    const row = crm.ok && crm.data && crm.data[0];
+    const coachR = await sb(`/rest/v1/profiles?id=eq.${user.id}&select=coach_id`, token, {method:'GET'});
+    const coachId = coachR.ok && coachR.data && coachR.data[0] && coachR.data[0].coach_id;
+    if(coachId){
+      const coachProfile = await sb(`/rest/v1/profiles?id=eq.${coachId}&select=stripe_price_id`, token, {method:'GET'});
+      const paymentRequired = coachProfile.ok && coachProfile.data && coachProfile.data[0] && coachProfile.data[0].stripe_price_id;
+      if(paymentRequired && (!row || !row.paid_until || new Date(row.paid_until) < new Date())){
+        return res.status(200).json({ assignments: [], labels: [], payment_required: true });
+      }
+    }
+
     const a = await sb(`/rest/v1/assignments?athlete_id=eq.${user.id}&date=gte.${start}&date=lte.${clampedEnd}&order=date.asc,position.asc`, token, {method:'GET'});
     const l = await sb(`/rest/v1/week_labels?athlete_id=eq.${user.id}&week_start=gte.${start}&week_start=lte.${clampedEnd}`, token, {method:'GET'});
     if(!a.ok) return res.status(500).json({error: dbErr(a,'Could not load')});
