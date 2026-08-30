@@ -1942,12 +1942,13 @@ async function runPasteExtract(){
 /* ================================================================
    ATHLETE — ASSIGNED WORKOUTS + WEEK LABELS
 ================================================================ */
-let myAssignments=[], weekLabelMap={}, paymentRequired=false;
+let myAssignments=[], weekLabelMap={}, paymentRequired=false, paymentReason='lapsed';
 async function loadAssignments(){
   try{
     const d=await api(`/api/workouts?action=my-assignments&start=${weekStart}&end=${addDays(weekStart,6)}`);
     myAssignments=d.assignments||[];
     paymentRequired=!!d.payment_required;
+    paymentReason=d.payment_reason||'lapsed';
     weekLabelMap={};
     (d.labels||[]).forEach(l=>weekLabelMap[l.week_start]=l.label);
   }catch(e){ myAssignments=[]; paymentRequired=false; }
@@ -2001,10 +2002,14 @@ function athleteRefFooter(){
 }
 function renderAssigned(){
   const wrap=document.getElementById('assignedWrap'); if(!wrap) return;
-  if(paymentRequired){
+    if(paymentRequired){
+    const progName = coachInfo&&coachInfo.program_name?esc(coachInfo.program_name):'your coach\'s';
+    const copy = paymentReason==='new'
+      ? { title:'Subscribe to get started', body:`Your program is ready — subscribe to unlock ${progName} programming.` }
+      : { title:'Subscription required', body:`Your subscription has ended — resubscribe to keep seeing ${progName} programming.` };
     wrap.innerHTML=`<div class="section-card" style="text-align:center">
-      <div class="section-label" style="margin-bottom:6px">Subscription required</div>
-      <div class="hint" style="margin-bottom:14px">Your trial has ended — subscribe to keep seeing ${coachInfo&&coachInfo.program_name?esc(coachInfo.program_name):'your'} programming.</div>
+      <div class="section-label" style="margin-bottom:6px">${copy.title}</div>
+      <div class="hint" style="margin-bottom:14px">${copy.body}</div>
       <button class="cta" onclick="subscribeNow()">Subscribe</button>
       <div id="subMsg" class="save-msg" style="margin-top:8px"></div>
     </div>`;
