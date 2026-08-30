@@ -2,7 +2,7 @@ const { sb } = require('./_supabase.js');
 const Stripe = require('stripe');
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY; // needed: webhooks have no user JWT
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 module.exports.config = { api: { bodyParser: false } };
 
@@ -38,7 +38,7 @@ module.exports = async function handler(req, res){
         body: JSON.stringify([{
           coach_id, athlete_id, status:'active',
           stripe_customer_id: s.customer, stripe_subscription_id: s.subscription,
-          paid_until: new Date(Date.now()+32*86400000).toISOString() // safety window; invoice.paid refines this
+          paid_until: new Date(Date.now()+32*86400000).toISOString()
         }])
       });
     }
