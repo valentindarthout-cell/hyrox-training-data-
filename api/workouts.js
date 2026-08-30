@@ -749,6 +749,10 @@ module.exports = async function handler(req, res){
     if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not update')});
     return res.status(200).json({ liked:newVal });
   }
-
+  if(action === 'subscription-status'){
+    const payR = await sb('/rest/v1/rpc/athlete_payment_status', token, {method:'POST', body:'{}'});
+    const hasSub = payR.ok && payR.data && payR.data.has_subscription;
+    return res.status(200).json({ has_subscription: !!hasSub });
+  }
   return res.status(400).json({error:'Unknown action'});
 };
