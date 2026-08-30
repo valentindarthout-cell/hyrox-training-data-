@@ -206,7 +206,7 @@ async function leaveCoach(){
 }
 async function renderSubscriptionSection(){
   if(!coachInfo) return;
-  const anchor=document.getElementById('setFirstName');
+    const anchor=document.getElementById('coachLinked');
   if(!anchor) return;
   let hasSub=false;
   try{
