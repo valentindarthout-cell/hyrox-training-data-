@@ -15,8 +15,8 @@ module.exports = async function handler(req, res){
     const coachId = link.ok && link.data && link.data[0] && link.data[0].coach_id;
     if(!coachId) return res.status(400).json({error:'You are not linked to a coach yet'});
 
-    const crmR = await sb(`/rest/v1/coach_crm?coach_id=eq.${coachId}&athlete_id=eq.${user.id}&select=stripe_customer_id`, token, {method:'GET'});
-    const customerId = crmR.ok && crmR.data && crmR.data[0] && crmR.data[0].stripe_customer_id;
+        const custR = await sb('/rest/v1/rpc/my_stripe_customer_id', token, {method:'POST', body:'{}'});
+    const customerId = custR.ok ? custR.data : null;
     if(!customerId) return res.status(400).json({error:"No subscription found yet — subscribe first."});
 
     const session = await stripe.billingPortal.sessions.create({
