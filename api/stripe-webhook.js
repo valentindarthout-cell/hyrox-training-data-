@@ -64,11 +64,17 @@ module.exports = async function handler(req, res){
       }
     }
 
-    if(event.type === 'invoice.payment_failed' || event.type === 'customer.subscription.deleted'){
+        if(event.type === 'invoice.payment_failed'){
       const obj = event.data.object;
-      const subId = obj.subscription || obj.id;
-      await svc(`/rest/v1/coach_crm?stripe_subscription_id=eq.${subId}`, {
-        method:'PATCH', body: JSON.stringify({ status:'past_due' })
+      await svc(`/rest/v1/coach_crm?stripe_subscription_id=eq.${obj.subscription}`, {
+        method:'PATCH', body: JSON.stringify({ status:'past_due', paid_until: new Date().toISOString() })
+      });
+    }
+
+    if(event.type === 'customer.subscription.deleted'){
+      const obj = event.data.object;
+      await svc(`/rest/v1/coach_crm?stripe_subscription_id=eq.${obj.id}`, {
+        method:'PATCH', body: JSON.stringify({ status:'churned', paid_until: new Date().toISOString() })
       });
     }
   }catch(e){
