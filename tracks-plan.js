@@ -526,10 +526,10 @@ function renderLibrary(){
     </div>`;
   }).join('');
 }
-let qa={idx:null, day:null, tracks:[]};
+let qa={idx:null, days:[], tracks:[]};
 function qaOpen(i){
   const t=wkTemplates[i]; if(!t) return;
-  qa={idx:i, day:null, tracks:coachTracks.map(x=>x.id)};
+    qa={idx:i, days:[], tracks:coachTracks.map(x=>x.id)};
   document.getElementById('qaModal')?.remove();
   const dows=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   document.body.insertAdjacentHTML('beforeend',
@@ -555,8 +555,10 @@ function qaOpen(i){
   qaPaintTracks();
 }
 function qaPickDay(el){
-  qa.day=el.dataset.d;
-  document.querySelectorAll('#qaDays .pill').forEach(b=>b.classList.toggle('active',b===el));
+  const d=el.dataset.d;
+  const i=qa.days.indexOf(d);
+  if(i>-1) qa.days.splice(i,1); else qa.days.push(d);
+  el.classList.toggle('active');
 }
 function qaPaintTracks(){
   document.getElementById('qaTracks').innerHTML=coachTracks.map(t=>{
@@ -577,22 +579,24 @@ function qaEditTemplate(){
 async function qaAdd(){
   const msg=document.getElementById('qaMsg');
   const t=wkTemplates[qa.idx];
-  if(!qa.day){ msg.textContent='Pick a day.'; return; }
+  if(!qa.days.length){ msg.textContent='Pick at least one day.'; return; }
   if(!qa.tracks.length){ msg.textContent='Pick at least one track.'; return; }
   msg.textContent='Adding…';
   try{
-    let total=0;
-    for(const tid of qa.tracks){
-      const d=await api('/api/workouts',{method:'POST',body:JSON.stringify({
-        action:'save-block', date:qa.day,
-        title:t.title, workout_type:t.workout_type, duration_min:t.duration_min,
-        objective:t.objective||null, blocks:t.blocks||[], stations:t.stations||{}, subtypes:t.subtypes||[],
-        track_ids:[tid], excluded_athletes:[], template_id:t.id
-      })});
-      total+=d.athletes||0;
+    let total=0, created=0;
+    for(const date of qa.days){
+      for(const tid of qa.tracks){
+        const d=await api('/api/workouts',{method:'POST',body:JSON.stringify({
+          action:'save-block', date,
+          title:t.title, workout_type:t.workout_type, duration_min:t.duration_min,
+          objective:t.objective||null, blocks:t.blocks||[], stations:t.stations||{}, subtypes:t.subtypes||[],
+          track_ids:[tid], excluded_athletes:[], template_id:t.id
+        })});
+        total+=d.athletes||0; created++;
+      }
     }
-    msg.textContent='Added to '+qa.tracks.length+' lane'+(qa.tracks.length>1?'s':'')+' — '+total+' athlete'+(total===1?'':'s');
-    setTimeout(()=>{ document.getElementById('qaModal')?.remove(); loadPlanWeek(); },1000);
+    msg.textContent='Added to '+qa.days.length+' day'+(qa.days.length>1?'s':'')+' × '+qa.tracks.length+' lane'+(qa.tracks.length>1?'s':'')+' — '+total+' athlete assignment'+(total===1?'':'s');
+    setTimeout(()=>{ document.getElementById('qaModal')?.remove(); loadPlanWeek(); },1200);
   }catch(e){ msg.textContent=e.message; }
 }
 /* ================================================================
