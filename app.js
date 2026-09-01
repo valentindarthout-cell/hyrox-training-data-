@@ -2030,20 +2030,67 @@ function athleteRefFooter(){
 }
 function renderAssigned(){
   const wrap=document.getElementById('assignedWrap'); if(!wrap) return;
-    if(paymentRequired){
-    const progName = coachInfo&&coachInfo.program_name?esc(coachInfo.program_name):'your coach\'s';
-    const copy = paymentReason==='new'
-      ? { title:'Subscribe to get started', body:`Your program is ready — subscribe to unlock ${progName} programming.` }
-      : { title:'Subscription required', body:`Your subscription has ended — resubscribe to keep seeing ${progName} programming.` };
+      if(paymentRequired){
+    renderPaywallCard(wrap);
+    return;
+  }
+let paywallTracks=null;
+async function renderPaywallCard(wrap){
+  const progName = coachInfo&&coachInfo.program_name?esc(coachInfo.program_name):'your coach\'s';
+  const copy = paymentReason==='new'
+    ? { title:'Subscribe to get started', body:`Your program is ready — subscribe to unlock ${progName} programming.` }
+    : { title:'Subscription required', body:`Your subscription has ended — resubscribe to keep seeing ${progName} programming.` };
+
+  const hasTrack = (profile.track_ids||[]).length>0;
+  const subBtnHTML = `<button class="cta" onclick="subscribeNow()">Subscribe</button>`;
+
+  if(hasTrack){
     wrap.innerHTML=`<div class="section-card" style="text-align:center">
       <div class="section-label" style="margin-bottom:6px">${copy.title}</div>
       <div class="hint" style="margin-bottom:14px">${copy.body}</div>
-      <button class="cta" onclick="subscribeNow()">Subscribe</button>
+      ${subBtnHTML}
       <div id="subMsg" class="save-msg" style="margin-top:8px"></div>
     </div>`;
     return;
   }
-  const todays=myAssignments.filter(a=>a.date===selectedDate);
+
+  if(paywallTracks===null){
+    try{ const d=await api('/api/workouts?action=my-coach-tracks'); paywallTracks=d.tracks||[]; }
+    catch(e){ paywallTracks=[]; }
+  }
+
+  if(!paywallTracks.length){
+    wrap.innerHTML=`<div class="section-card" style="text-align:center">
+      <div class="section-label" style="margin-bottom:6px">${copy.title}</div>
+      <div class="hint" style="margin-bottom:14px">${copy.body}</div>
+      ${subBtnHTML}
+      <div id="subMsg" class="save-msg" style="margin-top:8px"></div>
+    </div>`;
+    return;
+  }
+
+  wrap.innerHTML=`<div class="section-card" style="text-align:center">
+    <div class="section-label" style="margin-bottom:6px">${copy.title}</div>
+    <div class="hint" style="margin-bottom:14px">Which track fits you?</div>
+    <div class="pill-row wrap" id="paywallTrackPills" style="justify-content:center;margin-bottom:14px">
+      ${paywallTracks.map(t=>`<button class="pill" style="border-color:${t.color||'#999'}" onclick="paywallPickTrack('${t.id}',this)">${esc(t.name)}</button>`).join('')}
+    </div>
+    <button class="cta" id="paywallSubBtn" style="display:none" onclick="subscribeNow()">Subscribe</button>
+    <div id="subMsg" class="save-msg" style="margin-top:8px"></div>
+  </div>`;
+}
+async function paywallPickTrack(trackId, el){
+  document.querySelectorAll('#paywallTrackPills .pill').forEach(b=>b.classList.toggle('active',b===el));
+  const msg=document.getElementById('subMsg');
+  if(msg) msg.textContent='Saving…';
+  try{
+    await api('/api/workouts',{method:'POST',body:JSON.stringify({action:'switch-track',track_id:trackId})});
+    profile.track_ids=[trackId];
+    if(msg) msg.textContent='';
+    document.getElementById('paywallSubBtn').style.display='inline-block';
+  }catch(e){ if(msg) msg.textContent=e.message; }
+}
+   const todays=myAssignments.filter(a=>a.date===selectedDate);
   if(!todays.length){ wrap.innerHTML=''; return; }
   wrap.innerHTML=todays.map((a,i)=>{
     const done=a.status==='done';
