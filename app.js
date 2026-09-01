@@ -2163,6 +2163,45 @@ async function markDone(id, idx){
     document.getElementById('saveMsg').textContent=e.message;
   }
 }
+async function renderTrackSwitcher(){
+  if(!coachInfo) return;
+  const anchor=document.getElementById('coachLinked');
+  if(!anchor) return;
+  let tracks;
+  try{ const d=await api('/api/workouts?action=my-coach-tracks'); tracks=d.tracks||[]; }
+  catch(e){ return; }
+  let host=document.getElementById('trackSwitchHost');
+  if(!tracks.length){ if(host) host.closest('.section-card').remove(); return; }
+  if(!host){
+    anchor.closest('.section-card').insertAdjacentHTML('afterend',
+      '<div class="section-card"><div class="section-label">Track</div><div id="trackSwitchHost"></div></div>');
+    host=document.getElementById('trackSwitchHost');
+  }
+  const paint=()=>{
+    host.innerHTML=`<div class="pill-row wrap">
+      ${tracks.map(t=>{
+        const on=(profile.track_ids||[]).includes(t.id);
+        return `<button class="pill" style="${on?`background:${t.color};color:#fff;border-color:${t.color};`:''}" onclick="switchTrackSetting('${t.id}')">${esc(t.name)}</button>`;
+      }).join('')}
+    </div>
+    <div id="trackSwitchMsg" class="save-msg" style="margin-top:8px;text-align:left"></div>`;
+  };
+  paint();
+  window._trackSwitchPaint=paint;
+}
+async function switchTrackSetting(trackId){
+  const msg=document.getElementById('trackSwitchMsg');
+  if(msg) msg.textContent='Switching…';
+  try{
+    await api('/api/workouts',{method:'POST',body:JSON.stringify({action:'switch-track',track_id:trackId})});
+    profile.track_ids=[trackId];
+    if(window._trackSwitchPaint) window._trackSwitchPaint();
+    if(msg) msg.textContent='Switched';
+    setTimeout(()=>{ if(msg) msg.textContent=''; },2000);
+    if(window.loadDay && typeof selectedDate!=='undefined') loadDay(selectedDate);
+    if(window.refreshWeekDots) refreshWeekDots();
+  }catch(e){ if(msg) msg.textContent=e.message; }
+}
 async function subscribeNow(){
   const msg=document.getElementById('subMsg');
   if(msg) msg.textContent='Redirecting to checkout…';
