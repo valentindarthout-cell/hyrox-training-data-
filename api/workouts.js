@@ -756,3 +756,16 @@ module.exports = async function handler(req, res){
   }
   return res.status(400).json({error:'Unknown action'});
 };
+  if(action === 'my-coach-tracks'){
+    const r = await sb('/rest/v1/rpc/my_coach_tracks', token, {method:'POST', body:'{}'});
+    return res.status(200).json({ tracks: (r.ok && r.data) || [] });
+  }
+
+  if(action === 'switch-track'){
+    const { track_id } = req.body||{};
+    if(!track_id) return res.status(400).json({error:'track_id required'});
+    const r = await sb('/rest/v1/rpc/switch_my_track', token, {method:'POST', body: JSON.stringify({p_track_id: track_id})});
+    if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not switch track')});
+    if(r.data && r.data.error) return res.status(400).json({error:r.data.error});
+    return res.status(200).json({ ok:true });
+  }
