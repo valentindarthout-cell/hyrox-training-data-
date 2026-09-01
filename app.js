@@ -2028,12 +2028,6 @@ function athleteRefFooter(){
   if(!bits.length) return '';
   return `<div style="margin-top:12px;font-size:10px;line-height:1.7;color:rgba(255,255,255,.45)">${bits.join('<br>')}</div>`;
 }
-function renderAssigned(){
-  const wrap=document.getElementById('assignedWrap'); if(!wrap) return;
-      if(paymentRequired){
-    renderPaywallCard(wrap);
-    return;
-  }
 let paywallTracks=null;
 async function renderPaywallCard(wrap){
   const progName = coachInfo&&coachInfo.program_name?esc(coachInfo.program_name):'your coach\'s';
@@ -2090,7 +2084,14 @@ async function paywallPickTrack(trackId, el){
     document.getElementById('paywallSubBtn').style.display='inline-block';
   }catch(e){ if(msg) msg.textContent=e.message; }
 }
-   const todays=myAssignments.filter(a=>a.date===selectedDate);
+
+function renderAssigned(){
+  const wrap=document.getElementById('assignedWrap'); if(!wrap) return;
+  if(paymentRequired){
+    renderPaywallCard(wrap);
+    return;
+  }
+  const todays=myAssignments.filter(a=>a.date===selectedDate);
   if(!todays.length){ wrap.innerHTML=''; return; }
   wrap.innerHTML=todays.map((a,i)=>{
     const done=a.status==='done';
