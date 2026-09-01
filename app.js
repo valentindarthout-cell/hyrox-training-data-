@@ -2119,9 +2119,10 @@ async function markDone(id, idx){
 async function subscribeNow(){
   const msg=document.getElementById('subMsg');
   if(msg) msg.textContent='Redirecting to checkout…';
+  const plan=localStorage.getItem('octa_pending_plan')||'monthly';
   try{
-    const d=await api('/api/stripe-checkout',{method:'POST',body:JSON.stringify({})});
-    if(d.url) window.location.href=d.url;
+    const d=await api('/api/stripe-checkout',{method:'POST',body:JSON.stringify({plan})});
+    if(d.url){ localStorage.removeItem('octa_pending_plan'); window.location.href=d.url; }
     else if(msg) msg.textContent='Could not start checkout';
   }catch(e){ if(msg) msg.textContent=e.message; }
 }
