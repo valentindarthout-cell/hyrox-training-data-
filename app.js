@@ -105,9 +105,9 @@ async function enterApp(){
     if(p.body){ profile._weight=p.body.weight_kg; profile._height=p.body.height_cm; }
   }catch(e){ profile = {}; }
   if(profile.role === 'coach'){ enterCoach(); return; }
+    renderCoachSection();
+  await applyPendingCode();
   fillSettings();
-  renderCoachSection();
-  applyPendingCode();
   await loadDay(selectedDate);
   await refreshWeekDots();
   checkStravaStatus();
@@ -935,22 +935,24 @@ async function maybeAutoFillZones(){
 (function checkStravaRedirect(){
   const p=new URLSearchParams(location.search);
   if(p.has('strava')){
-    history.replaceState({},'',location.pathname);
-  }
-  if(p.has('code')){
-    localStorage.setItem('htd_pending_code', p.get('code'));
-    history.replaceState({},'',location.pathname);
+    p.delete('strava');
+    const qs=p.toString();
+    history.replaceState({},'',location.pathname+(qs?'?'+qs:''));
   }
 })();
 async function applyPendingCode(){
-  const code=localStorage.getItem('htd_pending_code');
-  if(!code || coachInfo || (profile&&profile.role==='coach')) { if(code&&profile&&profile.role==='coach') localStorage.removeItem('htd_pending_code'); return; }
+  const code=localStorage.getItem('octa_pending_code');
+  if(!code || coachInfo || (profile&&profile.role==='coach')) { if(code&&profile&&profile.role==='coach') localStorage.removeItem('octa_pending_code'); return; }
+  const trackId=localStorage.getItem('octa_pending_track')||null;
   try{
-    const d=await api('/api/coach',{method:'POST',body:JSON.stringify({action:'join',code})});
+    const body={action:'join',code}; if(trackId) body.track_id=trackId;
+    const d=await api('/api/coach',{method:'POST',body:JSON.stringify(body)});
     coachInfo=d.coach||null;
-    localStorage.removeItem('htd_pending_code');
+    if(coachInfo && trackId) profile.track_ids=[trackId];
+    localStorage.removeItem('octa_pending_code');
+    localStorage.removeItem('octa_pending_track');
     renderCoachSection();
-  }catch(e){ localStorage.removeItem('htd_pending_code'); }
+  }catch(e){ localStorage.removeItem('octa_pending_code'); localStorage.removeItem('octa_pending_track'); }
 }
 
 let stravaTarget=null;
