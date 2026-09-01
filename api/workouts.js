@@ -749,18 +749,15 @@ module.exports = async function handler(req, res){
     if(!r.ok) return res.status(500).json({error: dbErr(r,'Could not update')});
     return res.status(200).json({ liked:newVal });
   }
-  if(action === 'subscription-status'){
+    if(action === 'subscription-status'){
     const payR = await sb('/rest/v1/rpc/athlete_payment_status', token, {method:'POST', body:'{}'});
     const hasSub = payR.ok && payR.data && payR.data.has_subscription;
     return res.status(200).json({ has_subscription: !!hasSub });
   }
-  return res.status(400).json({error:'Unknown action'});
-};
   if(action === 'my-coach-tracks'){
     const r = await sb('/rest/v1/rpc/my_coach_tracks', token, {method:'POST', body:'{}'});
     return res.status(200).json({ tracks: (r.ok && r.data) || [] });
   }
-
   if(action === 'switch-track'){
     const { track_id } = req.body||{};
     if(!track_id) return res.status(400).json({error:'track_id required'});
@@ -769,3 +766,5 @@ module.exports = async function handler(req, res){
     if(r.data && r.data.error) return res.status(400).json({error:r.data.error});
     return res.status(200).json({ ok:true });
   }
+  return res.status(400).json({error:'Unknown action'});
+};
