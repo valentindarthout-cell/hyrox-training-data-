@@ -20,9 +20,10 @@ let lpPrograms=[], lpTestimonials=[], lpTheme='light';
 (function bootPendingJoin(){
   try{
     const params=new URLSearchParams(location.search);
-    const code=params.get('code'), track=params.get('track');
+    const code=params.get('code'), track=params.get('track'), plan=params.get('plan');
     if(code) localStorage.setItem('octa_pending_code', code);
     if(track) localStorage.setItem('octa_pending_track', track);
+    if(plan) localStorage.setItem('octa_pending_plan', plan);
   }catch(e){}
 })();
 async function octaApplyPendingTrack(){
