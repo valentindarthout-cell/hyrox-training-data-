@@ -187,8 +187,8 @@ async function jcFinishJoin(code, track_id){
     coachInfo=d.coach||null;
     document.getElementById('coachTrackPicker')?.remove();
     jcPending=null; jcSelectedTrack=null;
-        renderCoachSection();
-    renderSubscriptionSection();
+            renderCoachSection();
+    renderTrackSwitcher().then(renderSubscriptionSection);
     msg.textContent='Welcome to '+((coachInfo&&coachInfo.program_name)||'the program');
     setTimeout(()=>msg.textContent='',3000);
     if(window.loadDay && typeof selectedDate!=='undefined') loadDay(selectedDate);
@@ -2825,8 +2825,8 @@ function fillSettings(){
   if(window.renderPerformanceCard) renderPerformanceCard();
   if(window.renderRaceResults) renderRaceResults();if(window.initRaces) initRaces();
   if(window.octaApplyPendingTrack) octaApplyPendingTrack();
-    if(window.maybeShowAthleteTutorial) maybeShowAthleteTutorial();
-  renderSubscriptionSection();
+      if(window.maybeShowAthleteTutorial) maybeShowAthleteTutorial();
+  renderTrackSwitcher().then(renderSubscriptionSection);
   document.getElementById('setHrvLow').value=profile.hrv_low??'';
   document.getElementById('setHrvHigh').value=profile.hrv_high??'';
   document.getElementById('hrz1').value=profile.hr_z1_max??'';
